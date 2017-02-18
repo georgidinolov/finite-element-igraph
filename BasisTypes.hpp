@@ -3,10 +3,36 @@
 // supply a mass and system matrix, as well as the functions used to
 // create those matrices.
 
-
 extern "C" {
 #include "igraph.h"
 }
+#include <vector>
+
+// =================== BASIS ELEMENT CLASS ===================
+class BasisElement
+{
+public:
+  virtual ~BasisElement() =0;
+  virtual double operator()(const igraph_vector_t& input) const =0;
+};
+
+class GaussianKernelElement
+  : public BasisElement
+{
+public:
+  GaussianKernelElement(long unsigned dimension,
+			double exponent_power,
+			const igraph_vector_t& mean_vector,
+			const igraph_matrix_t& covariance_matrix);
+  ~GaussianKernelElement();
+  virtual double operator()(const igraph_vector_t& input) const;
+
+private:
+  long unsigned dimension_;
+  double exponent_power_;
+  igraph_vector_t mean_vector_;
+  igraph_matrix_t covariance_matrix_;
+};
   
 // =================== BASE BASIS CLASS ======================
 class BaseBasis
