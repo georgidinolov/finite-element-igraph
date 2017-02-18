@@ -6,7 +6,6 @@ cc_library(
 	        "//src/multivariate-normal:multivariate-normal"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
-	linkopts = ["-lm", "-lgsl", "-lgslcblas"],
 	visibility = ["//visibility:public"],
 )
 
@@ -15,20 +14,15 @@ cc_binary(
 	srcs = ["basis-types-test.cpp"],
 	includes = ["BasisTypes.hpp"],
 	deps = [":basis-types"],
-	copts = ["-Isrc/igraph-0.7.1/include"],	
-)
-
-cc_library(
-	name = "multivariate-normal",
-	srcs = ["MultivariateNormal.cpp"],
-	hdrs = ["MultivariateNormal.hpp"],
-	linkopts = ["-lm", "-lgsl", "-lgslcblas"],
-	visibility = ["//visibility:public"]
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/multivariate-normal"],
 )
 
 cc_binary(
-	name = "multivariate-normal-test",
-	srcs = ["multivariate-normal-test.cpp"],
-	includes = ["MultivariateNormal.hpp"],
-	deps = [":multivariate-normal"],
+	name = "element-types-test",
+	srcs = ["element-types-test.cpp"],
+	includes = ["BasisTypes.hpp"],
+	deps = [":basis-types"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/multivariate-normal"],
 )

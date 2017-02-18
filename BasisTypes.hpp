@@ -6,6 +6,7 @@
 extern "C" {
 #include "igraph.h"
 }
+#include "MultivariateNormal.hpp"
 #include <vector>
 
 // =================== BASIS ELEMENT CLASS ===================
@@ -20,18 +21,26 @@ class GaussianKernelElement
   : public BasisElement
 {
 public:
+  GaussianKernelElement();
   GaussianKernelElement(long unsigned dimension,
 			double exponent_power,
 			const igraph_vector_t& mean_vector,
 			const igraph_matrix_t& covariance_matrix);
+  
+  GaussianKernelElement(const GaussianKernelElement& element);
+
   ~GaussianKernelElement();
   virtual double operator()(const igraph_vector_t& input) const;
 
+  const igraph_vector_t& get_mean_vector() const;
+  const igraph_matrix_t& get_covariance_matrix() const;
+  
 private:
-  long unsigned dimension_;
+  long int dimension_;
   double exponent_power_;
   igraph_vector_t mean_vector_;
   igraph_matrix_t covariance_matrix_;
+  MultivariateNormal mvtnorm_;
 };
   
 // =================== BASE BASIS CLASS ======================
@@ -60,6 +69,13 @@ public:
   virtual const igraph_matrix_t& get_system_matrix() const;
 
 private:
+  // sets basis functions in the class
+  void set_basis_functions(double rho,
+			   double sigma,
+			   double power,
+			   double std_dev_factor);
+  
+  std::vector<GaussianKernelElement> basis_functions_;
   igraph_matrix_t system_matrix_;
   igraph_matrix_t mass_matrix_;
 };

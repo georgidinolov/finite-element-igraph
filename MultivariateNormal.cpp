@@ -1,3 +1,4 @@
+#include <cmath>
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -5,7 +6,6 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
-#include <cmath>
 #include "MultivariateNormal.hpp"
 
 void rmvnorm(const gsl_rng *r, 
