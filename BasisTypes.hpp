@@ -13,10 +13,30 @@ extern "C" {
 class BasisElement
 {
 public:
+  BasisElement() {};
   virtual ~BasisElement() =0;
   virtual double operator()(const igraph_vector_t& input) const =0;
+  virtual double norm() const =0;
 };
 
+// ============== LINEAR COMBINATION ELEMENT =====================
+class LinearCombinationElement
+  : public BasisElement
+{
+public:
+
+  LinearCombinationElement(const std::vector<const BasisElement*> elements,
+			   const std::vector<double>& coefficients);
+  virtual ~LinearCombinationElement();
+  virtual double operator()(const igraph_vector_t& input) const;
+  virtual double norm() const;
+
+private:
+  const std::vector<const BasisElement*> elements_;
+  std::vector<double> coefficients_;
+};
+
+// ============== GAUSSIAN KERNEL ELEMENT =====================
 class GaussianKernelElement
   : public BasisElement
 {
@@ -29,8 +49,14 @@ public:
   
   GaussianKernelElement(const GaussianKernelElement& element);
 
-  ~GaussianKernelElement();
+  virtual ~GaussianKernelElement();
   virtual double operator()(const igraph_vector_t& input) const;
+
+  virtual double first_derivative(const igraph_vector_t& input,
+				  long int coord_index) const;
+
+  virtual double norm() const;
+  virtual double norm_finite_diff() const;
 
   const igraph_vector_t& get_mean_vector() const;
   const igraph_matrix_t& get_covariance_matrix() const;
@@ -41,7 +67,12 @@ private:
   igraph_vector_t mean_vector_;
   igraph_matrix_t covariance_matrix_;
   MultivariateNormal mvtnorm_;
+
+  void set_norm();
+  double norm_;
 };
+
+
   
 // =================== BASE BASIS CLASS ======================
 class BaseBasis
@@ -55,15 +86,15 @@ public:
 
 
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
-class GaussianKernelBasis
+class BivariateGaussianKernelBasis
   : public BaseBasis
 {
 public:
-  GaussianKernelBasis(double rho,
+  BivariateGaussianKernelBasis(double rho,
 		      double sigma,
 		      double power,
 		      double std_dev_factor);
-  ~GaussianKernelBasis();
+  ~BivariateGaussianKernelBasis();
 
   virtual const igraph_matrix_t& get_mass_matrix() const;
   virtual const igraph_matrix_t& get_system_matrix() const;
@@ -75,7 +106,10 @@ private:
 			   double power,
 			   double std_dev_factor);
   
+  void set_orthonormal_functions();
+  
   std::vector<GaussianKernelElement> basis_functions_;
+  std::vector<LinearCombinationElement> orthonormal_functions_;
   igraph_matrix_t system_matrix_;
   igraph_matrix_t mass_matrix_;
 };

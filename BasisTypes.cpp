@@ -7,6 +7,44 @@
 BasisElement::~BasisElement()
 {}
 
+// ============== LINEAR COMBINATION ELEMENT =====================
+LinearCombinationElement::
+LinearCombinationElement(const std::vector<const BasisElement*> elements,
+			 const std::vector<double>& coefficients)
+  : elements_(elements),
+    coefficients_(coefficients)
+{
+  if (elements_.size() != coefficients_.size()) {
+    std::cout << "ERROR: elements and coefficients not of same size!"
+	      << std::endl;
+  }
+}
+
+LinearCombinationElement::~LinearCombinationElement()
+{}
+
+double LinearCombinationElement::
+operator()(const igraph_vector_t& input) const
+{
+  double out = 0;
+  for (unsigned i=0; i<elements_.size(); ++i) {
+    const BasisElement* curr_element = elements_[i];
+    out = out + coefficients_[i]*(*curr_element)(input);
+  }
+  return out;
+}
+
+double LinearCombinationElement::norm() const
+{
+  double integral = 0;
+  for (unsigned i=0; i<elements_.size(); ++i) {
+    const BasisElement* curr_element = elements_[i];
+    integral = integral + coefficients_[i]*(curr_element->norm());
+  }
+  return integral;
+}
+
+// ============== GAUSSIAN KERNEL ELEMENT =====================
 GaussianKernelElement::
 GaussianKernelElement(long unsigned dimension,
 		      double exponent_power,
@@ -14,13 +52,16 @@ GaussianKernelElement(long unsigned dimension,
 		      const igraph_matrix_t& covariance_matrix)
   : dimension_(dimension),
     exponent_power_(exponent_power),
-    mvtnorm_(MultivariateNormal())
+    mvtnorm_(MultivariateNormal()),
+    norm_(0)
 {
   igraph_vector_init(&mean_vector_, dimension_);
   igraph_vector_update(&mean_vector_, &mean_vector);
   
   igraph_matrix_init(&covariance_matrix_, dimension_, dimension_);
   igraph_matrix_update(&covariance_matrix_, &covariance_matrix);
+
+  set_norm();
 }
 
 GaussianKernelElement::
@@ -92,6 +133,46 @@ operator()(const igraph_vector_t& input) const
   }
 }
 
+double GaussianKernelElement::
+first_derivative(const igraph_vector_t& input,
+		 long int coord_index) const
+{
+  
+}
+
+double GaussianKernelElement::norm_finite_diff() const
+{
+  double dx = 0.001;
+  long int N = 1.0/dx;
+
+  double integral = 0;
+  igraph_vector_t input;
+  igraph_vector_init(&input, dimension_);
+  double x;
+  
+  for (long int j=0; j < std::pow(N, dimension_); ++j) {
+    for (long int i=0; i < dimension_; ++i) {
+      if (i == (dimension_-1)) {
+	x = (1 + (j - N*std::floor(j/N)))*dx;
+      } else {
+	x = (1 + std::floor(j/std::pow(N, dimension_-(i+1))))*dx;
+      }
+      igraph_vector_set(&input, i, x);
+    }
+    integral = integral + (*this)(input);
+  }
+  
+  integral = integral * std::pow(dx, dimension_);
+
+  igraph_vector_destroy(&input);
+  return integral;
+}
+
+double GaussianKernelElement::norm() const
+{
+  return norm_;
+}
+
 const igraph_vector_t& GaussianKernelElement::get_mean_vector() const
 {
   return mean_vector_;
@@ -102,13 +183,19 @@ const igraph_matrix_t& GaussianKernelElement::get_covariance_matrix() const
   return covariance_matrix_;
 }
 
+void GaussianKernelElement::set_norm()
+{
+  norm_ = norm_finite_diff();
+}
+
+
 // =================== BASE BASIS CLASS ======================
 BaseBasis::~BaseBasis()
 {}
 
 
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
-GaussianKernelBasis::GaussianKernelBasis(double rho,
+BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double rho,
 					 double sigma,
 					 double power,
 					 double std_dev_factor)
@@ -117,6 +204,7 @@ GaussianKernelBasis::GaussianKernelBasis(double rho,
   set_basis_functions(rho,sigma,power,std_dev_factor);
 
   // second create the orthonormal list of elements
+  set_orthonormal_functions();
   
   igraph_matrix_init(&system_matrix_, 2, 2);
   igraph_matrix_fill(&system_matrix_, 1);
@@ -125,26 +213,26 @@ GaussianKernelBasis::GaussianKernelBasis(double rho,
   igraph_matrix_fill(&mass_matrix_, 1);
 }
 
-GaussianKernelBasis::~GaussianKernelBasis()
+BivariateGaussianKernelBasis::~BivariateGaussianKernelBasis()
 {
   igraph_matrix_destroy(&system_matrix_);
   igraph_matrix_destroy(&mass_matrix_);
 }
 
-const igraph_matrix_t& GaussianKernelBasis::get_system_matrix() const
+const igraph_matrix_t& BivariateGaussianKernelBasis::get_system_matrix() const
 {
   return system_matrix_;
 }
 
-const igraph_matrix_t& GaussianKernelBasis::get_mass_matrix() const
+const igraph_matrix_t& BivariateGaussianKernelBasis::get_mass_matrix() const
 {
   return mass_matrix_;
 }
 
-void GaussianKernelBasis::set_basis_functions(double rho,
-					      double sigma,
-					      double power,
-					      double std_dev_factor)
+void BivariateGaussianKernelBasis::set_basis_functions(double rho,
+						       double sigma,
+						       double power,
+						       double std_dev_factor)
 {
   // creating the x-nodes
   double by = std_dev_factor * sigma * std::sqrt(1-rho);
@@ -248,4 +336,18 @@ void GaussianKernelBasis::set_basis_functions(double rho,
 
   igraph_vector_destroy(&mean_vector);
   igraph_matrix_destroy(&covariance_matrix);
+}
+
+void BivariateGaussianKernelBasis::set_orthonormal_functions()
+{
+  for (unsigned i=0; i<basis_functions_.size(); ++i) {
+
+    if (i==0) {
+    LinearCombinationElement curr_elem =
+      LinearCombinationElement(std::vector<const BasisElement*>
+			       {&basis_functions_[i]},
+			       std::vector<double> {1});
+    orthonormal_functions_.push_back(curr_elem);
+    }
+  }
 }

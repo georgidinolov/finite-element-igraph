@@ -25,10 +25,23 @@ int main() {
 							       exponent_power,
 							       mean,
 							       cov);
+  
+  GaussianKernelElement kernel_element_2 = GaussianKernelElement(dimension,
+								 exponent_power,
+								 mean,
+								 cov);
+
+  LinearCombinationElement add = LinearCombinationElement(std::vector<const BasisElement*>
+			   {&kernel_element, &kernel_element_2, &kernel_element_2},
+							  std::vector<double> {100, 1, 1});
+  
   std::cout << kernel_element(input)
 	    << "\n" << std::endl;
 
-  igraph_vector_print(&kernel_element.get_mean_vector());
+  std::cout << add(input) << std::endl;
+  std::cout << kernel_element.norm() << std::endl;
+  std::cout << add.norm() << std::endl;
 
+  igraph_vector_print(&kernel_element.get_mean_vector());
   return 0;
 }
