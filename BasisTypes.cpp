@@ -44,6 +44,20 @@ double LinearCombinationElement::norm() const
   return integral;
 }
 
+double LinearCombinationElement::
+first_derivative(const igraph_vector_t& input,
+		 long int coord_index) const
+{
+  double deriv = 0;
+  for (unsigned i=0; i<elements_.size(); ++i) {
+    const BasisElement* curr_element = elements_[i];
+    deriv = deriv + coefficients_[i]*(curr_element->
+				      first_derivative(input,
+						       coord_index));
+  }
+  return deriv;
+}
+
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 GaussianKernelElement::
 GaussianKernelElement(long unsigned dimension,
@@ -137,7 +151,36 @@ double GaussianKernelElement::
 first_derivative(const igraph_vector_t& input,
 		 long int coord_index) const
 {
+  return first_derivative_finite_diff(input,
+				      coord_index);
+}
+
+double GaussianKernelElement::
+first_derivative_finite_diff(const igraph_vector_t& input,
+			     long int coord_index) const
+{
+  double dx = 0.001;
+  igraph_vector_t input_plus;
+  igraph_vector_t input_minus;
+
+  igraph_vector_init(&input_plus, dimension_);
+  igraph_vector_init(&input_minus, dimension_);
   
+  igraph_vector_update(&input_plus, &input);
+  igraph_vector_update(&input_minus, &input);
+
+  igraph_vector_set(&input_plus, coord_index,
+  		    igraph_vector_e(&input, coord_index)+dx);
+  igraph_vector_set(&input_minus, coord_index,
+  		    igraph_vector_e(&input, coord_index)-dx);
+
+  double out = ((*this)(input_plus) - (*this)(input_minus))/
+    (2*dx);
+
+  igraph_vector_destroy(&input_minus);
+  igraph_vector_destroy(&input_plus);
+  
+  return out;
 }
 
 double GaussianKernelElement::norm_finite_diff() const

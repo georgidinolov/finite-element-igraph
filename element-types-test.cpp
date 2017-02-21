@@ -41,6 +41,8 @@ int main() {
   std::cout << add(input) << std::endl;
   std::cout << kernel_element.norm() << std::endl;
   std::cout << add.norm() << std::endl;
+  std::cout << kernel_element.first_derivative_finite_diff(mean, 0)
+	    << std::endl;
 
   igraph_vector_print(&kernel_element.get_mean_vector());
   return 0;

@@ -17,6 +17,8 @@ public:
   virtual ~BasisElement() =0;
   virtual double operator()(const igraph_vector_t& input) const =0;
   virtual double norm() const =0;
+  virtual double first_derivative(const igraph_vector_t& input,
+				  long int coord_index) const =0;
 };
 
 // ============== LINEAR COMBINATION ELEMENT =====================
@@ -30,6 +32,8 @@ public:
   virtual ~LinearCombinationElement();
   virtual double operator()(const igraph_vector_t& input) const;
   virtual double norm() const;
+  virtual double first_derivative(const igraph_vector_t& input,
+				  long int coord_index) const;
 
 private:
   const std::vector<const BasisElement*> elements_;
@@ -54,6 +58,9 @@ public:
 
   virtual double first_derivative(const igraph_vector_t& input,
 				  long int coord_index) const;
+
+  virtual double first_derivative_finite_diff(const igraph_vector_t& input,
+					      long int coord_index) const;
 
   virtual double norm() const;
   virtual double norm_finite_diff() const;
