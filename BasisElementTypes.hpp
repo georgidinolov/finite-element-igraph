@@ -39,6 +39,7 @@ public:
 
   std::vector<const BasisElement*> get_elements() const;
   std::vector<double> get_coefficients() const;
+  double get_coefficient(unsigned i) const;
   
 private:
   const std::vector<const BasisElement*> elements_;
@@ -82,6 +83,6 @@ private:
   igraph_matrix_t covariance_matrix_;
   MultivariateNormal mvtnorm_;
 
-  void set_norm();
   double norm_;
+  void set_norm();
 };

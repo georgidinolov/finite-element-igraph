@@ -80,6 +80,16 @@ std::vector<double> LinearCombinationElement::get_coefficients() const
   return coefficients_;
 }
 
+double LinearCombinationElement::get_coefficient(unsigned i) const
+{
+  if (i < coefficients_.size()) {
+    return coefficients_[i];
+  } else {
+    std::cout << "ERROR: coefficient out of range" << std::endl;
+    return 0;
+  }
+}
+
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 GaussianKernelElement::
 GaussianKernelElement(double dx,
@@ -91,7 +101,7 @@ GaussianKernelElement(double dx,
     dimension_(dimension),
     exponent_power_(exponent_power),
     mvtnorm_(MultivariateNormal()),
-    norm_(0)
+    norm_(0.0)
 {
   igraph_vector_init(&mean_vector_, dimension_);
   igraph_vector_update(&mean_vector_, &mean_vector);
@@ -214,23 +224,22 @@ double GaussianKernelElement::norm_finite_diff() const
   igraph_vector_t input;
   igraph_vector_init(&input, dimension_);
   double x;
-  
-  for (long int j=0; j < std::pow(N, dimension_); ++j) {
-    for (long int i=0; i < dimension_; ++i) {
-      if (i == (dimension_-1)) {
-	x = (1 + (j - N*std::floor(j/N)))*dx_;
-      } else {
-	x = (1 + std::floor(j/std::pow(N, dimension_-(i+1))))*dx_;
-      }
-      igraph_vector_set(&input, i, x);
-    }
-    integral = integral + (*this)(input);
-  }
-  
-  integral = integral * std::pow(dx_, dimension_);
+  double y;
 
+  for (long int i=0; i<N; ++i) {
+    for (long int j=0; j<N; ++j) {
+      x = i*dx_;
+      y = j*dx_;
+      igraph_vector_set(&input, 0, x);
+      igraph_vector_set(&input, 1, y);
+
+      integral = integral + std::pow((*this)(input), 2);
+    }
+  }
+  integral = integral * std::pow(dx_, dimension_);
+  
   igraph_vector_destroy(&input);
-  return integral;
+  return std::sqrt(integral);
 }
 
 double GaussianKernelElement::norm() const

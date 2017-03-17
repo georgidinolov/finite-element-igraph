@@ -54,21 +54,20 @@ double BivariateGaussianKernelBasis::project(const BasisElement& elem_1,
   igraph_vector_t input;
   igraph_vector_init(&input, dimension);
   double x;
-  
-  for (long int j=0; j < std::pow(N, dimension); ++j) {
-    for (long int i=0; i < dimension; ++i) {
-      if (i == (dimension-1)) {
-	x = (1 + (j - N*std::floor(j/N)))*dx_;
-      } else {
-	x = (1 + std::floor(j/std::pow(N, dimension-(i+1))))*dx_;
-      }
-      igraph_vector_set(&input, i, x);
-    }
-    integral = integral + elem_1(input)*elem_2(input);
-  }
-  
-  integral = integral * std::pow(dx_, dimension);
+  double y;
 
+  for (long int i=0; i<N; ++i) {
+    for (long int j=0; j<N; ++j) {
+      x = i*dx_;
+      y = j*dx_;
+      igraph_vector_set(&input, 0, x);
+      igraph_vector_set(&input, 1, y);
+
+      integral = integral + elem_1(input)*elem_2(input);
+    }
+  }
+  integral = integral * std::pow(dx_, 2);
+  
   igraph_vector_destroy(&input);
   return integral;
 }
@@ -78,6 +77,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 						       double power,
 						       double std_dev_factor)
 {
+  std::cout << "IN set_basis_functions" << std::endl;
   // creating the x-nodes
   double by = std_dev_factor * sigma * std::sqrt(1-rho);
   double current = 0.5 - std::sqrt(2.0);
@@ -186,43 +186,59 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 // Performing Gram-Schmidt Orthogonalization
 void BivariateGaussianKernelBasis::set_orthonormal_functions()
 {
+  std::cout << "IN set_orthonormal_functions" << std::endl;
+
+  std::cout << "Number basis elements = "
+	    << basis_functions_.size()
+	    << std::endl;
+
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
 
     if (i==0) {
-      LinearCombinationElement curr_elem =
-	LinearCombinationElement(std::vector<const BasisElement*>
-				 {&basis_functions_[i]},
-				 std::vector<double> {1.0/
-				     basis_functions_[i].norm()});
-      orthonormal_functions_.push_back(curr_elem);
-    } else {
-      LinearCombinationElement curr_elem =
-	LinearCombinationElement(std::vector<const BasisElement*>
-				 {&basis_functions_[i]},
-				 std::vector<double> {1.0/
-				     basis_functions_[i].norm()});
+      std::cout << "(" << i << ")" << std::endl;
 
-      // curr_elem = curr_elem - < orthonormal_functions_[j]|curr_elem >*
-      //   orthonormal_functions_[j];
-      for (unsigned j=0; j<i; ++j) {
-	double projection = project(curr_elem,
-				    orthonormal_functions_[j]);
-	LinearCombinationElement updated_curr_element =
-	  LinearCombinationElement(std::vector<const BasisElement*>
-				   {
-				     &
-				   }
-				   
-	curr_elem =
-	  LinearCombinationElement(std::vector<const BasisElement*>
-				   {&basis_functions_[i]},
-				   std::vector<double> {1.0/
-				       basis_functions_[i].norm()});
-	
-	curr_elem = curr_elem - < orthonormal_functions_[j]|curr_elem >*
-	  orthonormal_functions_[j];
-      }
+      LinearCombinationElement curr_elem =
+	LinearCombinationElement(std::vector<const BasisElement*>
+				 {&basis_functions_[i]},
+				 std::vector<double> {1.0/
+				     basis_functions_[i].norm()});
       orthonormal_functions_.push_back(curr_elem);
+
+      std::cout << "(" << i << ")" << std::endl;
+    } else {
+      
+      std::vector<double> coefficients(i+1, 0.0);
+      std::vector<const BasisElement*> elements(0);
+      
+      std::vector<double> projections(i, 0.0);
+      for (unsigned j=0; j<i; ++j) {
+	std::cout << "(" << i << "," << j << ")" << std::endl;
+
+	projections[j] = project(basis_functions_[i],
+				 orthonormal_functions_[j]);
+	elements.push_back(&basis_functions_[j]);
+      }
+      elements.push_back(&basis_functions_[i]);
+
+      coefficients[i] = 1.0;
+      for (unsigned j=0; j<i; ++j) {
+	double coef_j = 0;
+	for (unsigned k=j; k<i; ++k) {
+	  coef_j = coef_j - 1.0*projections[j]*
+	    orthonormal_functions_[k].get_coefficient(j);
+	}
+	coefficients[j] = coef_j;
+      }
+
+      LinearCombinationElement curr_elem = LinearCombinationElement(elements,
+								    coefficients);
+      double curr_elem_norm = curr_elem.norm();
+      for (unsigned j=0; j<i; ++j) {
+	coefficients[j] = coefficients[j] / curr_elem_norm;
+      }
+
+      orthonormal_functions_.push_back(LinearCombinationElement(elements,
+								coefficients));
     }
   }
 }
