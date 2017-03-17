@@ -3,10 +3,12 @@
 #include <vector>
 
 int main() {
-  GaussianKernelBasis basis = GaussianKernelBasis(0.5,
-  						  0.3,
-  						  1,
-  						  0.5);
+  double dx = 1e-4;
+  BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
+								    0.5,
+								    0.3,
+								    1,
+								    0.5);
   
   // const igraph_matrix_t& mass_matrix = basis.get_mass_matrix();
   // std::cout << &mass_matrix << std::endl;

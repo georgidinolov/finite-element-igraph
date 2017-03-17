@@ -3,245 +3,17 @@
 #include <gsl/gsl_blas.h>
 #include <iostream>
 
-// =================== BASIS ELEMENT CLASS ===================
-BasisElement::~BasisElement()
-{}
-
-// ============== LINEAR COMBINATION ELEMENT =====================
-LinearCombinationElement::
-LinearCombinationElement(const std::vector<const BasisElement*> elements,
-			 const std::vector<double>& coefficients)
-  : elements_(elements),
-    coefficients_(coefficients)
-{
-  if (elements_.size() != coefficients_.size()) {
-    std::cout << "ERROR: elements and coefficients not of same size!"
-	      << std::endl;
-  }
-}
-
-LinearCombinationElement::~LinearCombinationElement()
-{}
-
-double LinearCombinationElement::
-operator()(const igraph_vector_t& input) const
-{
-  double out = 0;
-  for (unsigned i=0; i<elements_.size(); ++i) {
-    const BasisElement* curr_element = elements_[i];
-    out = out + coefficients_[i]*(*curr_element)(input);
-  }
-  return out;
-}
-
-double LinearCombinationElement::norm() const
-{
-  double integral = 0;
-  for (unsigned i=0; i<elements_.size(); ++i) {
-    const BasisElement* curr_element = elements_[i];
-    integral = integral + coefficients_[i]*(curr_element->norm());
-  }
-  return integral;
-}
-
-double LinearCombinationElement::
-first_derivative(const igraph_vector_t& input,
-		 long int coord_index) const
-{
-  double deriv = 0;
-  for (unsigned i=0; i<elements_.size(); ++i) {
-    const BasisElement* curr_element = elements_[i];
-    deriv = deriv + coefficients_[i]*(curr_element->
-				      first_derivative(input,
-						       coord_index));
-  }
-  return deriv;
-}
-
-// ============== GAUSSIAN KERNEL ELEMENT =====================
-GaussianKernelElement::
-GaussianKernelElement(long unsigned dimension,
-		      double exponent_power,
-		      const igraph_vector_t& mean_vector,
-		      const igraph_matrix_t& covariance_matrix)
-  : dimension_(dimension),
-    exponent_power_(exponent_power),
-    mvtnorm_(MultivariateNormal()),
-    norm_(0)
-{
-  igraph_vector_init(&mean_vector_, dimension_);
-  igraph_vector_update(&mean_vector_, &mean_vector);
-  
-  igraph_matrix_init(&covariance_matrix_, dimension_, dimension_);
-  igraph_matrix_update(&covariance_matrix_, &covariance_matrix);
-
-  set_norm();
-}
-
-GaussianKernelElement::
-GaussianKernelElement(const GaussianKernelElement& element)
-  : dimension_(element.dimension_),
-    exponent_power_(element.exponent_power_),
-    mvtnorm_(MultivariateNormal())
-{
-  igraph_vector_init(&mean_vector_, dimension_);
-  igraph_vector_update(&mean_vector_, &element.mean_vector_);
-  
-  igraph_matrix_init(&covariance_matrix_, dimension_, dimension_);
-  igraph_matrix_update(&covariance_matrix_, &element.covariance_matrix_);
-}
-
-GaussianKernelElement::~GaussianKernelElement()
-{
-  igraph_vector_destroy(&mean_vector_);
-  igraph_matrix_destroy(&covariance_matrix_);
-}
-
-double GaussianKernelElement::
-operator()(const igraph_vector_t& input) const
-{
-  if (igraph_vector_size(&input) == dimension_) {
-    double mollifier = 1;
-    
-    gsl_matrix *covariance_matrix_gsl = gsl_matrix_alloc(dimension_,
-							 dimension_);
-    gsl_vector *mean_vector_gsl = gsl_vector_alloc(dimension_);
-    gsl_vector *input_gsl = gsl_vector_alloc(dimension_);
-    
-    for (unsigned i=0; i<dimension_; ++i) {
-      mollifier = mollifier *
-	std::pow(igraph_vector_e(&input, i), exponent_power_) *
-	std::pow((1-igraph_vector_e(&input, i)), exponent_power_);
-      
-      gsl_vector_set(mean_vector_gsl, i, igraph_vector_e(&mean_vector_, i));
-      gsl_vector_set(input_gsl, i, igraph_vector_e(&input, i));
-      
-      gsl_matrix_set(covariance_matrix_gsl, i, i,
-		     igraph_matrix_e(&covariance_matrix_,
-				     i, i));
-      for (unsigned j=i+1; j<dimension_; ++j) {
-	gsl_matrix_set(covariance_matrix_gsl, i, j,
-		       igraph_matrix_e(&covariance_matrix_,
-				       i, j));
-	gsl_matrix_set(covariance_matrix_gsl, j, i,
-		       igraph_matrix_e(&covariance_matrix_,
-				       j, i));
-      }
-    }
-    
-    
-    double out = mvtnorm_.dmvnorm(dimension_,
-				  input_gsl,
-				  mean_vector_gsl,
-				  covariance_matrix_gsl) *
-	mollifier;
-    
-    gsl_matrix_free(covariance_matrix_gsl);
-    gsl_vector_free(mean_vector_gsl);
-    gsl_vector_free(input_gsl);
-
-    return out;
-  } else {
-    std::cout << "INPUT SIZE WRONG" << std::endl;
-    return 0;
-  }
-}
-
-double GaussianKernelElement::
-first_derivative(const igraph_vector_t& input,
-		 long int coord_index) const
-{
-  return first_derivative_finite_diff(input,
-				      coord_index);
-}
-
-double GaussianKernelElement::
-first_derivative_finite_diff(const igraph_vector_t& input,
-			     long int coord_index) const
-{
-  double dx = 0.001;
-  igraph_vector_t input_plus;
-  igraph_vector_t input_minus;
-
-  igraph_vector_init(&input_plus, dimension_);
-  igraph_vector_init(&input_minus, dimension_);
-  
-  igraph_vector_update(&input_plus, &input);
-  igraph_vector_update(&input_minus, &input);
-
-  igraph_vector_set(&input_plus, coord_index,
-  		    igraph_vector_e(&input, coord_index)+dx);
-  igraph_vector_set(&input_minus, coord_index,
-  		    igraph_vector_e(&input, coord_index)-dx);
-
-  double out = ((*this)(input_plus) - (*this)(input_minus))/
-    (2*dx);
-
-  igraph_vector_destroy(&input_minus);
-  igraph_vector_destroy(&input_plus);
-  
-  return out;
-}
-
-double GaussianKernelElement::norm_finite_diff() const
-{
-  double dx = 0.001;
-  long int N = 1.0/dx;
-
-  double integral = 0;
-  igraph_vector_t input;
-  igraph_vector_init(&input, dimension_);
-  double x;
-  
-  for (long int j=0; j < std::pow(N, dimension_); ++j) {
-    for (long int i=0; i < dimension_; ++i) {
-      if (i == (dimension_-1)) {
-	x = (1 + (j - N*std::floor(j/N)))*dx;
-      } else {
-	x = (1 + std::floor(j/std::pow(N, dimension_-(i+1))))*dx;
-      }
-      igraph_vector_set(&input, i, x);
-    }
-    integral = integral + (*this)(input);
-  }
-  
-  integral = integral * std::pow(dx, dimension_);
-
-  igraph_vector_destroy(&input);
-  return integral;
-}
-
-double GaussianKernelElement::norm() const
-{
-  return norm_;
-}
-
-const igraph_vector_t& GaussianKernelElement::get_mean_vector() const
-{
-  return mean_vector_;
-}
-
-const igraph_matrix_t& GaussianKernelElement::get_covariance_matrix() const
-{
-  return covariance_matrix_;
-}
-
-void GaussianKernelElement::set_norm()
-{
-  norm_ = norm_finite_diff();
-}
-
-
 // =================== BASE BASIS CLASS ======================
 BaseBasis::~BaseBasis()
 {}
 
-
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
-BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double rho,
-					 double sigma,
-					 double power,
-					 double std_dev_factor)
+BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
+							   double rho,
+							   double sigma,
+							   double power,
+							   double std_dev_factor)
+  : dx_(dx)
 {
   // first create the list of basis elements
   set_basis_functions(rho,sigma,power,std_dev_factor);
@@ -270,6 +42,35 @@ const igraph_matrix_t& BivariateGaussianKernelBasis::get_system_matrix() const
 const igraph_matrix_t& BivariateGaussianKernelBasis::get_mass_matrix() const
 {
   return mass_matrix_;
+}
+
+double BivariateGaussianKernelBasis::project(const BasisElement& elem_1,
+					     const BasisElement& elem_2) const
+{
+  long int N = 1.0/dx_;
+  int dimension = 2;
+
+  double integral = 0;
+  igraph_vector_t input;
+  igraph_vector_init(&input, dimension);
+  double x;
+  
+  for (long int j=0; j < std::pow(N, dimension); ++j) {
+    for (long int i=0; i < dimension; ++i) {
+      if (i == (dimension-1)) {
+	x = (1 + (j - N*std::floor(j/N)))*dx_;
+      } else {
+	x = (1 + std::floor(j/std::pow(N, dimension-(i+1))))*dx_;
+      }
+      igraph_vector_set(&input, i, x);
+    }
+    integral = integral + elem_1(input)*elem_2(input);
+  }
+  
+  integral = integral * std::pow(dx_, dimension);
+
+  igraph_vector_destroy(&input);
+  return integral;
 }
 
 void BivariateGaussianKernelBasis::set_basis_functions(double rho,
@@ -367,7 +168,8 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
     igraph_vector_set(&mean_vector, 1,
   		      gsl_matrix_get(xieta_nodes, 1, index));
 
-    basis_functions_.push_back(GaussianKernelElement(2,
+    basis_functions_.push_back(GaussianKernelElement(dx_,
+						     2,
 						     power,
 						     mean_vector,
 						     covariance_matrix));
@@ -381,16 +183,46 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   igraph_matrix_destroy(&covariance_matrix);
 }
 
+// Performing Gram-Schmidt Orthogonalization
 void BivariateGaussianKernelBasis::set_orthonormal_functions()
 {
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
 
     if (i==0) {
-    LinearCombinationElement curr_elem =
-      LinearCombinationElement(std::vector<const BasisElement*>
-			       {&basis_functions_[i]},
-			       std::vector<double> {1});
-    orthonormal_functions_.push_back(curr_elem);
+      LinearCombinationElement curr_elem =
+	LinearCombinationElement(std::vector<const BasisElement*>
+				 {&basis_functions_[i]},
+				 std::vector<double> {1.0/
+				     basis_functions_[i].norm()});
+      orthonormal_functions_.push_back(curr_elem);
+    } else {
+      LinearCombinationElement curr_elem =
+	LinearCombinationElement(std::vector<const BasisElement*>
+				 {&basis_functions_[i]},
+				 std::vector<double> {1.0/
+				     basis_functions_[i].norm()});
+
+      // curr_elem = curr_elem - < orthonormal_functions_[j]|curr_elem >*
+      //   orthonormal_functions_[j];
+      for (unsigned j=0; j<i; ++j) {
+	double projection = project(curr_elem,
+				    orthonormal_functions_[j]);
+	LinearCombinationElement updated_curr_element =
+	  LinearCombinationElement(std::vector<const BasisElement*>
+				   {
+				     &
+				   }
+				   
+	curr_elem =
+	  LinearCombinationElement(std::vector<const BasisElement*>
+				   {&basis_functions_[i]},
+				   std::vector<double> {1.0/
+				       basis_functions_[i].norm()});
+	
+	curr_elem = curr_elem - < orthonormal_functions_[j]|curr_elem >*
+	  orthonormal_functions_[j];
+      }
+      orthonormal_functions_.push_back(curr_elem);
     }
   }
 }

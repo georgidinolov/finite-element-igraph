@@ -3,6 +3,17 @@ cc_library(
 	srcs = ["BasisTypes.cpp"],
 	hdrs = ["BasisTypes.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",
+		":basis-element-types"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/multivariate-normal"],
+	visibility = ["//visibility:public"],
+)
+
+cc_library(
+	name = "basis-element-types",
+	srcs = ["BasisElementTypes.cpp"],
+	hdrs = ["BasisElementTypes.hpp"],
+	deps = ["//src/igraph-0.7.1:igraph",
 	        "//src/multivariate-normal:multivariate-normal"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
@@ -21,8 +32,8 @@ cc_binary(
 cc_binary(
 	name = "element-types-test",
 	srcs = ["element-types-test.cpp"],
-	includes = ["BasisTypes.hpp"],
-	deps = [":basis-types"],
+	includes = ["BasisElementsTypes.hpp"],
+	deps = [":basis-element-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
 )
