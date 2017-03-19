@@ -17,8 +17,6 @@ public:
 
   virtual const igraph_matrix_t& get_mass_matrix() const =0;
   virtual const igraph_matrix_t& get_system_matrix() const =0;
-  virtual double project(const BasisElement& elem_1,
-			 const BasisElement& elem_2) const =0;
 };
 
 
@@ -36,9 +34,8 @@ public:
 
   virtual const igraph_matrix_t& get_mass_matrix() const;
   virtual const igraph_matrix_t& get_system_matrix() const;
-  virtual double project(const BasisElement& elem_1,
-			 const BasisElement& elem_2) const;
-
+  virtual double project(const GaussianKernelElement& elem_1,
+			 const GaussianKernelElement& elem_2) const;
 private:
   double dx_;
   // sets basis functions in the class
@@ -53,4 +50,5 @@ private:
   std::vector<LinearCombinationElement> orthonormal_functions_;
   igraph_matrix_t system_matrix_;
   igraph_matrix_t mass_matrix_;
+  igraph_matrix_t inner_product_matrix_;
 };

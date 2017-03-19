@@ -3,7 +3,7 @@
 #include <vector>
 
 int main() {
-  double dx = 5e-3;
+  double dx = 1e-2;
   BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
 								    0.5,
 								    0.3,
