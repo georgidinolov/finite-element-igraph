@@ -81,7 +81,13 @@ private:
   double exponent_power_;
   igraph_vector_t mean_vector_;
   igraph_matrix_t covariance_matrix_;
+
+  gsl_vector *mean_vector_gsl_;
+  gsl_vector *input_gsl_;
+  gsl_matrix *covariance_matrix_gsl_;
+  
   MultivariateNormal mvtnorm_;
 
   //  void set_norm();
+  void set_gsl_objects();
 };

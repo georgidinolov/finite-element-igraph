@@ -32,10 +32,13 @@ public:
 			       double std_dev_factor);
   ~BivariateGaussianKernelBasis();
 
+  const LinearCombinationElement& get_orthonormal_element(unsigned i) const;
+  
   virtual const igraph_matrix_t& get_mass_matrix() const;
   virtual const igraph_matrix_t& get_system_matrix() const;
-  virtual double project(const GaussianKernelElement& elem_1,
-			 const GaussianKernelElement& elem_2) const;
+  
+  virtual double project(const BasisElement& elem_1,
+			 const BasisElement& elem_2) const;
 private:
   double dx_;
   // sets basis functions in the class
@@ -45,6 +48,7 @@ private:
 			   double std_dev_factor);
   
   void set_orthonormal_functions();
+  void set_mass_matrix();
   
   std::vector<GaussianKernelElement> basis_functions_;
   std::vector<LinearCombinationElement> orthonormal_functions_;

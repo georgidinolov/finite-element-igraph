@@ -3,12 +3,35 @@
 #include <vector>
 
 int main() {
-  double dx = 5e-3;
+  double dx = 1e-2;
   BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
+								    0.0,
 								    0.5,
-								    0.3,
 								    1,
 								    0.5);
+  
+  const LinearCombinationElement& ortho_e_1 = basis.get_orthonormal_element(0);
+  const LinearCombinationElement& ortho_e_2 = basis.get_orthonormal_element(1);
+  const LinearCombinationElement& ortho_e_3 = basis.get_orthonormal_element(2);
+
+  std::cout << "<ortho_e_1 | ortho_e_1> = "
+	    << basis.project(ortho_e_1, ortho_e_1) << std::endl;
+  
+  std::cout << "<ortho_e_1 | ortho_e_2> = "
+	    << basis.project(ortho_e_1, ortho_e_2) << std::endl;
+
+  std::cout << "<ortho_e_1 | ortho_e_3> = "
+	    << basis.project(ortho_e_1, ortho_e_3) << std::endl;
+
+  std::cout << "<ortho_e_2 | ortho_e_3> = "
+	    << basis.project(ortho_e_2, ortho_e_3) << std::endl;
+  
+  std::cout << "<ortho_e_2 | ortho_e_2> = "
+	    << basis.project(ortho_e_2, ortho_e_2) << std::endl;
+
+  std::cout << "<ortho_e_3 | ortho_e_3> = "
+	    << basis.project(ortho_e_3, ortho_e_3) << std::endl;
+  
   
   // const igraph_matrix_t& mass_matrix = basis.get_mass_matrix();
   // std::cout << &mass_matrix << std::endl;

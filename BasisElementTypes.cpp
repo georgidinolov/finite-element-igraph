@@ -109,6 +109,7 @@ GaussianKernelElement(double dx,
   igraph_matrix_update(&covariance_matrix_, &covariance_matrix);
 
   //  set_norm();
+  set_gsl_objects();
 }
 
 GaussianKernelElement::
@@ -122,12 +123,18 @@ GaussianKernelElement(const GaussianKernelElement& element)
   
   igraph_matrix_init(&covariance_matrix_, dimension_, dimension_);
   igraph_matrix_update(&covariance_matrix_, &element.covariance_matrix_);
+
+  set_gsl_objects();
 }
 
 GaussianKernelElement::~GaussianKernelElement()
 {
   igraph_vector_destroy(&mean_vector_);
   igraph_matrix_destroy(&covariance_matrix_);
+
+  gsl_vector_free(mean_vector_gsl_);
+  gsl_vector_free(input_gsl_);
+  gsl_matrix_free(covariance_matrix_gsl_);
 }
 
 double GaussianKernelElement::
@@ -135,44 +142,21 @@ operator()(const igraph_vector_t& input) const
 {
   if (igraph_vector_size(&input) == dimension_) {
     double mollifier = 1;
-    
-    gsl_matrix *covariance_matrix_gsl = gsl_matrix_alloc(dimension_,
-							 dimension_);
-    gsl_vector *mean_vector_gsl = gsl_vector_alloc(dimension_);
-    gsl_vector *input_gsl = gsl_vector_alloc(dimension_);
-    
+
     for (unsigned i=0; i<dimension_; ++i) {
       mollifier = mollifier *
 	std::pow(igraph_vector_e(&input, i), exponent_power_) *
 	std::pow((1-igraph_vector_e(&input, i)), exponent_power_);
       
-      gsl_vector_set(mean_vector_gsl, i, igraph_vector_e(&mean_vector_, i));
-      gsl_vector_set(input_gsl, i, igraph_vector_e(&input, i));
-      
-      gsl_matrix_set(covariance_matrix_gsl, i, i,
-		     igraph_matrix_e(&covariance_matrix_,
-				     i, i));
-      for (unsigned j=i+1; j<dimension_; ++j) {
-	gsl_matrix_set(covariance_matrix_gsl, i, j,
-		       igraph_matrix_e(&covariance_matrix_,
-				       i, j));
-	gsl_matrix_set(covariance_matrix_gsl, j, i,
-		       igraph_matrix_e(&covariance_matrix_,
-				       j, i));
-      }
+      gsl_vector_set(input_gsl_, i, igraph_vector_e(&input, i));
     }
     
-    
     double out = mvtnorm_.dmvnorm(dimension_,
-				  input_gsl,
-				  mean_vector_gsl,
-				  covariance_matrix_gsl) *
+				  input_gsl_,
+				  mean_vector_gsl_,
+				  covariance_matrix_gsl_) *
 	mollifier;
     
-    gsl_matrix_free(covariance_matrix_gsl);
-    gsl_vector_free(mean_vector_gsl);
-    gsl_vector_free(input_gsl);
-
     return out;
   } else {
     std::cout << "INPUT SIZE WRONG" << std::endl;
@@ -260,3 +244,28 @@ const igraph_matrix_t& GaussianKernelElement::get_covariance_matrix() const
 // {
 //   norm_ = norm_finite_diff();
 // }
+
+void GaussianKernelElement::set_gsl_objects()
+{
+    covariance_matrix_gsl_ = gsl_matrix_alloc(dimension_,
+					      dimension_);
+    mean_vector_gsl_ = gsl_vector_alloc(dimension_);
+    input_gsl_ = gsl_vector_alloc(dimension_);
+    
+    for (unsigned i=0; i<dimension_; ++i) {
+      gsl_vector_set(mean_vector_gsl_, i, igraph_vector_e(&mean_vector_, i));
+      gsl_vector_set(input_gsl_, i, igraph_vector_e(&mean_vector_, i));
+      
+      gsl_matrix_set(covariance_matrix_gsl_, i, i,
+		     igraph_matrix_e(&covariance_matrix_,
+				     i, i));
+      for (unsigned j=i+1; j<dimension_; ++j) {
+	gsl_matrix_set(covariance_matrix_gsl_, i, j,
+		       igraph_matrix_e(&covariance_matrix_,
+				       i, j));
+	gsl_matrix_set(covariance_matrix_gsl_, j, i,
+		       igraph_matrix_e(&covariance_matrix_,
+				       j, i));
+      }
+    }
+}
