@@ -100,8 +100,7 @@ GaussianKernelElement(double dx,
   : dx_(dx),
     dimension_(dimension),
     exponent_power_(exponent_power),
-    mvtnorm_(MultivariateNormal()),
-    norm_(0.0)
+    mvtnorm_(MultivariateNormal())
 {
   igraph_vector_init(&mean_vector_, dimension_);
   igraph_vector_update(&mean_vector_, &mean_vector);
@@ -109,7 +108,7 @@ GaussianKernelElement(double dx,
   igraph_matrix_init(&covariance_matrix_, dimension_, dimension_);
   igraph_matrix_update(&covariance_matrix_, &covariance_matrix);
 
-  set_norm();
+  //  set_norm();
 }
 
 GaussianKernelElement::
@@ -244,7 +243,7 @@ double GaussianKernelElement::norm_finite_diff() const
 
 double GaussianKernelElement::norm() const
 {
-  return norm_;
+  return norm_finite_diff();
 }
 
 const igraph_vector_t& GaussianKernelElement::get_mean_vector() const
@@ -257,7 +256,7 @@ const igraph_matrix_t& GaussianKernelElement::get_covariance_matrix() const
   return covariance_matrix_;
 }
 
-void GaussianKernelElement::set_norm()
-{
-  norm_ = norm_finite_diff();
-}
+// void GaussianKernelElement::set_norm()
+// {
+//   norm_ = norm_finite_diff();
+// }

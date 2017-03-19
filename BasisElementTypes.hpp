@@ -83,6 +83,5 @@ private:
   igraph_matrix_t covariance_matrix_;
   MultivariateNormal mvtnorm_;
 
-  double norm_;
-  void set_norm();
+  //  void set_norm();
 };
