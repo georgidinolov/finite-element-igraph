@@ -4,23 +4,102 @@
 #include <iostream>
 
 BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
-						       double sigma_y,
-						       double rho,
-						       double a,
-						       double b,
-						       double c,
-						       double d,
-						       double x_0,
-						       double y_0)
+						   double sigma_y,
+						   double rho,
+						   double x_0,
+						   double y_0)
   : sigma_x_(sigma_x),
     sigma_y_(sigma_y),
     rho_(rho),
-    a_(a),
-    b_(b),
-    c_(c),
-    d_(d),
     x_0_(x_0),
     y_0_(y_0)
 {
+  if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
+    std::cout << "ERROR: IC out of range" << std::endl;
+  }
+  
   double cc = std::sin(M_PI/4.0);
+
+  gsl_matrix *Rotation_matrix = gsl_matrix_alloc(2,2);
+  gsl_matrix_set(Rotation_matrix, 0, 0, cc / (sigma_x_*std::sqrt(1.0-rho_)));
+  gsl_matrix_set(Rotation_matrix, 1, 0, cc / (sigma_x_*std::sqrt(1.0+rho_)));
+  gsl_matrix_set(Rotation_matrix, 0, 1, -1.0*cc / (sigma_y_*std::sqrt(1-rho_)));
+  gsl_matrix_set(Rotation_matrix, 1, 1, cc / (sigma_y_*std::sqrt(1+rho_)));
+
+  gsl_vector *initial_condition = gsl_vector_alloc(2);
+  gsl_vector_set(initial_condition, 0, x_0_);
+  gsl_vector_set(initial_condition, 1, y_0_);
+
+  // rotating the initial condition
+  gsl_vector *initial_condition_xi_eta = gsl_vector_alloc(2);
+  gsl_blas_dgemv(CblasNoTrans, 1.0,
+		 Rotation_matrix, initial_condition, 0.0,
+		 initial_condition_xi_eta);
+  double xi_ic = gsl_vector_get(initial_condition_xi_eta, 0);
+  double eta_ic = gsl_vector_get(initial_condition_xi_eta, 1);
+
+  gsl_vector *slopes = gsl_vector_alloc(4);
+  gsl_vector_set(slopes, 0, std::sqrt(1-rho_)/std::sqrt(1+rho_));
+  gsl_vector_set(slopes, 1, std::sqrt(1-rho_)/std::sqrt(1+rho_));
+  gsl_vector_set(slopes, 2, -1.0*std::sqrt(1-rho_)/std::sqrt(1+rho_));
+  gsl_vector_set(slopes, 3, -1.0*std::sqrt(1-rho_)/std::sqrt(1+rho_));
+
+  // BORDER 1
+  double ss_1 = std::atan(-1.0*std::sqrt(1.0+rho_)/
+			  std::sqrt(1-rho_));
+  double C_1 = (-1.0*gsl_vector_get(initial_condition_xi_eta,1)
+		+ xi_ic*
+		std::sqrt(1.0-rho_)/std::sqrt(1.0+rho_))/
+    (std::sin(ss_1) - std::cos(ss_1)*std::sqrt(1.0-rho_)/std::sqrt(1.0+rho_));
+
+  // BORDER 2
+  double ss_2 = M_PI + ss_1;
+  double C_2 = (-1.0*eta_ic +
+		xi_ic*std::sqrt(1-rho_)/std::sqrt(1+rho_) +
+		 1.0/(sigma_y_*std::sqrt(1.0+rho_)*cc))/
+	      (std::sin(ss_2) - std::cos(ss_2)*std::sqrt(1-rho_)/
+	       std::sqrt(1+rho_));
+
+  // BORDER 4
+  double ss_4 = atan(sqrt(1.0+rho_)/sqrt(1.0-rho_));
+  double C_4 = (-1.0*eta_ic - xi_ic*sqrt(1.0-rho_)/sqrt(1.0+rho_) +
+		1/(sigma_x_*sqrt(1.0+rho_)*cc))/
+        (sin(ss_4) + cos(ss_4)*sqrt(1.0-rho_)/sqrt(1.0+rho_));
+
+  // BORDER 3
+  double ss_3 = M_PI + ss_4;
+  double C_3 = (-1.0*eta_ic - xi_ic*sqrt(1.0-rho_)/sqrt(1.0+rho_))/
+    (sin(ss_3) + cos(ss_3)*sqrt(1.0-rho_)/sqrt(1.0+rho_));
+
+
+  std::vector<double> Cs = std::vector<double> {C_1,
+						C_2,
+						C_3,
+						C_4};
+  // gsl_vector_set(Cs, 0, C_1);
+  // gsl_vector_set(Cs, 1, C_2);
+  // gsl_vector_set(Cs, 2, C_3);
+  // gsl_vector_set(Cs, 3, C_4);
+  
+  gsl_vector *ss_s = gsl_vector_alloc(4);
+  gsl_vector_set(ss_s, 0, ss_1);
+  gsl_vector_set(ss_s, 1, ss_2);
+  gsl_vector_set(ss_s, 2, ss_3);
+  gsl_vector_set(ss_s, 3, ss_4);
+
+  std::sort(Cs.begin(), Cs.end(),
+	    [] (double x, double y) -> bool
+	    {
+	      return x < y;
+	    });
+
+  double tt = std::pow(Cs[1]/3.0, 2.0);
+  std::cout << "tt = " << tt << std::endl;
+  
+  gsl_matrix_free(Rotation_matrix);
+  gsl_vector_free(initial_condition);
+  gsl_vector_free(initial_condition_xi_eta);
+  gsl_vector_free(slopes);
+  //gsl_vector_free(Cs);
+  gsl_vector_free(ss_s);
 }

@@ -12,14 +12,10 @@ class BivariateSolverClassical
 {
 public:
   BivariateSolverClassical(double sigma_x,
-			     double sigma_y,
-			     double rho,
-			     double a,
-			     double b,
-			     double c,
-			     double d,
-			     double x_0,
-			     double y_0);
+			   double sigma_y,
+			   double rho,
+			   double x_0,
+			   double y_0);
   
   double operator()(const igraph_vector_t& input) const;
   
@@ -27,10 +23,6 @@ private:
   double sigma_x_;
   double sigma_y_;
   double rho_;
-  double a_;
-  double b_;
-  double c_;
-  double d_;
   double x_0_;
   double y_0_;
 };

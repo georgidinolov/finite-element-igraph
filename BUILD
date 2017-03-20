@@ -32,6 +32,16 @@ cc_library(
 )
 
 cc_binary(
+	name = "bivariate-solver-classical-test",
+	srcs = ["bivariate-solver-classical-test.cpp"],
+	includes = ["BivariateSolverClassical.hpp"],
+	deps = [":bivariate-solver-classical"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/multivariate-normal"],
+	visibility = ["//visibility:public"],
+)
+
+cc_binary(
 	name = "basis-types-test",
 	srcs = ["basis-types-test.cpp"],
 	includes = ["BasisTypes.hpp"],
