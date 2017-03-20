@@ -23,19 +23,31 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
 
   //
   set_mass_matrix();
+
+  //
+  set_system_matrix();
+    
+  // igraph_matrix_init(&system_matrix_, 2, 2);
+  // igraph_matrix_fill(&system_matrix_, 1);
   
-  igraph_matrix_init(&system_matrix_, 2, 2);
-  igraph_matrix_fill(&system_matrix_, 1);
-  
-  igraph_matrix_init(&mass_matrix_, 2, 2);
-  igraph_matrix_fill(&mass_matrix_, 1);
+  // igraph_matrix_init(&mass_matrix_, 2, 2);
+  // igraph_matrix_fill(&mass_matrix_, 1);
 }
 
 BivariateGaussianKernelBasis::~BivariateGaussianKernelBasis()
 {
-  igraph_matrix_destroy(&system_matrix_);
   igraph_matrix_destroy(&mass_matrix_);
   igraph_matrix_destroy(&inner_product_matrix_);
+
+  igraph_matrix_destroy(&deriv_inner_product_matrix_dx_dx_);
+  igraph_matrix_destroy(&deriv_inner_product_matrix_dx_dy_);
+  igraph_matrix_destroy(&deriv_inner_product_matrix_dy_dx_);
+  igraph_matrix_destroy(&deriv_inner_product_matrix_dy_dy_);
+
+  igraph_matrix_destroy(&system_matrix_dx_dx_);
+  igraph_matrix_destroy(&system_matrix_dx_dy_);
+  igraph_matrix_destroy(&system_matrix_dy_dx_);
+  igraph_matrix_destroy(&system_matrix_dy_dy_);
 }
 
 
@@ -53,7 +65,28 @@ get_orthonormal_element(unsigned i) const
 
 const igraph_matrix_t& BivariateGaussianKernelBasis::get_system_matrix() const
 {
-  return system_matrix_;
+  return system_matrix_dx_dx_;
+}
+
+const igraph_matrix_t& BivariateGaussianKernelBasis::
+get_system_matrix_dx_dx() const
+{
+  return system_matrix_dx_dx_;
+}
+const igraph_matrix_t& BivariateGaussianKernelBasis::
+get_system_matrix_dx_dy() const
+{
+  return system_matrix_dx_dy_;
+}
+const igraph_matrix_t& BivariateGaussianKernelBasis::
+get_system_matrix_dy_dx() const
+{
+  return system_matrix_dy_dx_;
+}
+const igraph_matrix_t& BivariateGaussianKernelBasis::
+get_system_matrix_dy_dy() const
+{
+  return system_matrix_dy_dy_;
 }
 
 const igraph_matrix_t& BivariateGaussianKernelBasis::get_mass_matrix() const
@@ -82,6 +115,40 @@ project(const BasisElement& elem_1,
       igraph_vector_set(&input, 1, y);
 
       integral = integral + elem_1(input)*elem_2(input);
+    }
+  }
+  integral = integral * std::pow(dx_, 2);
+  
+  igraph_vector_destroy(&input);
+  return integral;
+}
+
+double BivariateGaussianKernelBasis::
+project_deriv(const BasisElement& elem_1,
+	      long int coord_indeex_1, 
+	      const BasisElement& elem_2,
+	      long int coord_indeex_2) const
+{
+  long int N = 1.0/dx_;
+  int dimension = 2;
+
+  double integral = 0;
+  igraph_vector_t input;
+  igraph_vector_init(&input, dimension);
+  double x;
+  double y;
+
+  for (long int i=0; i<N; ++i) {
+    for (long int j=0; j<N; ++j) {
+      x = i*dx_;
+      y = j*dx_;
+      
+      igraph_vector_set(&input, 0, x);
+      igraph_vector_set(&input, 1, y);
+
+      integral = integral +
+	elem_1.first_derivative(input, coord_indeex_1)*
+	elem_2.first_derivative(input, coord_indeex_2);
     }
   }
   integral = integral * std::pow(dx_, 2);
@@ -279,14 +346,199 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions()
   								coefficients));
     }
   }
+}
 
-  // std::cout << "size of orthonormal_functions_ = "
-  // 	    << orthonormal_functions_.size() << std::endl;
-  
-  // for (unsigned i=0; i<orthonormal_functions_.size(); ++i) {
-  //   for (unsigned j=i; j<orthonormal_functions_.size(); ++j) {
-  //         std::cout << project(orthonormal_functions_[i],
-  // 			       orthonormal_functions_[j]) << std::endl;
-  //   }
-  // }
+void BivariateGaussianKernelBasis::set_mass_matrix()
+{
+  igraph_matrix_init(&mass_matrix_,
+		     orthonormal_functions_.size(),
+		     orthonormal_functions_.size());
+   
+  for (unsigned i=0; i<orthonormal_functions_.size(); ++i) {
+    for (unsigned j=i; j<orthonormal_functions_.size(); ++j) {
+
+      double entry = 0;
+      for (unsigned k=0; k<orthonormal_functions_[i].get_elements().size(); ++k) {
+	for (unsigned l=0; l<orthonormal_functions_[j].get_elements().size(); ++l) {
+	  entry = entry +
+	    orthonormal_functions_[i].get_coefficient(k)*
+	    orthonormal_functions_[j].get_coefficient(l)*
+	    igraph_matrix_e(&inner_product_matrix_, k, l);
+	}
+      }
+      
+      igraph_matrix_set(&mass_matrix_,
+  			i, j,
+			entry);
+      igraph_matrix_set(&mass_matrix_,
+  			j, i,
+			entry);
+      std::cout << "mass_matrix_[" << i
+  		<< "," << j << "] = "
+  		<< igraph_matrix_e(&mass_matrix_, i, j) << std::endl;
+    }
+  }
+}
+
+void BivariateGaussianKernelBasis::set_system_matrix()
+{
+   igraph_matrix_init(&deriv_inner_product_matrix_dx_dx_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   igraph_matrix_init(&deriv_inner_product_matrix_dx_dy_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   igraph_matrix_init(&deriv_inner_product_matrix_dy_dx_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   igraph_matrix_init(&deriv_inner_product_matrix_dy_dy_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+   
+   for (unsigned i=0; i<basis_functions_.size(); ++i) {
+     for (unsigned j=i; j<basis_functions_.size(); ++j) {
+       igraph_matrix_set(&deriv_inner_product_matrix_dx_dx_,
+			 i, j,
+			 project_deriv(basis_functions_[i], 0,
+				       basis_functions_[j], 0));
+       igraph_matrix_set(&deriv_inner_product_matrix_dx_dx_,
+			 j, i,
+			 igraph_matrix_e(&deriv_inner_product_matrix_dx_dx_,
+					 i,j));
+
+       igraph_matrix_set(&deriv_inner_product_matrix_dx_dy_,
+			 i, j,
+			 project_deriv(basis_functions_[i], 0,
+				       basis_functions_[j], 1));
+       igraph_matrix_set(&deriv_inner_product_matrix_dx_dy_,
+			 j, i,
+			 igraph_matrix_e(&deriv_inner_product_matrix_dx_dy_,
+					 i,j));
+
+
+       igraph_matrix_set(&deriv_inner_product_matrix_dy_dx_,
+			 i, j,
+			 project_deriv(basis_functions_[i], 0,
+				       basis_functions_[j], 1));
+       igraph_matrix_set(&deriv_inner_product_matrix_dy_dx_,
+			 j, i,
+			 igraph_matrix_e(&deriv_inner_product_matrix_dy_dx_,
+					 i,j));
+
+       igraph_matrix_set(&deriv_inner_product_matrix_dy_dy_,
+			 i, j,
+			 project_deriv(basis_functions_[i], 0,
+				       basis_functions_[j], 1));
+       igraph_matrix_set(&deriv_inner_product_matrix_dy_dy_,
+			 j, i,
+			 igraph_matrix_e(&deriv_inner_product_matrix_dy_dy_,
+					 i,j));
+       
+       std::cout << "deriv_inner_product_matrix_dx_dx_[" << i
+		 << "," << j << "] = "
+		 << igraph_matrix_e(&deriv_inner_product_matrix_dx_dx_,
+				    i,j)
+		 << " ";
+     }
+     std::cout << std::endl;
+   }
+
+   igraph_matrix_init(&system_matrix_dx_dx_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   igraph_matrix_init(&system_matrix_dx_dy_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   igraph_matrix_init(&system_matrix_dy_dx_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   igraph_matrix_init(&system_matrix_dy_dy_,
+		      basis_functions_.size(),
+		      basis_functions_.size());
+
+   for (unsigned i=0; i<basis_functions_.size(); ++i) {
+     for (unsigned j=i; j<basis_functions_.size(); ++j) {
+
+       // system_matrix_dx_dx_
+       double entry = 0;
+       for (unsigned k=0; k<orthonormal_functions_[i].get_elements().size(); ++k) {
+	 for (unsigned l=0; l<orthonormal_functions_[j].get_elements().size(); ++l) {
+	  entry = entry +
+	    orthonormal_functions_[i].get_coefficient(k)*
+	    orthonormal_functions_[j].get_coefficient(l)*
+	    igraph_matrix_e(&deriv_inner_product_matrix_dx_dx_, k, l);
+	 }
+       }
+       igraph_matrix_set(&system_matrix_dx_dx_,
+  			i, j,
+			entry);
+       igraph_matrix_set(&system_matrix_dx_dx_,
+			 j, i,
+			 entry);
+
+       // system_matrix_dx_dy_
+       entry = 0;
+       for (unsigned k=0; k<orthonormal_functions_[i].get_elements().size(); ++k) {
+	 for (unsigned l=0; l<orthonormal_functions_[j].get_elements().size(); ++l) {
+	  entry = entry +
+	    orthonormal_functions_[i].get_coefficient(k)*
+	    orthonormal_functions_[j].get_coefficient(l)*
+	    igraph_matrix_e(&deriv_inner_product_matrix_dx_dy_, k, l);
+	 }
+       }
+       igraph_matrix_set(&system_matrix_dx_dy_,
+  			i, j,
+			entry);
+       igraph_matrix_set(&system_matrix_dx_dy_,
+			 j, i,
+			 entry);
+
+       // system_matrix_dy_dx_
+       entry = 0;
+       for (unsigned k=0; k<orthonormal_functions_[i].get_elements().size(); ++k) {
+	 for (unsigned l=0; l<orthonormal_functions_[j].get_elements().size(); ++l) {
+	  entry = entry +
+	    orthonormal_functions_[i].get_coefficient(k)*
+	    orthonormal_functions_[j].get_coefficient(l)*
+	    igraph_matrix_e(&deriv_inner_product_matrix_dy_dx_, k, l);
+	 }
+       }
+       igraph_matrix_set(&system_matrix_dy_dx_,
+  			i, j,
+			entry);
+       igraph_matrix_set(&system_matrix_dy_dx_,
+			 j, i,
+			 entry);
+
+       // system_matrix_dy_dy_
+       entry = 0;
+       for (unsigned k=0; k<orthonormal_functions_[i].get_elements().size(); ++k) {
+	 for (unsigned l=0; l<orthonormal_functions_[j].get_elements().size(); ++l) {
+	  entry = entry +
+	    orthonormal_functions_[i].get_coefficient(k)*
+	    orthonormal_functions_[j].get_coefficient(l)*
+	    igraph_matrix_e(&deriv_inner_product_matrix_dy_dy_, k, l);
+	 }
+       }
+       igraph_matrix_set(&system_matrix_dy_dy_,
+  			i, j,
+			entry);
+       igraph_matrix_set(&system_matrix_dy_dy_,
+			 j, i,
+			 entry);
+       
+       std::cout << "system_matrix_dx_dx_[" << i
+		 << "," << j << "] = "
+		 << igraph_matrix_e(&system_matrix_dx_dx_,
+				    i,j)
+		 << " ";
+     }
+     std::cout << std::endl;
+   }
 }

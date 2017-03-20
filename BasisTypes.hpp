@@ -36,9 +36,19 @@ public:
   
   virtual const igraph_matrix_t& get_mass_matrix() const;
   virtual const igraph_matrix_t& get_system_matrix() const;
+
+  const igraph_matrix_t& get_system_matrix_dx_dx() const;
+  const igraph_matrix_t& get_system_matrix_dx_dy() const;
+  const igraph_matrix_t& get_system_matrix_dy_dx() const;
+  const igraph_matrix_t& get_system_matrix_dy_dy() const;
   
   virtual double project(const BasisElement& elem_1,
 			 const BasisElement& elem_2) const;
+  
+  virtual double project_deriv(const BasisElement& elem_1,
+			       long int coord_indeex_1, 
+			       const BasisElement& elem_2,
+			       long int coord_indeex_2) const;
 private:
   double dx_;
   // sets basis functions in the class
@@ -49,10 +59,21 @@ private:
   
   void set_orthonormal_functions();
   void set_mass_matrix();
+  void set_system_matrix();
   
   std::vector<GaussianKernelElement> basis_functions_;
   std::vector<LinearCombinationElement> orthonormal_functions_;
-  igraph_matrix_t system_matrix_;
+
+  igraph_matrix_t system_matrix_dx_dx_;
+  igraph_matrix_t system_matrix_dx_dy_;
+  igraph_matrix_t system_matrix_dy_dx_;
+  igraph_matrix_t system_matrix_dy_dy_;
+  
   igraph_matrix_t mass_matrix_;
   igraph_matrix_t inner_product_matrix_;
+
+  igraph_matrix_t deriv_inner_product_matrix_dx_dx_;
+  igraph_matrix_t deriv_inner_product_matrix_dx_dy_;
+  igraph_matrix_t deriv_inner_product_matrix_dy_dx_;
+  igraph_matrix_t deriv_inner_product_matrix_dy_dy_;
 };

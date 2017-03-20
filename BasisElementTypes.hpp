@@ -26,7 +26,6 @@ class LinearCombinationElement
   : public BasisElement
 {
 public:
-
   LinearCombinationElement(const std::vector<const BasisElement*> elements,
 			   const std::vector<double>& coefficients);
   LinearCombinationElement(const LinearCombinationElement& lin_comb_element);
@@ -37,7 +36,7 @@ public:
   virtual double first_derivative(const igraph_vector_t& input,
 				  long int coord_index) const;
 
-  std::vector<const BasisElement*> get_elements() const;
+  const std::vector<const BasisElement*> get_elements() const;
   std::vector<double> get_coefficients() const;
   double get_coefficient(unsigned i) const;
   

@@ -61,15 +61,14 @@ first_derivative(const igraph_vector_t& input,
 {
   double deriv = 0;
   for (unsigned i=0; i<elements_.size(); ++i) {
-    const BasisElement* curr_element = elements_[i];
-    deriv = deriv + coefficients_[i]*(curr_element->
+    deriv = deriv + coefficients_[i]*(elements_[i]->
 				      first_derivative(input,
 						       coord_index));
   }
   return deriv;
 }
 
-std::vector<const BasisElement*> LinearCombinationElement::
+const std::vector<const BasisElement*> LinearCombinationElement::
 get_elements() const
 {
   return elements_;
@@ -114,7 +113,8 @@ GaussianKernelElement(double dx,
 
 GaussianKernelElement::
 GaussianKernelElement(const GaussianKernelElement& element)
-  : dimension_(element.dimension_),
+  : dx_(element.dx_),
+    dimension_(element.dimension_),
     exponent_power_(element.exponent_power_),
     mvtnorm_(MultivariateNormal())
 {
