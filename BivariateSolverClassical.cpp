@@ -12,7 +12,8 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     sigma_y_(sigma_y),
     rho_(rho),
     x_0_(x_0),
-    y_0_(y_0)
+    y_0_(y_0),
+    mvtnorm_(MultivariateNormal())
 {
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
@@ -87,16 +88,43 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   gsl_vector_set(ss_s, 2, ss_3);
   gsl_vector_set(ss_s, 3, ss_4);
 
-  std::sort(Cs.begin(), Cs.end(),
-	    [] (double x, double y) -> bool
-	    {
-	      return x < y;
-	    });
+  std::vector<unsigned> Cs_indeces (Cs.size());
+  unsigned n = 0;
+  std::generate(Cs_indeces.begin(), Cs_indeces.end(), [&n]{ return n++; });
 
-  double tt = std::pow(Cs[1]/3.0, 2.0);
+  std::sort(Cs_indeces.begin(), Cs_indeces.end(),
+  	    [&Cs] (unsigned i1, unsigned i2) -> bool
+  	    {
+  	      return Cs[i1] < Cs[i2];
+  	    });
+  double tt = std::pow(Cs[Cs_indeces[1]]/3.0, 2.0);
+
+  gsl_matrix *Variance = gsl_matrix_alloc(2, 2);
+  for (int i=0; i<2; ++i) {
+    for (int j=0; j<2; ++j) {
+      if (i==j) {
+	gsl_matrix_set(Variance, i, i, tt);
+      } else {
+	gsl_matrix_set(Variance, i, j, 0.0);
+      }
+    }
+  }
+  
+  double Max = mvtnorm_.dmvnorm(2,
+				initial_condition_xi_eta,
+				initial_condition_xi_eta,
+				Variance) /
+    (sigma_x_*sigma_y_*sqrt(1.0-rho_)*sqrt(1.0+rho_));
+
+  double xi_ic_reflected = 2.0*Cs[Cs_indeces[0]]*cos(ss_s[Cs_indeces[0]])
+    + xi_ic;
+  double eta_ic_reflected = 2.0*Cs[Cs_indeces[0]]*sin(ss_s[Cs_indeces[0]])
+    + eta_ic;
+  
   std::cout << "tt = " << tt << std::endl;
   
   gsl_matrix_free(Rotation_matrix);
+  gsl_matrix_free(Variance);
   gsl_vector_free(initial_condition);
   gsl_vector_free(initial_condition_xi_eta);
   gsl_vector_free(slopes);

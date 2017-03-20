@@ -6,7 +6,7 @@
 extern "C" {
 #include "igraph.h"
 }
-#include <vector>
+#include "MultivariateNormal.hpp"
 
 class BivariateSolverClassical
 {
@@ -25,4 +25,5 @@ private:
   double rho_;
   double x_0_;
   double y_0_;
+  MultivariateNormal mvtnorm_;
 };

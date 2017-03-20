@@ -2,10 +2,10 @@ cc_library(
 	name = "bivariate-solver-classical",
 	srcs = ["BivariateSolverClassical.cpp"],
 	hdrs = ["BivariateSolverClassical.hpp"],
-	deps = ["//src/igraph-0.7.1:igraph"],
+	deps = ["//src/igraph-0.7.1:igraph",
+	        "//src/multivariate-normal:multivariate-normal"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
-	visibility = ["//visibility:public"],
 	linkopts = ["-lm", "-lgsl", "-lgslcblas"],	
 )
 
