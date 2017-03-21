@@ -1,5 +1,5 @@
 #include <algorithm>
-#include "BivariateSolverClassical.hpp"
+#include "BasisElementTypes.hpp"
 #include <gsl/gsl_blas.h>
 #include <iostream>
 
@@ -93,13 +93,13 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   	    {
   	      return Cs[i1] < Cs[i2];
   	    });
-  double tt = std::pow(Cs[Cs_indeces[1]]/4.0, 2.0);
+  tt_ = std::pow(Cs[Cs_indeces[1]]/4.0, 2.0);
 
   Variance_ = gsl_matrix_alloc(2, 2);
   for (int i=0; i<2; ++i) {
     for (int j=0; j<2; ++j) {
       if (i==j) {
-  	gsl_matrix_set(Variance_, i, i, tt);
+  	gsl_matrix_set(Variance_, i, i, tt_);
       } else {
   	gsl_matrix_set(Variance_, i, j, 0.0);
       }
@@ -191,4 +191,9 @@ double BivariateSolverClassical::first_derivative(const igraph_vector_t& input,
 						  long int coord_index) const
 {
   return 0.0;
+}
+
+double BivariateSolverClassical::get_t() const
+{
+  return tt_;
 }

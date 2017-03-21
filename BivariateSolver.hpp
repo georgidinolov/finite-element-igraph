@@ -6,18 +6,20 @@
 extern "C" {
 #include "igraph.h"
 }
-#include "BivariateSolverClassical.hpp"
+#include "BasisTypes.hpp"
 
 class BivariateSolver
 {
 public:
-  BivariateSolver(double sigma_x,
+  BivariateSolver(const BivariateBasis& basis,
+		  double sigma_x,
 		  double sigma_y,
 		  double rho,
 		  double x_0,
 		  double y_0);
   ~BivariateSolver();
-
+  
+  // IMPLEMENT
   virtual double operator()(const igraph_vector_t& input) const;
   virtual double operator()(const gsl_vector* input) const;
   
@@ -28,10 +30,13 @@ private:
   double x_0_;
   double y_0_;
   MultivariateNormal mvtnorm_;
+  const BivariateBasis& basis_;
 
-  gsl_vector * xi_eta_input_;
-  gsl_vector * initial_condition_xi_eta_;
-  gsl_matrix * Rotation_matrix_;
-  gsl_matrix * Variance_;
-  gsl_vector * initial_condition_xi_eta_reflected_;
+  BivariateSolverClassical small_t_solution_;
+
+  // gsl_vector * xi_eta_input_;
+  // gsl_vector * initial_condition_xi_eta_;
+  // gsl_matrix * Rotation_matrix_;
+  // gsl_matrix * Variance_;
+  // gsl_vector * initial_condition_xi_eta_reflected_;
 };

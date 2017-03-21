@@ -14,11 +14,11 @@ class BivariateBasis
 {
 public:
   virtual ~BivariateBasis() =0;
-  virtual const igraph_matrix_t& get_mass_matrix() const =0;
-  virtual const igraph_matrix_t& get_system_matrix_dx_dx() const =0;
-  virtual const igraph_matrix_t& get_system_matrix_dx_dy() const =0;
-  virtual const igraph_matrix_t& get_system_matrix_dy_dx() const =0;
-  virtual const igraph_matrix_t& get_system_matrix_dy_dy() const =0;
+  virtual const gsl_matrix* get_mass_matrix() const =0;
+  virtual const gsl_matrix* get_system_matrix_dx_dx() const =0;
+  virtual const gsl_matrix* get_system_matrix_dx_dy() const =0;
+  virtual const gsl_matrix* get_system_matrix_dy_dx() const =0;
+  virtual const gsl_matrix* get_system_matrix_dy_dy() const =0;
 
   virtual double project(const BasisElement& elem_1,
 			 const BasisElement& elem_2) const =0;
@@ -39,11 +39,11 @@ public:
 
   const LinearCombinationElement& get_orthonormal_element(unsigned i) const;
   
-  virtual const igraph_matrix_t& get_mass_matrix() const;
-  virtual const igraph_matrix_t& get_system_matrix_dx_dx() const;
-  virtual const igraph_matrix_t& get_system_matrix_dx_dy() const;
-  virtual const igraph_matrix_t& get_system_matrix_dy_dx() const;
-  virtual const igraph_matrix_t& get_system_matrix_dy_dy() const;
+  virtual const gsl_matrix* get_mass_matrix() const;
+  virtual const gsl_matrix* get_system_matrix_dx_dx() const;
+  virtual const gsl_matrix* get_system_matrix_dx_dy() const;
+  virtual const gsl_matrix* get_system_matrix_dy_dx() const;
+  virtual const gsl_matrix* get_system_matrix_dy_dy() const;
   
   virtual double project(const BasisElement& elem_1,
 			 const BasisElement& elem_2) const;
@@ -71,16 +71,16 @@ private:
   std::vector<GaussianKernelElement> basis_functions_;
   std::vector<LinearCombinationElement> orthonormal_functions_;
 
-  igraph_matrix_t system_matrix_dx_dx_;
-  igraph_matrix_t system_matrix_dx_dy_;
-  igraph_matrix_t system_matrix_dy_dx_;
-  igraph_matrix_t system_matrix_dy_dy_;
+  gsl_matrix* system_matrix_dx_dx_;
+  gsl_matrix* system_matrix_dx_dy_;
+  gsl_matrix* system_matrix_dy_dx_;
+  gsl_matrix* system_matrix_dy_dy_;
   
-  igraph_matrix_t mass_matrix_;
-  igraph_matrix_t inner_product_matrix_;
+  gsl_matrix* mass_matrix_;
+  gsl_matrix* inner_product_matrix_;
 
-  igraph_matrix_t deriv_inner_product_matrix_dx_dx_;
-  igraph_matrix_t deriv_inner_product_matrix_dx_dy_;
-  igraph_matrix_t deriv_inner_product_matrix_dy_dx_;
-  igraph_matrix_t deriv_inner_product_matrix_dy_dy_;
+  gsl_matrix* deriv_inner_product_matrix_dx_dx_;
+  gsl_matrix* deriv_inner_product_matrix_dx_dy_;
+  gsl_matrix* deriv_inner_product_matrix_dy_dx_;
+  gsl_matrix* deriv_inner_product_matrix_dy_dy_;
 };

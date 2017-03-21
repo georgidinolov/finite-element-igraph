@@ -1,9 +1,9 @@
 cc_library(
-	name = "bivariate-solver-classical",
-	srcs = ["BivariateSolverClassical.cpp"],
-	hdrs = ["BivariateSolverClassical.hpp"],
+	name = "bivariate-solver",
+	srcs = ["BivariateSolver.cpp"],
+	hdrs = ["BivariateSolver.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",
-		":basis-element-types"],
+		":basis-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
 	linkopts = ["-lm", "-lgsl", "-lgslcblas"],	
@@ -22,8 +22,9 @@ cc_library(
 
 cc_library(
 	name = "basis-element-types",
-	srcs = ["BasisElementTypes.cpp"],
-	hdrs = ["BasisElementTypes.hpp", "BasisTypes.hpp"],
+	srcs = ["BasisElementTypes.cpp",
+	        "BivariateSolverClassical.cpp"],
+	hdrs = ["BasisElementTypes.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",
 	        "//src/multivariate-normal:multivariate-normal"],
 	copts = ["-Isrc/igraph-0.7.1/include",
@@ -32,10 +33,20 @@ cc_library(
 )
 
 cc_binary(
+	name = "bivariate-solver-test",
+	srcs = ["bivariate-solver-test.cpp"],
+	includes = ["BivariateSolver.hpp"],
+	deps = [":bivariate-solver"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/multivariate-normal"],
+	visibility = ["//visibility:public"],
+)
+
+cc_binary(
 	name = "bivariate-solver-classical-test",
 	srcs = ["bivariate-solver-classical-test.cpp"],
-	includes = ["BivariateSolverClassical.hpp"],
-	deps = [":bivariate-solver-classical"],
+	includes = ["BasisElementTypes.hpp"],
+	deps = [":basis-element-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
 	visibility = ["//visibility:public"],
