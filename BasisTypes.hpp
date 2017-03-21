@@ -10,19 +10,24 @@ extern "C" {
 #include <vector>
   
 // =================== BASE BASIS CLASS ======================
-class BaseBasis
+class BivariateBasis
 {
 public:
-  virtual ~BaseBasis() =0;
-
+  virtual ~BivariateBasis() =0;
   virtual const igraph_matrix_t& get_mass_matrix() const =0;
-  virtual const igraph_matrix_t& get_system_matrix() const =0;
+  virtual const igraph_matrix_t& get_system_matrix_dx_dx() const =0;
+  virtual const igraph_matrix_t& get_system_matrix_dx_dy() const =0;
+  virtual const igraph_matrix_t& get_system_matrix_dy_dx() const =0;
+  virtual const igraph_matrix_t& get_system_matrix_dy_dy() const =0;
+
+  virtual double project(const BasisElement& elem_1,
+			 const BasisElement& elem_2) const =0;
 };
 
 
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
 class BivariateGaussianKernelBasis
-  : public BaseBasis
+  : public BivariateBasis
 {
 public:
   BivariateGaussianKernelBasis(double dx,
@@ -35,15 +40,17 @@ public:
   const LinearCombinationElement& get_orthonormal_element(unsigned i) const;
   
   virtual const igraph_matrix_t& get_mass_matrix() const;
-  virtual const igraph_matrix_t& get_system_matrix() const;
-
-  const igraph_matrix_t& get_system_matrix_dx_dx() const;
-  const igraph_matrix_t& get_system_matrix_dx_dy() const;
-  const igraph_matrix_t& get_system_matrix_dy_dx() const;
-  const igraph_matrix_t& get_system_matrix_dy_dy() const;
+  virtual const igraph_matrix_t& get_system_matrix_dx_dx() const;
+  virtual const igraph_matrix_t& get_system_matrix_dx_dy() const;
+  virtual const igraph_matrix_t& get_system_matrix_dy_dx() const;
+  virtual const igraph_matrix_t& get_system_matrix_dy_dy() const;
   
   virtual double project(const BasisElement& elem_1,
 			 const BasisElement& elem_2) const;
+
+  // TODO(georgi): THIS NEEDS FASTER, SYMBOLIC IMPLEMENTATION
+  virtual double project(const GaussianKernelElement& g_elem_1,
+			 const GaussianKernelElement& g_elem_2) const;
   
   virtual double project_deriv(const BasisElement& elem_1,
 			       long int coord_indeex_1, 
@@ -59,7 +66,7 @@ private:
   
   void set_orthonormal_functions();
   void set_mass_matrix();
-  void set_system_matrix();
+  void set_system_matrices();
   
   std::vector<GaussianKernelElement> basis_functions_;
   std::vector<LinearCombinationElement> orthonormal_functions_;

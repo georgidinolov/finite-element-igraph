@@ -9,6 +9,9 @@ extern "C" {
 #include "MultivariateNormal.hpp"
 #include <vector>
 
+// NEEDS TO BE UPDATED AS MORE TYPES ARE ADDED
+enum BasisType { linear_combination, gaussian, other};
+
 // =================== BASIS ELEMENT CLASS ===================
 class BasisElement
 {

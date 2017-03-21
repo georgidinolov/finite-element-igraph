@@ -1,5 +1,5 @@
 #include <algorithm>
-#include "BivariateSolverClassical.hpp"
+#include "BivariateSolver.hpp"
 #include <gsl/gsl_blas.h>
 #include <iostream>
 

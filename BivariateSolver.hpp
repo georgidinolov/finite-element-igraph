@@ -1,4 +1,4 @@
-// the basis needs to give us the mass matrix, the system matrix, as
+// the basis needs to give us the mass matrix, the system matrices, as
 // well as functions which can be evaluated. Each Basis class needs to
 // supply a mass and system matrix, as well as the functions used to
 // create those matrices.
@@ -6,24 +6,21 @@
 extern "C" {
 #include "igraph.h"
 }
-#include "BasisElementTypes.hpp"
+#include "BivariateSolverClassical.hpp"
 
-class BivariateSolverClassical
-  : public BasisElement
+class BivariateSolver
 {
 public:
-  BivariateSolverClassical(double sigma_x,
-			   double sigma_y,
-			   double rho,
-			   double x_0,
-			   double y_0);
-  ~BivariateSolverClassical();
+  BivariateSolver(double sigma_x,
+		  double sigma_y,
+		  double rho,
+		  double x_0,
+		  double y_0);
+  ~BivariateSolver();
 
   virtual double operator()(const igraph_vector_t& input) const;
   virtual double operator()(const gsl_vector* input) const;
-  virtual double norm() const;
-  virtual double first_derivative(const igraph_vector_t& input,
-				  long int coord_index) const;
+  
 private:
   double sigma_x_;
   double sigma_y_;

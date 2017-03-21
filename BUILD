@@ -3,7 +3,7 @@ cc_library(
 	srcs = ["BivariateSolverClassical.cpp"],
 	hdrs = ["BivariateSolverClassical.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",
-	        "//src/multivariate-normal:multivariate-normal"],
+		":basis-element-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
 	linkopts = ["-lm", "-lgsl", "-lgslcblas"],	
@@ -23,7 +23,7 @@ cc_library(
 cc_library(
 	name = "basis-element-types",
 	srcs = ["BasisElementTypes.cpp"],
-	hdrs = ["BasisElementTypes.hpp"],
+	hdrs = ["BasisElementTypes.hpp", "BasisTypes.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",
 	        "//src/multivariate-normal:multivariate-normal"],
 	copts = ["-Isrc/igraph-0.7.1/include",

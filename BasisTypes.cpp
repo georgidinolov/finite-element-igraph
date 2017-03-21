@@ -4,7 +4,7 @@
 #include <iostream>
 
 // =================== BASE BASIS CLASS ======================
-BaseBasis::~BaseBasis()
+BivariateBasis::~BivariateBasis()
 {}
 
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
@@ -25,7 +25,7 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
   set_mass_matrix();
 
   //
-  set_system_matrix();
+  set_system_matrices();
     
   // igraph_matrix_init(&system_matrix_, 2, 2);
   // igraph_matrix_fill(&system_matrix_, 1);
@@ -63,11 +63,6 @@ get_orthonormal_element(unsigned i) const
   }
 }
 
-const igraph_matrix_t& BivariateGaussianKernelBasis::get_system_matrix() const
-{
-  return system_matrix_dx_dx_;
-}
-
 const igraph_matrix_t& BivariateGaussianKernelBasis::
 get_system_matrix_dx_dx() const
 {
@@ -98,6 +93,36 @@ double BivariateGaussianKernelBasis::
 project(const BasisElement& elem_1,
 	const BasisElement& elem_2) const
 {
+  long int N = 1.0/dx_;
+  int dimension = 2;
+
+  double integral = 0;
+  igraph_vector_t input;
+  igraph_vector_init(&input, dimension);
+  double x;
+  double y;
+
+  for (long int i=0; i<N; ++i) {
+    for (long int j=0; j<N; ++j) {
+      x = i*dx_;
+      y = j*dx_;
+      igraph_vector_set(&input, 0, x);
+      igraph_vector_set(&input, 1, y);
+
+      integral = integral + elem_1(input)*elem_2(input);
+    }
+  }
+  integral = integral * std::pow(dx_, 2);
+  
+  igraph_vector_destroy(&input);
+  return integral;
+}
+
+double BivariateGaussianKernelBasis::
+project(const GaussianKernelElement& elem_1,
+	const GaussianKernelElement& elem_2) const
+{
+  std::cout << "Projecting Gaussian kernel elements" << std::endl;
   long int N = 1.0/dx_;
   int dimension = 2;
 
@@ -380,7 +405,7 @@ void BivariateGaussianKernelBasis::set_mass_matrix()
   }
 }
 
-void BivariateGaussianKernelBasis::set_system_matrix()
+void BivariateGaussianKernelBasis::set_system_matrices()
 {
    igraph_matrix_init(&deriv_inner_product_matrix_dx_dx_,
 		      basis_functions_.size(),
