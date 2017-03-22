@@ -16,11 +16,20 @@ public:
 		  double sigma_y,
 		  double rho,
 		  double x_0,
-		  double y_0);
+		  double y_0,
+		  double t);
   ~BivariateSolver();
+
+  inline double get_t() const
+  {
+    return t_;
+  }
+  inline void set_t(double t)
+  {
+    t_ = t;
+  }
   
   // IMPLEMENT
-  virtual double operator()(const igraph_vector_t& input) const;
   virtual double operator()(const gsl_vector* input) const;
   
 private:
@@ -31,8 +40,8 @@ private:
   double y_0_;
   MultivariateNormal mvtnorm_;
   const BivariateBasis& basis_;
-
   BivariateSolverClassical small_t_solution_;
+  double t_;
 
   // gsl_vector * xi_eta_input_;
   // gsl_vector * initial_condition_xi_eta_;

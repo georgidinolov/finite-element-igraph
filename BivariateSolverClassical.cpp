@@ -13,16 +13,20 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     rho_(rho),
     x_0_(x_0),
     y_0_(y_0),
-    mvtnorm_(MultivariateNormal())
+    mvtnorm_(MultivariateNormal()),
+    xi_eta_input_(gsl_vector_alloc(2)),
+    initial_condition_xi_eta_(gsl_vector_alloc(2)),
+    Rotation_matrix_(gsl_matrix_alloc(2,2)),
+    tt_(0),
+    Variance_(gsl_matrix_alloc(2,2)),
+    initial_condition_xi_eta_reflected_(gsl_vector_alloc(2))
 {
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
-  xi_eta_input_ = gsl_vector_alloc(2);
   
   double cc = std::sin(M_PI/4.0);
 
-  Rotation_matrix_ = gsl_matrix_alloc(2,2);
   gsl_matrix_set(Rotation_matrix_, 0, 0, cc / (sigma_x_*std::sqrt(1.0-rho_)));
   gsl_matrix_set(Rotation_matrix_, 1, 0, cc / (sigma_x_*std::sqrt(1.0+rho_)));
   gsl_matrix_set(Rotation_matrix_, 0, 1, -1.0*cc / (sigma_y_*std::sqrt(1-rho_)));
@@ -33,7 +37,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   gsl_vector_set(initial_condition, 1, y_0_);
 
   // rotating the initial condition
-  initial_condition_xi_eta_ = gsl_vector_alloc(2);
   gsl_blas_dgemv(CblasNoTrans, 1.0,
 		 Rotation_matrix_, initial_condition, 0.0,
 		 initial_condition_xi_eta_);
@@ -95,7 +98,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   	    });
   tt_ = std::pow(Cs[Cs_indeces[1]]/4.0, 2.0);
 
-  Variance_ = gsl_matrix_alloc(2, 2);
   for (int i=0; i<2; ++i) {
     for (int j=0; j<2; ++j) {
       if (i==j) {
@@ -117,7 +119,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   double eta_ic_reflected = 2.0*Cs[Cs_indeces[0]]*sin(ss_s[Cs_indeces[0]])
     + eta_ic;
 
-  initial_condition_xi_eta_reflected_ = gsl_vector_alloc(2);
   gsl_vector_set(initial_condition_xi_eta_reflected_, 0, xi_ic_reflected);
   gsl_vector_set(initial_condition_xi_eta_reflected_, 1, eta_ic_reflected);
 
@@ -135,31 +136,6 @@ BivariateSolverClassical::~BivariateSolverClassical()
   // freeing matrices
   gsl_matrix_free(Rotation_matrix_);
   gsl_matrix_free(Variance_);
-}
-
-double BivariateSolverClassical::
-operator()(const igraph_vector_t& input) const
-{
-  gsl_vector *gsl_input = gsl_vector_alloc(2);
-  gsl_vector_set(gsl_input, 0, igraph_vector_e(&input, 0));
-  gsl_vector_set(gsl_input, 1, igraph_vector_e(&input, 1));
-  
-  gsl_blas_dgemv(CblasNoTrans, 1.0,
-		 Rotation_matrix_, gsl_input, 0.0,
-		 xi_eta_input_);
-
-  double out = (mvtnorm_.dmvnorm(2,
-				 xi_eta_input_,
-				 initial_condition_xi_eta_,
-				 Variance_) -
-		mvtnorm_.dmvnorm(2,
-				 xi_eta_input_,
-				 initial_condition_xi_eta_reflected_,
-				 Variance_)) /
-		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
-
-  gsl_vector_free(gsl_input);
-  return out;
 }
 
 double BivariateSolverClassical::
@@ -181,13 +157,42 @@ operator()(const gsl_vector* input) const
   return out;
 }
 
+double BivariateSolverClassical::
+operator()(const gsl_vector* input, double tt) const
+{
+  gsl_blas_dgemv(CblasNoTrans, 1.0,
+		 Rotation_matrix_, input, 0.0,
+		 xi_eta_input_);
+
+  gsl_matrix* Variance = gsl_matrix_alloc(2,2);
+  gsl_matrix_set_all(Variance, 0.0);
+  
+  for (int i=0; i<2; ++i) {
+    gsl_matrix_set(Variance, i, i, tt);
+  }
+  
+
+  double out = (mvtnorm_.dmvnorm(2,
+				 xi_eta_input_,
+				 initial_condition_xi_eta_,
+				 Variance) -
+		mvtnorm_.dmvnorm(2,
+				 xi_eta_input_,
+				 initial_condition_xi_eta_reflected_,
+				 Variance)) /
+		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+  
+  gsl_matrix_free(Variance);
+  return out;
+}
+
 
 double BivariateSolverClassical::norm() const
 {
   return 0.0;
 }
 
-double BivariateSolverClassical::first_derivative(const igraph_vector_t& input,
+double BivariateSolverClassical::first_derivative(const gsl_vector* input,
 						  long int coord_index) const
 {
   return 0.0;

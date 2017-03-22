@@ -8,7 +8,8 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 				 double sigma_y,
 				 double rho,
 				 double x_0,
-				 double y_0)
+				 double y_0,
+				 double t)
   : sigma_x_(sigma_x),
     sigma_y_(sigma_y),
     rho_(rho),
@@ -20,36 +21,31 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 					       sigma_y,
 					       rho,
 					       x_0,
-					       y_0))
+					       y_0)),
+    t_(t)
 {
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
   std::cout << "small tt = " << small_t_solution_.get_t() << std::endl;
-
   
 }
 
 BivariateSolver::~BivariateSolver()
 {
   // freeing vectors
-  
-
   // freeing matrices
-  
-}
-
-double BivariateSolver::
-operator()(const igraph_vector_t& input) const
-{
-  
-  double out = 0;
-  return out;
 }
 
 double BivariateSolver::
 operator()(const gsl_vector* input) const
 {
-  return 0.0;
+  if ((t_ - small_t_solution_.get_t()) <= 1e-32) {
+    return small_t_solution_(input, t_);
+  } else {
+    double out = basis_.project(small_t_solution_,
+				basis_.get_orthonormal_element(0));
+    return out;
+  }
 }
 

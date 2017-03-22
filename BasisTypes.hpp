@@ -19,6 +19,7 @@ public:
   virtual const gsl_matrix* get_system_matrix_dx_dy() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dx() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dy() const =0;
+  virtual const LinearCombinationElement& get_orthonormal_element(unsigned i) const=0;
 
   virtual double project(const BasisElement& elem_1,
 			 const BasisElement& elem_2) const =0;
@@ -37,7 +38,7 @@ public:
 			       double std_dev_factor);
   ~BivariateGaussianKernelBasis();
 
-  const LinearCombinationElement& get_orthonormal_element(unsigned i) const;
+  virtual const LinearCombinationElement& get_orthonormal_element(unsigned i) const;
   
   virtual const gsl_matrix* get_mass_matrix() const;
   virtual const gsl_matrix* get_system_matrix_dx_dx() const;
@@ -56,6 +57,8 @@ public:
 			       long int coord_indeex_1, 
 			       const BasisElement& elem_2,
 			       long int coord_indeex_2) const;
+
+  
 private:
   double dx_;
   // sets basis functions in the class
