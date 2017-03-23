@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <chrono>
 #include "BasisElementTypes.hpp"
 #include <gsl/gsl_blas.h>
+#include <gsl/gsl_linalg.h>
 #include <iostream>
 
 // =================== BASIS ELEMENT CLASS ===================
@@ -268,3 +270,90 @@ const gsl_matrix* GaussianKernelElement::get_covariance_matrix() const
 //       }
 //     }
 // }
+
+
+// ============== BIVARIATE GAUSSIAN KERNEL ELEMENT ================
+BivariateGaussianKernelElement::
+BivariateGaussianKernelElement(double dx,
+			       double exponent_power,
+			       const gsl_vector* mean_vector,
+			       const gsl_matrix* covariance_matrix)
+  : GaussianKernelElement(dx,
+			  2,
+			  exponent_power,
+			  mean_vector,
+			  covariance_matrix),
+    function_grid_(gsl_matrix_alloc(1/dx, 1/dx)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(1/dx, 1/dx)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(1/dx, 1/dx))
+{
+  set_function_grid();
+}
+
+BivariateGaussianKernelElement::
+~BivariateGaussianKernelElement()
+{
+  gsl_matrix_free(function_grid_);
+  gsl_matrix_free(deriv_function_grid_dx_);
+  gsl_matrix_free(deriv_function_grid_dy_);
+}
+
+void BivariateGaussianKernelElement::set_function_grid()
+{
+  auto t1 = std::chrono::high_resolution_clock::now();
+  int s=0;
+  double ax=0,ay=0;
+  gsl_vector *ym = gsl_vector_alloc(2);
+  gsl_matrix *work = gsl_matrix_alloc(2,2);
+  gsl_matrix *winv = gsl_matrix_alloc(2,2);
+  gsl_permutation *p = gsl_permutation_alloc(2);
+  
+  gsl_matrix_memcpy( work, get_covariance_matrix() );
+  gsl_linalg_LU_decomp( work, p, &s );
+  gsl_linalg_LU_invert( work, p, winv );
+  ax = gsl_linalg_LU_det( work, s );
+  
+  double dx = get_dx();
+  double out = 0;
+  gsl_vector * input = gsl_vector_alloc(2);
+  double x = 0;
+  double y = 0;
+  double mollifier_x = 1.0;
+  double mollifier = 1.0;
+
+
+  for (int i=0; i<1/dx; ++i) {
+    x = i*dx;
+    gsl_vector_set(input, 0, x);
+
+    mollifier_x = pow(x, get_exponent_power()) *
+      pow((1-x), get_exponent_power());
+    
+    for (int j=0; j<1/dx; ++j) {
+      y = j*dx;
+      gsl_vector_set(input, 1, y);
+
+      mollifier = mollifier_x *
+	pow(y, get_exponent_power()) *
+	pow((1-y), get_exponent_power());
+
+      gsl_vector_sub(input, get_mean_vector());
+      gsl_blas_dsymv(CblasUpper,1.0,winv,input,0.0,ym);
+      gsl_blas_ddot( input, ym, &ay);
+      ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*ax );
+	
+      gsl_matrix_set(function_grid_, i, j, ay*mollifier);
+    }
+  }
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "duration = "
+	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+    	    << " milliseconds\n";
+
+  gsl_vector_free(input);
+  gsl_matrix_free( work );
+  gsl_permutation_free( p );
+  gsl_matrix_free( winv );
+  gsl_vector_free(ym);
+}
+

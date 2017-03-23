@@ -163,7 +163,7 @@ project_deriv(const BasisElement& elem_1,
 	      const BasisElement& elem_2,
 	      long int coord_indeex_2) const
 {
-  long int N = 1.0/dx_;
+  int N = 1.0/dx_;
   int dimension = 2;
 
   double integral = 0;
@@ -171,11 +171,11 @@ project_deriv(const BasisElement& elem_1,
   double x;
   double y;
 
-  for (long int i=0; i<N; ++i) {
+  for (int i=0; i<N; ++i) {
     x = i*dx_;
     gsl_vector_set(input, 0, x);
     
-    for (long int j=0; j<N; ++j) {
+    for (int j=0; j<N; ++j) {
       y = j*dx_;
       gsl_vector_set(input, 1, y);
 

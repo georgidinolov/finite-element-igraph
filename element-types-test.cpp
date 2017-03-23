@@ -3,7 +3,7 @@
 #include <vector>
 
 int main() {
-  double dx = 5e-3;
+  double dx = 1e-3;
   long unsigned dimension = 2;
   double exponent_power = 1;
   
@@ -31,12 +31,17 @@ int main() {
   								 exponent_power,
   								 mean,
   								 cov);
-
+  BivariateGaussianKernelElement kernel_element_3 =
+    BivariateGaussianKernelElement(dx,
+				   exponent_power,
+				   mean,
+				   cov);
+  
   LinearCombinationElement add =
     LinearCombinationElement(std::vector<const BasisElement*>
   			     {&kernel_element,
   				 &kernel_element_2,
-  				 &kernel_element_2},
+  				 &kernel_element_3},
   			     std::vector<double> {100, 1, 1});
   
   std::cout << kernel_element(input)

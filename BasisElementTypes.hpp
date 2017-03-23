@@ -76,6 +76,10 @@ public:
 
   const gsl_vector* get_mean_vector() const;
   const gsl_matrix* get_covariance_matrix() const;
+  inline double get_dx() const
+  { return dx_; }
+  inline double get_exponent_power() const
+  { return exponent_power_; }
   
 private:
   double dx_;
@@ -87,12 +91,37 @@ private:
   gsl_matrix *covariance_matrix_;
   
   MultivariateNormal mvtnorm_;
-
-  
-  //  void set_norm();
-  // void set_gsl_objects();
 };
 
+class BivariateGaussianKernelElement
+  : public GaussianKernelElement
+{
+public:
+  BivariateGaussianKernelElement();
+  BivariateGaussianKernelElement(double dx,
+				 double exponent_power,
+				 const gsl_vector* mean_vector,
+				 const gsl_matrix* covariance_matrix);
+  
+  // BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element);
+  virtual ~BivariateGaussianKernelElement();
+
+  inline virtual const gsl_matrix * get_function_grid() const
+  { return function_grid_; }
+  inline virtual const gsl_matrix * get_deriv_function_grid_dx() const
+  { return deriv_function_grid_dx_; }
+  inline virtual const gsl_matrix * get_deriv_function_grid_dy() const
+  { return deriv_function_grid_dy_; }
+
+private:
+  void set_function_grid();
+  
+  gsl_matrix * function_grid_;
+  gsl_matrix * deriv_function_grid_dx_;
+  gsl_matrix * deriv_function_grid_dy_;
+};
+
+// ============== BIVARIATE SOLVER ====================
 class BivariateSolverClassical
   : public BasisElement
 {
