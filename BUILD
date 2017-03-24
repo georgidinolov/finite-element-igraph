@@ -23,6 +23,7 @@ cc_library(
 cc_library(
 	name = "basis-element-types",
 	srcs = ["BasisElementTypes.cpp",
+	        "LinearCombinationElement.cpp",
 	        "BivariateSolverClassical.cpp"],
 	hdrs = ["BasisElementTypes.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",

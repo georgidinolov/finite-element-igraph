@@ -22,6 +22,10 @@ public:
   virtual double norm() const =0;
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const =0;
+  virtual const gsl_matrix* get_function_grid() const=0;
+  virtual const gsl_matrix* get_deriv_function_grid_dx() const=0;
+  virtual const gsl_matrix* get_deriv_function_grid_dy() const=0;
+  virtual double get_dx() const=0;
 };
 
 // ============== LINEAR COMBINATION ELEMENT =====================
@@ -39,13 +43,22 @@ public:
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
 
-  const std::vector<const BasisElement*> get_elements() const;
-  std::vector<double> get_coefficients() const;
+    
   double get_coefficient(unsigned i) const;
+  std::vector<double> get_coefficients() const;
+  inline virtual double get_dx() const { return dx_; }
+  const std::vector<const BasisElement*> get_elements() const;
+  inline virtual const gsl_matrix* get_function_grid() const
+  { return function_grid_; }
   
 private:
+  void set_function_grids();
+  
   const std::vector<const BasisElement*> elements_;
   std::vector<double> coefficients_;
+
+  double dx_;
+  gsl_matrix * function_grid_;
 };
 
 // ============== GAUSSIAN KERNEL ELEMENT =====================
@@ -75,21 +88,16 @@ public:
   virtual double norm() const;
   virtual double norm_finite_diff() const;
 
-  const gsl_vector* get_mean_vector() const;
+  inline double get_ax() const { return ax_; }
   const gsl_matrix* get_covariance_matrix() const;
-  inline double get_dx() const
-  { return dx_; }
-  inline double get_exponent_power() const
-  { return exponent_power_; }
-  inline long int get_dimension() const
-  { return dimension_; }
-
-  inline int get_s() const
-  { return s_; }
-  inline double get_ax() const
-  { return ax_; }
-  inline const gsl_matrix * get_winv() const
-  { return winv_; }
+  inline long int get_dimension() const { return dimension_; }
+  inline double get_dx() const { return dx_; }
+  inline const double get_exponent_power() const { return exponent_power_; }
+  // TODO: THIS NEEDS TO BE IMPLEMENTED
+  inline virtual const gsl_matrix* get_function_grid() const { return 0; }
+  const gsl_vector* get_mean_vector() const;
+  inline int get_s() const { return s_; }
+  inline const gsl_matrix * get_winv() const { return winv_; }
   
 private:
   double dx_;
@@ -162,6 +170,10 @@ public:
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
   double get_t() const;
+  
+  inline virtual double get_dx() const
+  { return 0.0; }
+  
 private:
   double sigma_x_;
   double sigma_y_;

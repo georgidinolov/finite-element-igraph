@@ -20,14 +20,12 @@ int main() {
     gsl_matrix_set(cov, i, i, 1.0);
   }
   
-  GaussianKernelElement kernel_element = GaussianKernelElement(dx,
-  							       dimension,
+  BivariateGaussianKernelElement kernel_element = BivariateGaussianKernelElement(dx,
   							       exponent_power,
   							       mean,
   							       cov);
   
-  GaussianKernelElement kernel_element_2 = GaussianKernelElement(dx,
-  								 dimension,
+  BivariateGaussianKernelElement kernel_element_2 = BivariateGaussianKernelElement(dx,
   								 exponent_power,
   								 mean,
   								 cov);
@@ -37,12 +35,13 @@ int main() {
 				   mean,
 				   cov);
 
-  GaussianKernelElement kernel_element_4 = GaussianKernelElement(kernel_element);
+  BivariateGaussianKernelElement kernel_element_4 =
+    BivariateGaussianKernelElement(kernel_element);
   BivariateGaussianKernelElement kernel_element_5 =
     BivariateGaussianKernelElement(kernel_element_3);
 
   std::cout << "Testing assignment operator for Gaussian kernel elem" << std::endl;
-  GaussianKernelElement kernel_element_6 = kernel_element_4;
+  BivariateGaussianKernelElement kernel_element_6 = kernel_element_4;
   
   std::cout << "Testing assignment operator for bivariate Gaussian kernel elem"
 	    << std::endl;
