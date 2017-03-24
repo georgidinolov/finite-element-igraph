@@ -171,7 +171,6 @@ operator()(const gsl_vector* input) const
       mollifier = mollifier *
 	pow(gsl_vector_get(input, i), exponent_power_) *
 	pow((1-gsl_vector_get(input, i)), exponent_power_);
-      // gsl_vector_set(input_gsl_, i, gsl_vector_get(input, i));
     }
 
     gsl_vector_sub(input_gsl_, get_mean_vector());
@@ -318,48 +317,21 @@ BivariateGaussianKernelElement::
 void BivariateGaussianKernelElement::set_function_grid()
 {
   auto t1 = std::chrono::high_resolution_clock::now();
-  int s=0;
-  double ax=0,ay=0;
-  gsl_vector *ym = gsl_vector_alloc(2);
-  gsl_matrix *work = gsl_matrix_alloc(2,2);
-  gsl_matrix *winv = gsl_matrix_alloc(2,2);
-  gsl_permutation *p = gsl_permutation_alloc(2);
-  
-  gsl_matrix_memcpy( work, get_covariance_matrix() );
-  gsl_linalg_LU_decomp( work, p, &s );
-  gsl_linalg_LU_invert( work, p, winv );
-  ax = gsl_linalg_LU_det( work, s );
   
   double dx = get_dx();
   double out = 0;
   gsl_vector * input = gsl_vector_alloc(2);
   double x = 0;
   double y = 0;
-  double mollifier_x = 1.0;
-  double mollifier = 1.0;
-
 
   for (int i=0; i<1/dx; ++i) {
     x = i*dx;
     gsl_vector_set(input, 0, x);
 
-    // mollifier_x = pow(x, get_exponent_power()) *
-    //   pow((1-x), get_exponent_power());
-    
     for (int j=0; j<1/dx; ++j) {
       y = j*dx;
       gsl_vector_set(input, 1, y);
 
-      // mollifier = mollifier_x *
-      // 	pow(y, get_exponent_power()) *
-      // 	pow((1-y), get_exponent_power());
-
-      // gsl_vector_sub(input, get_mean_vector());
-      // gsl_blas_dsymv(CblasUpper,1.0,winv,input,0.0,ym);
-      // gsl_blas_ddot( input, ym, &ay);
-      // ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*ax );
-	
-      // gsl_matrix_set(function_grid_, i, j, ay*mollifier);
       out = (*this)(input);
       gsl_matrix_set(function_grid_, i, j, out);
     }
@@ -370,9 +342,5 @@ void BivariateGaussianKernelElement::set_function_grid()
     	    << " milliseconds\n";
 
   gsl_vector_free(input);
-  gsl_matrix_free( work );
-  gsl_permutation_free( p );
-  gsl_matrix_free( winv );
-  gsl_vector_free(ym);
 }
 
