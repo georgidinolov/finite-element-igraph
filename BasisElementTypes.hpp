@@ -122,6 +122,8 @@ public:
 
 private:
   void set_function_grid();
+  void set_function_grid_dx();
+  void set_function_grid_dy();
   
   gsl_matrix * function_grid_;
   gsl_matrix * deriv_function_grid_dx_;

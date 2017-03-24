@@ -304,6 +304,8 @@ BivariateGaussianKernelElement(double dx,
     deriv_function_grid_dy_(gsl_matrix_alloc(1/dx, 1/dx))
 {
   set_function_grid();
+  set_function_grid_dx();
+  set_function_grid_dy();
 }
 
 BivariateGaussianKernelElement::
@@ -334,6 +336,66 @@ void BivariateGaussianKernelElement::set_function_grid()
 
       out = (*this)(input);
       gsl_matrix_set(function_grid_, i, j, out);
+    }
+  }
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "duration = "
+	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+    	    << " milliseconds\n";
+
+  gsl_vector_free(input);
+}
+
+void BivariateGaussianKernelElement::set_function_grid_dx()
+{
+  auto t1 = std::chrono::high_resolution_clock::now();
+  
+  double dx = get_dx();
+  double out = 0;
+  gsl_vector * input = gsl_vector_alloc(2);
+  double x = 0;
+  double y = 0;
+
+  for (int i=0; i<1/dx; ++i) {
+    x = i*dx;
+    gsl_vector_set(input, 0, x);
+
+    for (int j=0; j<1/dx; ++j) {
+      y = j*dx;
+      gsl_vector_set(input, 1, y);
+
+      out = first_derivative(input, 0);
+      gsl_matrix_set(deriv_function_grid_dx_, i, j, out);
+    }
+  }
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "duration = "
+	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+    	    << " milliseconds\n";
+
+  gsl_vector_free(input);
+}
+
+void BivariateGaussianKernelElement::set_function_grid_dy()
+{
+  auto t1 = std::chrono::high_resolution_clock::now();
+  
+  double dx = get_dx();
+  double out = 0;
+  gsl_vector * input = gsl_vector_alloc(2);
+  double x = 0;
+  double y = 0;
+
+  for (int i=0; i<1/dx; ++i) {
+    x = i*dx;
+    gsl_vector_set(input, 0, x);
+
+    for (int j=0; j<1/dx; ++j) {
+      y = j*dx;
+      gsl_vector_set(input, 1, y);
+
+      out = first_derivative(input, 1);
+      gsl_matrix_set(deriv_function_grid_dy_, i, j, out);
     }
   }
   auto t2 = std::chrono::high_resolution_clock::now();
