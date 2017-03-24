@@ -64,6 +64,7 @@ public:
 
   virtual ~GaussianKernelElement();
   virtual double operator()(const gsl_vector* input) const;
+  virtual GaussianKernelElement& operator=(const GaussianKernelElement& rhs);
 
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
@@ -80,6 +81,15 @@ public:
   { return dx_; }
   inline double get_exponent_power() const
   { return exponent_power_; }
+  inline long int get_dimension() const
+  { return dimension_; }
+
+  inline int get_s() const
+  { return s_; }
+  inline double get_ax() const
+  { return ax_; }
+  inline const gsl_matrix * get_winv() const
+  { return winv_; }
   
 private:
   double dx_;
@@ -109,9 +119,11 @@ public:
 				 double exponent_power,
 				 const gsl_vector* mean_vector,
 				 const gsl_matrix* covariance_matrix);
+  BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element);
   
   // BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element);
   virtual ~BivariateGaussianKernelElement();
+  virtual BivariateGaussianKernelElement& operator=(const BivariateGaussianKernelElement& rhs);
 
   inline virtual const gsl_matrix * get_function_grid() const
   { return function_grid_; }
@@ -124,6 +136,7 @@ private:
   void set_function_grid();
   void set_function_grid_dx();
   void set_function_grid_dy();
+  void set_function_grids();
   
   gsl_matrix * function_grid_;
   gsl_matrix * deriv_function_grid_dx_;

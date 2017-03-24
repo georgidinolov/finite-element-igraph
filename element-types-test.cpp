@@ -36,6 +36,24 @@ int main() {
 				   exponent_power,
 				   mean,
 				   cov);
+
+  GaussianKernelElement kernel_element_4 = GaussianKernelElement(kernel_element);
+  BivariateGaussianKernelElement kernel_element_5 =
+    BivariateGaussianKernelElement(kernel_element_3);
+
+  std::cout << "Testing assignment operator for Gaussian kernel elem" << std::endl;
+  GaussianKernelElement kernel_element_6 = kernel_element_4;
+  
+  std::cout << "Testing assignment operator for bivariate Gaussian kernel elem"
+	    << std::endl;
+  
+  BivariateGaussianKernelElement kernel_element_7 = kernel_element_5;
+
+  std::cout << "Testing filling a vector" << std::endl;
+  std::vector<BivariateGaussianKernelElement> vvec(0);
+  vvec = std::vector<BivariateGaussianKernelElement>(2);
+  vvec[0] = kernel_element_7;
+  vvec[1] = BivariateGaussianKernelElement(dx, exponent_power+1,mean,cov);
   
   LinearCombinationElement add =
     LinearCombinationElement(std::vector<const BasisElement*>

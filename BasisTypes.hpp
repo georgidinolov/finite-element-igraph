@@ -50,8 +50,8 @@ public:
 			 const BasisElement& elem_2) const;
 
   // TODO(georgi): THIS NEEDS FASTER, SYMBOLIC IMPLEMENTATION
-  virtual double project(const GaussianKernelElement& g_elem_1,
-			 const GaussianKernelElement& g_elem_2) const;
+  virtual double project(const BivariateGaussianKernelElement& g_elem_1,
+			 const BivariateGaussianKernelElement& g_elem_2) const;
   
   virtual double project_deriv(const BasisElement& elem_1,
 			       long int coord_indeex_1, 
@@ -71,7 +71,7 @@ private:
   void set_mass_matrix();
   void set_system_matrices();
   
-  std::vector<GaussianKernelElement> basis_functions_;
+  std::vector<BivariateGaussianKernelElement> basis_functions_;
   std::vector<LinearCombinationElement> orthonormal_functions_;
 
   gsl_matrix* system_matrix_dx_dx_;

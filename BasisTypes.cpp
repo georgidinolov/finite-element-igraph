@@ -31,11 +31,11 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
   // second create the orthonormal list of elements
   set_orthonormal_functions();
 
-  //
-  set_mass_matrix();
+  // //
+  // set_mass_matrix();
 
-  //
-  set_system_matrices();
+  // //
+  // set_system_matrices();
     
   // igraph_matrix_init(&system_matrix_, 2, 2);
   // igraph_matrix_fill(&system_matrix_, 1);
@@ -129,10 +129,10 @@ project(const BasisElement& elem_1,
 }
 
 double BivariateGaussianKernelBasis::
-project(const GaussianKernelElement& elem_1,
-	const GaussianKernelElement& elem_2) const
+project(const BivariateGaussianKernelElement& elem_1,
+	const BivariateGaussianKernelElement& elem_2) const
 {
-  std::cout << "Projecting Gaussian kernel elements" << std::endl;
+  std::cout << "Projecting bivariate Gaussian kernel elements" << std::endl;
   int N = 1.0/dx_;
   int dimension = 2;
 
@@ -141,19 +141,24 @@ project(const GaussianKernelElement& elem_1,
   double x;
   double y;
 
+  gsl_matrix * function_grid_matrix = gsl_matrix_alloc(N,N);
+  gsl_matrix_memcpy(function_grid_matrix, elem_1.get_function_grid());
+  gsl_matrix_mul_elements(function_grid_matrix, elem_2.get_function_grid());
+  
   for (int i=0; i<N; ++i) {
     for (int j=0; j<N; ++j) {
-      x = i*dx_;
-      y = j*dx_;
-      gsl_vector_set(input, 0, x);
-      gsl_vector_set(input, 1, y);
-
-      integral = integral + elem_1(input)*elem_2(input);
+      // x = i*dx_;
+      // y = j*dx_;
+      // gsl_vector_set(input, 0, x);
+      // gsl_vector_set(input, 1, y);
+      // integral = integral + elem_1(input)*elem_2(input);
+      integral = integral + gsl_matrix_get(function_grid_matrix,i,j);
     }
   }
   integral = integral * std::pow(dx_, 2);
   
   gsl_vector_free(input);
+  gsl_matrix_free(function_grid_matrix);
   return integral;
 }
 
@@ -279,20 +284,22 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   gsl_matrix_set(covariance_matrix, 1, 0, rho*std::pow(sigma, 2));
   gsl_matrix_set(covariance_matrix, 0, 1, rho*std::pow(sigma, 2));
   gsl_matrix_set(covariance_matrix, 1, 1, std::pow(sigma, 2)); 
+
+  basis_functions_ =
+    std::vector<BivariateGaussianKernelElement> (indeces_within_boundary.size());
   
-  for (unsigned const& index: indeces_within_boundary) {
+  for (unsigned i=0; i<indeces_within_boundary.size(); ++i) {
+    unsigned const& index = indeces_within_boundary[i];
     gsl_vector_set(mean_vector, 0,
 		   gsl_matrix_get(xieta_nodes, 0, index));
     gsl_vector_set(mean_vector, 1,
 		   gsl_matrix_get(xieta_nodes, 1, index));
-
-    basis_functions_.push_back(GaussianKernelElement(dx_,
-						     2,
-						     power,
-						     mean_vector,
-						     covariance_matrix));
+    basis_functions_[i] = BivariateGaussianKernelElement(dx_,
+    							 power,
+    							 mean_vector,
+    							 covariance_matrix);
   }
-
+  
   gsl_matrix_free(xy_nodes);
   gsl_matrix_free(xieta_nodes);  
   gsl_matrix_free(Rotation_matrix);
@@ -312,18 +319,18 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions()
   gsl_matrix_free(inner_product_matrix_);
   inner_product_matrix_ = gsl_matrix_alloc(basis_functions_.size(),
 					   basis_functions_.size());
-  
+
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
     for (unsigned j=i; j<basis_functions_.size(); ++j) {
       gsl_matrix_set(inner_product_matrix_, i, j,
-		     project(basis_functions_[i],
-			     basis_functions_[j]));
+  		     project(basis_functions_[i],
+  			     basis_functions_[j]));
       gsl_matrix_set(inner_product_matrix_, j, i,
-		     gsl_matrix_get(inner_product_matrix_,i,j));
+  		     gsl_matrix_get(inner_product_matrix_,i,j));
       
       std::cout << "projection(" << i << "," << j << ") = "
-		<< gsl_matrix_get(inner_product_matrix_,i,j)
-		<< std::endl;
+  		<< gsl_matrix_get(inner_product_matrix_,i,j)
+  		<< std::endl;
     }
   }
   
