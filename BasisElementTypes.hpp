@@ -91,6 +91,13 @@ private:
   gsl_matrix *covariance_matrix_;
   
   MultivariateNormal mvtnorm_;
+
+  int s_;
+  double ax_;
+  gsl_vector *ym_;
+  gsl_matrix *work_; // = gsl_matrix_alloc(2,2);
+  gsl_matrix *winv_; // = gsl_matrix_alloc(2,2);
+  gsl_permutation *p_; // = gsl_permutation_alloc(2);
 };
 
 class BivariateGaussianKernelElement
@@ -121,7 +128,7 @@ private:
   gsl_matrix * deriv_function_grid_dy_;
 };
 
-// ============== BIVARIATE SOLVER ====================
+// ============== BIVARIATE CLASSICAL SOLVER ====================
 class BivariateSolverClassical
   : public BasisElement
 {

@@ -104,13 +104,21 @@ GaussianKernelElement(double dx,
     input_gsl_(gsl_vector_alloc(dimension_)),
     covariance_matrix_(gsl_matrix_alloc(dimension_,
 					dimension_)),
-    mvtnorm_(MultivariateNormal())
+    mvtnorm_(MultivariateNormal()),
+    s_(0),
+    ax_(0.0),
+    ym_(gsl_vector_alloc(dimension_)),
+    work_(gsl_matrix_alloc(dimension_,dimension_)),
+    winv_(gsl_matrix_alloc(dimension_,dimension_)),
+    p_(gsl_permutation_alloc(dimension_))
 {
   gsl_vector_memcpy(mean_vector_, mean_vector);
   gsl_matrix_memcpy(covariance_matrix_, covariance_matrix);
 
-  //  set_norm();
-  // set_gsl_objects();
+  gsl_matrix_memcpy( work_, get_covariance_matrix() );
+  gsl_linalg_LU_decomp( work_, p_, &s_ );
+  gsl_linalg_LU_invert( work_, p_, winv_ );
+  ax_ = gsl_linalg_LU_det( work_, s_ );
 }
 
 GaussianKernelElement::
@@ -131,15 +139,24 @@ GaussianKernelElement(const GaussianKernelElement& element)
   gsl_vector_memcpy(mean_vector_, element.mean_vector_);
   gsl_matrix_memcpy(covariance_matrix_, element.covariance_matrix_);
   
-  // set_gsl_objects();
+  s_ = element.s_;
+  ax_ = element.ax_;
+  gsl_vector_memcpy(ym_, element.ym_);
+  gsl_matrix_memcpy(work_, element.work_);
+  gsl_matrix_memcpy(winv_, element.winv_);
+  gsl_permutation_memcpy(p_, element.p_);
 }
 
 GaussianKernelElement::~GaussianKernelElement()
 {
   gsl_vector_free(mean_vector_);
   gsl_matrix_free(covariance_matrix_);
-
   gsl_vector_free(input_gsl_);
+
+  gsl_matrix_free(work_);
+  gsl_permutation_free(p_);
+  gsl_matrix_free(winv_);
+  gsl_vector_free(ym_);
 }
 
 double GaussianKernelElement::
@@ -147,22 +164,22 @@ operator()(const gsl_vector* input) const
 {
   if (input->size == dimension_) {
     double mollifier = 1;
+    double ay = 0.0;
 
+    gsl_vector_memcpy(input_gsl_, input);
     for (unsigned i=0; i<dimension_; ++i) {
       mollifier = mollifier *
-	std::pow(gsl_vector_get(input, i), exponent_power_) *
-	std::pow((1-gsl_vector_get(input, i)), exponent_power_);
-      
-      gsl_vector_set(input_gsl_, i, gsl_vector_get(input, i));
+	pow(gsl_vector_get(input, i), exponent_power_) *
+	pow((1-gsl_vector_get(input, i)), exponent_power_);
+      // gsl_vector_set(input_gsl_, i, gsl_vector_get(input, i));
     }
+
+    gsl_vector_sub(input_gsl_, get_mean_vector());
+    gsl_blas_dsymv(CblasUpper,1.0,winv_,input,0.0,ym_);
+    gsl_blas_ddot(input_gsl_, ym_, &ay);
+    ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*ax_);
     
-    double out = mvtnorm_.dmvnorm(dimension_,
-				  input_gsl_,
-				  mean_vector_,
-				  covariance_matrix_) *
-	mollifier;
-    
-    return out;
+    return ay*mollifier;
   } else {
     std::cout << "INPUT SIZE WRONG" << std::endl;
     return 0;
@@ -326,23 +343,25 @@ void BivariateGaussianKernelElement::set_function_grid()
     x = i*dx;
     gsl_vector_set(input, 0, x);
 
-    mollifier_x = pow(x, get_exponent_power()) *
-      pow((1-x), get_exponent_power());
+    // mollifier_x = pow(x, get_exponent_power()) *
+    //   pow((1-x), get_exponent_power());
     
     for (int j=0; j<1/dx; ++j) {
       y = j*dx;
       gsl_vector_set(input, 1, y);
 
-      mollifier = mollifier_x *
-	pow(y, get_exponent_power()) *
-	pow((1-y), get_exponent_power());
+      // mollifier = mollifier_x *
+      // 	pow(y, get_exponent_power()) *
+      // 	pow((1-y), get_exponent_power());
 
-      gsl_vector_sub(input, get_mean_vector());
-      gsl_blas_dsymv(CblasUpper,1.0,winv,input,0.0,ym);
-      gsl_blas_ddot( input, ym, &ay);
-      ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*ax );
+      // gsl_vector_sub(input, get_mean_vector());
+      // gsl_blas_dsymv(CblasUpper,1.0,winv,input,0.0,ym);
+      // gsl_blas_ddot( input, ym, &ay);
+      // ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*ax );
 	
-      gsl_matrix_set(function_grid_, i, j, ay*mollifier);
+      // gsl_matrix_set(function_grid_, i, j, ay*mollifier);
+      out = (*this)(input);
+      gsl_matrix_set(function_grid_, i, j, out);
     }
   }
   auto t2 = std::chrono::high_resolution_clock::now();
