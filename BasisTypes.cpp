@@ -61,7 +61,7 @@ BivariateGaussianKernelBasis::~BivariateGaussianKernelBasis()
 }
 
 
-const LinearCombinationElement& BivariateGaussianKernelBasis::
+const BivariateLinearCombinationElement& BivariateGaussianKernelBasis::
 get_orthonormal_element(unsigned i) const
 {
   if (i < orthonormal_functions_.size()) {
@@ -100,8 +100,8 @@ const gsl_matrix* BivariateGaussianKernelBasis::get_mass_matrix() const
 }
 
 double BivariateGaussianKernelBasis::
-project(const BasisElement& elem_1,
-	const BasisElement& elem_2) const
+project(const BivariateElement& elem_1,
+	const BivariateElement& elem_2) const
 {
   long int N = 1.0/dx_;
   int dimension = 2;
@@ -163,9 +163,9 @@ project(const BivariateGaussianKernelElement& elem_1,
 }
 
 double BivariateGaussianKernelBasis::
-project_deriv(const BasisElement& elem_1,
+project_deriv(const BivariateElement& elem_1,
 	      long int coord_indeex_1, 
-	      const BasisElement& elem_2,
+	      const BivariateElement& elem_2,
 	      long int coord_indeex_2) const
 {
   int N = 1.0/dx_;
@@ -341,16 +341,16 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions()
       std::vector<double> coefficients =
 	std::vector<double> {1.0/std::sqrt(gsl_matrix_get(inner_product_matrix_,
 							  i, i))};
-      std::vector<const BasisElement*> elements =
-	std::vector<const BasisElement*> {&basis_functions_[i]};
+      std::vector<const BivariateElement*> elements =
+	std::vector<const BivariateElement*> {&basis_functions_[i]};
 
-      orthonormal_functions_.push_back(LinearCombinationElement(elements,
+      orthonormal_functions_.push_back(BivariateLinearCombinationElement(elements,
 								coefficients));
     } else {
       std::cout << "(" << i << ")" << std::endl;
       
       std::vector<double> coefficients(i+1, 0.0);
-      std::vector<const BasisElement*> elements(0);
+      std::vector<const BivariateElement*> elements(0);
       coefficients[i] = 1.0;
 
       for (unsigned j=0; j<i; ++j) {
@@ -383,8 +383,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions()
       for (unsigned k=0; k<i+1; ++k) {
 	coefficients[k] = coefficients[k]/current_norm;
       }
-      orthonormal_functions_.push_back(LinearCombinationElement(elements,
-  								coefficients));
+      orthonormal_functions_.push_back(BivariateLinearCombinationElement(elements,
+									 coefficients));
     }
   }
 }

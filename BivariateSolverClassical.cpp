@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "BasisElementTypes.hpp"
+#include <chrono>
 #include <gsl/gsl_blas.h>
 #include <iostream>
 
@@ -19,7 +20,8 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     Rotation_matrix_(gsl_matrix_alloc(2,2)),
     tt_(0),
     Variance_(gsl_matrix_alloc(2,2)),
-    initial_condition_xi_eta_reflected_(gsl_vector_alloc(2))
+    initial_condition_xi_eta_reflected_(gsl_vector_alloc(2)),
+    function_grid_(gsl_matrix_alloc(1,1))
 {
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
@@ -108,12 +110,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     }
   }
   
-  double Max = mvtnorm_.dmvnorm(2,
-  				initial_condition_xi_eta_,
-  				initial_condition_xi_eta_,
-  				Variance_) /
-    (sigma_x_*sigma_y_*sqrt(1.0-rho_)*sqrt(1.0+rho_));
-
   double xi_ic_reflected = 2.0*Cs[Cs_indeces[0]]*cos(ss_s[Cs_indeces[0]])
     + xi_ic;
   double eta_ic_reflected = 2.0*Cs[Cs_indeces[0]]*sin(ss_s[Cs_indeces[0]])
@@ -136,6 +132,7 @@ BivariateSolverClassical::~BivariateSolverClassical()
   // freeing matrices
   gsl_matrix_free(Rotation_matrix_);
   gsl_matrix_free(Variance_);
+  gsl_matrix_free(function_grid_);
 }
 
 double BivariateSolverClassical::
@@ -171,7 +168,6 @@ operator()(const gsl_vector* input, double tt) const
     gsl_matrix_set(Variance, i, i, tt);
   }
   
-
   double out = (mvtnorm_.dmvnorm(2,
 				 xi_eta_input_,
 				 initial_condition_xi_eta_,
@@ -201,4 +197,40 @@ double BivariateSolverClassical::first_derivative(const gsl_vector* input,
 double BivariateSolverClassical::get_t() const
 {
   return tt_;
+}
+
+const gsl_matrix* BivariateSolverClassical::get_function_grid() const
+{
+  return function_grid_;
+}
+
+void BivariateSolverClassical::set_function_grid(double dx)
+{
+  gsl_matrix_free(function_grid_);
+  function_grid_ = gsl_matrix_alloc(1/dx, 1/dx);
+
+  auto t1 = std::chrono::high_resolution_clock::now();
+  double out = 0;
+  gsl_vector * input = gsl_vector_alloc(2);
+  double x = 0;
+  double y = 0;
+
+  for (int i=0; i<1/dx; ++i) {
+    x = i*dx;
+    gsl_vector_set(input, 0, x);
+
+    for (int j=0; j<1/dx; ++j) {
+      y = j*dx;
+      gsl_vector_set(input, 1, y);
+
+      out = (*this)(input);
+      gsl_matrix_set(function_grid_, i, j, out);
+    }
+  }
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "duration in Bivariate Classical Solver = "
+	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+    	    << " milliseconds\n";
+
+  gsl_vector_free(input);
 }

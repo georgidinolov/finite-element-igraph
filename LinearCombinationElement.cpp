@@ -58,7 +58,7 @@ double BivariateLinearCombinationElement::norm() const
 {
   double integral = 0;
   for (unsigned i=0; i<elements_.size(); ++i) {
-    const BasisElement* curr_element = elements_[i];
+    const BivariateElement* curr_element = elements_[i];
     integral = integral + coefficients_[i]*(curr_element->norm());
   }
   return integral;
@@ -77,7 +77,7 @@ first_derivative(const gsl_vector* input,
   return deriv;
 }
 
-const std::vector<const BasisElement*> BivariateLinearCombinationElement::
+const std::vector<const BivariateElement*> BivariateLinearCombinationElement::
 get_elements() const
 {
   return elements_;

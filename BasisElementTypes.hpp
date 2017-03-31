@@ -32,20 +32,10 @@ public:
 // bivariate basis element, such as:
 // a matrix containing the function values at node points. 
 class BivariateElement
-  : private virtual BasisElement
+  : virtual public BasisElement
 {
 public:
   BivariateElement() {};
-  virtual ~BivariateElement() {};
-  inline virtual double operator()(const gsl_vector* input) const
-  { return 0.0; }
-  virtual double norm() const
-  { return 0.0; } 
-  virtual double first_derivative(const gsl_vector* input,
-				  long int coord_index) const
-  { return 0.0; }
-  virtual double get_dx() const
-  { return 0.0; }
 
   virtual const gsl_matrix* get_function_grid() const =0;
 };
@@ -69,7 +59,7 @@ public:
   double get_coefficient(unsigned i) const;
   std::vector<double> get_coefficients() const;
   inline virtual double get_dx() const { return dx_; }
-  const std::vector<const BasisElement*> get_elements() const;
+  const std::vector<const BivariateElement*> get_elements() const;
   inline virtual const gsl_matrix* get_function_grid() const
   { return function_grid_; };
   
@@ -86,7 +76,7 @@ private:
 
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 class GaussianKernelElement
-  : public BasisElement
+  : public virtual BasisElement
 {
 public:
   GaussianKernelElement();
@@ -140,8 +130,8 @@ private:
 };
 
 class BivariateGaussianKernelElement
-  : virtual public GaussianKernelElement, 
-    virtual public BivariateElement
+  : public virtual GaussianKernelElement,
+    public virtual BivariateElement
 {
 public:
   BivariateGaussianKernelElement();
@@ -154,6 +144,12 @@ public:
   // BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element);
   virtual ~BivariateGaussianKernelElement();
   virtual BivariateGaussianKernelElement& operator=(const BivariateGaussianKernelElement& rhs);
+
+  virtual double operator()(const gsl_vector* input) const;
+  virtual double norm() const;
+  virtual double first_derivative(const gsl_vector* input,
+				  long int coord_index) const;
+  virtual double get_dx() const;
 
   inline virtual const gsl_matrix * get_function_grid() const
   { return function_grid_; }
@@ -175,7 +171,7 @@ private:
 
 // ============== BIVARIATE CLASSICAL SOLVER ====================
 class BivariateSolverClassical
-  : public BasisElement
+  : public virtual BivariateElement
 {
 public:
   BivariateSolverClassical(double sigma_x,
@@ -191,10 +187,12 @@ public:
   virtual double norm() const;
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
+
   double get_t() const;
-  
   inline virtual double get_dx() const
   { return 0.0; }
+  virtual const gsl_matrix* get_function_grid() const;
+  virtual void set_function_grid(double dx);
   
 private:
   double sigma_x_;
@@ -210,4 +208,6 @@ private:
   double tt_;
   gsl_matrix * Variance_;
   gsl_vector * initial_condition_xi_eta_reflected_;
+
+  gsl_matrix * function_grid_;
 };

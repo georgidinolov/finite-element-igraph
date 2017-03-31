@@ -19,10 +19,10 @@ public:
   virtual const gsl_matrix* get_system_matrix_dx_dy() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dx() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dy() const =0;
-  virtual const LinearCombinationElement& get_orthonormal_element(unsigned i) const=0;
+  virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const=0;
 
-  virtual double project(const BasisElement& elem_1,
-			 const BasisElement& elem_2) const =0;
+  virtual double project(const BivariateElement& elem_1,
+			 const BivariateElement& elem_2) const =0;
 };
 
 
@@ -38,7 +38,7 @@ public:
 			       double std_dev_factor);
   ~BivariateGaussianKernelBasis();
 
-  virtual const LinearCombinationElement& get_orthonormal_element(unsigned i) const;
+  virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const;
   
   virtual const gsl_matrix* get_mass_matrix() const;
   virtual const gsl_matrix* get_system_matrix_dx_dx() const;
@@ -46,16 +46,16 @@ public:
   virtual const gsl_matrix* get_system_matrix_dy_dx() const;
   virtual const gsl_matrix* get_system_matrix_dy_dy() const;
   
-  virtual double project(const BasisElement& elem_1,
-			 const BasisElement& elem_2) const;
+  virtual double project(const BivariateElement& elem_1,
+			 const BivariateElement& elem_2) const;
 
   // TODO(georgi): THIS NEEDS FASTER, SYMBOLIC IMPLEMENTATION
   virtual double project(const BivariateGaussianKernelElement& g_elem_1,
 			 const BivariateGaussianKernelElement& g_elem_2) const;
   
-  virtual double project_deriv(const BasisElement& elem_1,
+  virtual double project_deriv(const BivariateElement& elem_1,
 			       long int coord_indeex_1, 
-			       const BasisElement& elem_2,
+			       const BivariateElement& elem_2,
 			       long int coord_indeex_2) const;
 
   
@@ -72,7 +72,7 @@ private:
   void set_system_matrices();
   
   std::vector<BivariateGaussianKernelElement> basis_functions_;
-  std::vector<LinearCombinationElement> orthonormal_functions_;
+  std::vector<BivariateLinearCombinationElement> orthonormal_functions_;
 
   gsl_matrix* system_matrix_dx_dx_;
   gsl_matrix* system_matrix_dx_dy_;

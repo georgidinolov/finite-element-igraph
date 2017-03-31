@@ -3,16 +3,19 @@
 #include <vector>
 
 int main() {
-  double dx = 1e-3;
+  double dx = 2e-3;
   BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
 								    0.9,
 								    0.3,
 								    1,
 								    0.5);
   
-  const LinearCombinationElement& ortho_e_1 = basis.get_orthonormal_element(0);
-  const LinearCombinationElement& ortho_e_2 = basis.get_orthonormal_element(1);
-  const LinearCombinationElement& ortho_e_3 = basis.get_orthonormal_element(2);
+  const BivariateLinearCombinationElement& ortho_e_1 =
+    basis.get_orthonormal_element(0);
+  const BivariateLinearCombinationElement& ortho_e_2 =
+    basis.get_orthonormal_element(1);
+  const BivariateLinearCombinationElement& ortho_e_3 =
+    basis.get_orthonormal_element(2);
 
   std::cout << "<ortho_e_1 | ortho_e_1> = "
 	    << basis.project(ortho_e_1, ortho_e_1) << std::endl;

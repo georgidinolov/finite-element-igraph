@@ -341,6 +341,29 @@ operator=(const BivariateGaussianKernelElement& rhs)
   return *this;
 }
 
+double BivariateGaussianKernelElement::
+operator()(const gsl_vector* input) const
+{
+  return GaussianKernelElement::operator()(input);
+}
+
+double BivariateGaussianKernelElement::norm() const
+{
+  return GaussianKernelElement::norm();
+}
+
+double BivariateGaussianKernelElement::
+first_derivative(const gsl_vector* input,
+		 long int coord_index) const
+{
+  return GaussianKernelElement::first_derivative(input,coord_index);
+}
+
+double BivariateGaussianKernelElement::get_dx() const
+{
+  return GaussianKernelElement::get_dx();
+}
+
 void BivariateGaussianKernelElement::set_function_grid()
 {
   auto t1 = std::chrono::high_resolution_clock::now();
