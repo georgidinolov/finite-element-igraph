@@ -24,10 +24,21 @@ public:
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const =0;
   virtual double get_dx() const=0;
-  virtual const gsl_matrix* get_function_grid() const=0;
 };
 
 // ============== BIVARIATE ELEMENT INTERFACE CLASS =============
+
+// Abstract class implementation of function calls appropriate for a
+// bivariate basis element, such as:
+// a matrix containing the function values at node points. 
+class BivariateElement
+{
+public:
+  BivariateElement() {};
+  virtual ~BivariateElement() =0;
+
+  virtual const gsl_matrix* get_function_grid() const=0;
+}
 
 // ============== LINEAR COMBINATION ELEMENT =====================
 class LinearCombinationElement
