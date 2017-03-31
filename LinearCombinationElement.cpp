@@ -6,9 +6,9 @@
 #include <iostream>
 
 // ============== LINEAR COMBINATION ELEMENT =====================
-LinearCombinationElement::
-LinearCombinationElement(const std::vector<const BasisElement*> elements,
-			 const std::vector<double>& coefficients)
+BivariateLinearCombinationElement::
+BivariateLinearCombinationElement(const std::vector<const BivariateElement*> elements,
+				  const std::vector<double>& coefficients)
   : elements_(elements),
     coefficients_(coefficients),
     dx_(elements[0]->get_dx()),
@@ -24,8 +24,8 @@ LinearCombinationElement(const std::vector<const BasisElement*> elements,
   set_function_grids();
 }
 
-LinearCombinationElement::
-LinearCombinationElement(const LinearCombinationElement& element)
+BivariateLinearCombinationElement::
+BivariateLinearCombinationElement(const BivariateLinearCombinationElement& element)
   : elements_(element.elements_),
     coefficients_(element.coefficients_),
     dx_(element.elements_[0]->get_dx()),
@@ -39,12 +39,12 @@ LinearCombinationElement(const LinearCombinationElement& element)
   gsl_matrix_memcpy(function_grid_, element.function_grid_);
 }
 
-LinearCombinationElement::~LinearCombinationElement()
+BivariateLinearCombinationElement::~BivariateLinearCombinationElement()
 {
   gsl_matrix_free(function_grid_);
 }
 
-double LinearCombinationElement::
+double BivariateLinearCombinationElement::
 operator()(const gsl_vector* input) const
 {
   double out = 0;
@@ -54,7 +54,7 @@ operator()(const gsl_vector* input) const
   return out;
 }
 
-double LinearCombinationElement::norm() const
+double BivariateLinearCombinationElement::norm() const
 {
   double integral = 0;
   for (unsigned i=0; i<elements_.size(); ++i) {
@@ -64,7 +64,7 @@ double LinearCombinationElement::norm() const
   return integral;
 }
 
-double LinearCombinationElement::
+double BivariateLinearCombinationElement::
 first_derivative(const gsl_vector* input,
 		 long int coord_index) const
 {
@@ -77,18 +77,18 @@ first_derivative(const gsl_vector* input,
   return deriv;
 }
 
-const std::vector<const BasisElement*> LinearCombinationElement::
+const std::vector<const BasisElement*> BivariateLinearCombinationElement::
 get_elements() const
 {
   return elements_;
 }
 
-std::vector<double> LinearCombinationElement::get_coefficients() const
+std::vector<double> BivariateLinearCombinationElement::get_coefficients() const
 {
   return coefficients_;
 }
 
-double LinearCombinationElement::get_coefficient(unsigned i) const
+double BivariateLinearCombinationElement::get_coefficient(unsigned i) const
 {
   if (i < coefficients_.size()) {
     return coefficients_[i];
@@ -98,7 +98,7 @@ double LinearCombinationElement::get_coefficient(unsigned i) const
   }
 }
 
-void LinearCombinationElement::set_function_grids()
+void BivariateLinearCombinationElement::set_function_grids()
 {
 
   auto t1 = std::chrono::high_resolution_clock::now();

@@ -51,15 +51,15 @@ public:
 };
 
 // ============== LINEAR COMBINATION ELEMENT =====================
-class LinearCombinationElement
-  : public BasisElement
+class BivariateLinearCombinationElement
+  : public virtual BivariateElement
 {
 public:
-  LinearCombinationElement(const std::vector<const BasisElement*> elements,
+  BivariateLinearCombinationElement(const std::vector<const BivariateElement*> elements,
 			   const std::vector<double>& coefficients);
-  LinearCombinationElement(const LinearCombinationElement& lin_comb_element);
+  BivariateLinearCombinationElement(const BivariateLinearCombinationElement& lin_comb_element);
 
-  virtual ~LinearCombinationElement();
+  virtual ~BivariateLinearCombinationElement();
   virtual double operator()(const gsl_vector* input) const;
   virtual double norm() const;
   virtual double first_derivative(const gsl_vector* input,
@@ -76,23 +76,13 @@ public:
 private:
   void set_function_grids();
   
-  const std::vector<const BasisElement*> elements_;
+  const std::vector<const BivariateElement*> elements_;
   std::vector<double> coefficients_;
 
   double dx_;
   gsl_matrix * function_grid_;
 };
 
-// class BivariateLinearCombinationElement
-//   : public LinearCombinationElement
-// {
-// public:
-//   BivariateLinearCombinationElement(const std::vector<const BasisElement*> elements,
-// 				    const std::vector<double>& coefficients);
-//   BivariateLinearCombinationElement(const LinearCombinationElement& lin_comb_element);
-  
-//   virtual ~BivariateLinearCombinationElement();
-// }
 
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 class GaussianKernelElement
