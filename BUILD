@@ -29,7 +29,8 @@ cc_library(
 	deps = ["//src/igraph-0.7.1:igraph",
 	        "//src/multivariate-normal:multivariate-normal"],
 	copts = ["-Isrc/igraph-0.7.1/include",
-	      	 "-Isrc/multivariate-normal"],
+	      	 "-Isrc/multivariate-normal",
+		 "-O"],
 	visibility = ["//visibility:public"],
 )
 
@@ -68,5 +69,6 @@ cc_binary(
 	includes = ["BasisElementsTypes.hpp"],
 	deps = [":basis-element-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
-	      	 "-Isrc/multivariate-normal"],
+	      	 "-Isrc/multivariate-normal",
+		 "-O"],
 )

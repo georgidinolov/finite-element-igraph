@@ -32,13 +32,23 @@ public:
 // bivariate basis element, such as:
 // a matrix containing the function values at node points. 
 class BivariateElement
+  : private virtual BasisElement
 {
 public:
   BivariateElement() {};
-  virtual ~BivariateElement() =0;
+  virtual ~BivariateElement() {};
+  inline virtual double operator()(const gsl_vector* input) const
+  { return 0.0; }
+  virtual double norm() const
+  { return 0.0; } 
+  virtual double first_derivative(const gsl_vector* input,
+				  long int coord_index) const
+  { return 0.0; }
+  virtual double get_dx() const
+  { return 0.0; }
 
-  virtual const gsl_matrix* get_function_grid() const=0;
-}
+  virtual const gsl_matrix* get_function_grid() const =0;
+};
 
 // ============== LINEAR COMBINATION ELEMENT =====================
 class LinearCombinationElement
@@ -73,6 +83,17 @@ private:
   gsl_matrix * function_grid_;
 };
 
+// class BivariateLinearCombinationElement
+//   : public LinearCombinationElement
+// {
+// public:
+//   BivariateLinearCombinationElement(const std::vector<const BasisElement*> elements,
+// 				    const std::vector<double>& coefficients);
+//   BivariateLinearCombinationElement(const LinearCombinationElement& lin_comb_element);
+  
+//   virtual ~BivariateLinearCombinationElement();
+// }
+
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 class GaussianKernelElement
   : public BasisElement
@@ -105,8 +126,6 @@ public:
   inline long int get_dimension() const { return dimension_; }
   inline double get_dx() const { return dx_; }
   inline const double get_exponent_power() const { return exponent_power_; }
-  // TODO: THIS NEEDS TO BE IMPLEMENTED
-  inline virtual const gsl_matrix* get_function_grid() const { return 0; }
   const gsl_vector* get_mean_vector() const;
   inline int get_s() const { return s_; }
   inline const gsl_matrix * get_winv() const { return winv_; }
@@ -131,7 +150,8 @@ private:
 };
 
 class BivariateGaussianKernelElement
-  : public GaussianKernelElement
+  : virtual public GaussianKernelElement, 
+    virtual public BivariateElement
 {
 public:
   BivariateGaussianKernelElement();

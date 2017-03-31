@@ -9,6 +9,8 @@
 BasisElement::~BasisElement()
 {}
 
+// ============= BIVARIATE ELEMENT INTERFACE CLASS ===========
+
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 GaussianKernelElement::GaussianKernelElement()
   : dx_(1.0),
