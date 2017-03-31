@@ -121,14 +121,14 @@ void LinearCombinationElement::set_function_grids()
       for (unsigned k=0; k<elements_.size(); ++k) {
 	in = in +
 	  gsl_matrix_get(elements_[k]->get_function_grid(),i,j);
-	in_dx = in_dx +
-	  gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
-	in_dy = in_dy +
-	  gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
+	// in_dx = in_dx +
+	//   gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
+	// in_dy = in_dy +
+	//   gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
       }
       gsl_matrix_set(function_grid_, i,j, in);
-      gsl_matrix_set(deriv_function_grid_dx_, i,j, in_dx);
-      gsl_matrix_set(deriv_function_grid_dy_, i,j, in_dy);
+      // gsl_matrix_set(deriv_function_grid_dx_, i,j, in_dx);
+      // gsl_matrix_set(deriv_function_grid_dy_, i,j, in_dy);
     }
   }
   

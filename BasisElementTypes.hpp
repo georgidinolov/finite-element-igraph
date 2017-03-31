@@ -8,6 +8,7 @@ extern "C" {
 }
 #include "MultivariateNormal.hpp"
 #include <vector>
+#include <iostream>
 
 // NEEDS TO BE UPDATED AS MORE TYPES ARE ADDED
 enum BasisType { linear_combination, gaussian, other};
@@ -22,11 +23,11 @@ public:
   virtual double norm() const =0;
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const =0;
-  virtual const gsl_matrix* get_function_grid() const=0;
-  virtual const gsl_matrix* get_deriv_function_grid_dx() const=0;
-  virtual const gsl_matrix* get_deriv_function_grid_dy() const=0;
   virtual double get_dx() const=0;
+  virtual const gsl_matrix* get_function_grid() const=0;
 };
+
+// ============== BIVARIATE ELEMENT INTERFACE CLASS =============
 
 // ============== LINEAR COMBINATION ELEMENT =====================
 class LinearCombinationElement
@@ -49,7 +50,7 @@ public:
   inline virtual double get_dx() const { return dx_; }
   const std::vector<const BasisElement*> get_elements() const;
   inline virtual const gsl_matrix* get_function_grid() const
-  { return function_grid_; }
+  { return function_grid_; };
   
 private:
   void set_function_grids();
