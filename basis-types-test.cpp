@@ -17,6 +17,11 @@ int main() {
   const BivariateLinearCombinationElement& ortho_e_3 =
     basis.get_orthonormal_element(2);
 
+  const BivariateLinearCombinationElement& ortho_e_100 =
+    basis.get_orthonormal_element(99);
+  const BivariateLinearCombinationElement& ortho_e_99 =
+    basis.get_orthonormal_element(98);
+
   std::cout << "<ortho_e_1 | ortho_e_1> = "
 	    << basis.project(ortho_e_1, ortho_e_1) << std::endl;
   
@@ -34,6 +39,9 @@ int main() {
 
   std::cout << "<ortho_e_3 | ortho_e_3> = "
 	    << basis.project(ortho_e_3, ortho_e_3) << std::endl;
+
+  std::cout << "<ortho_e_99 | ortho_e_100> = "
+	    << basis.project(ortho_e_99, ortho_e_100) << std::endl;
   
   
   // const igraph_matrix_t& mass_matrix = basis.get_mass_matrix();

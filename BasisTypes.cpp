@@ -29,10 +29,10 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
   set_basis_functions(rho,sigma,power,std_dev_factor);
 
   // second create the orthonormal list of elements
-  set_orthonormal_functions();
+  set_orthonormal_functions_stable();
 
-   //
-  set_mass_matrix();
+  // //
+  // set_mass_matrix();
 
   // //
   // set_system_matrices();
@@ -135,7 +135,6 @@ double BivariateGaussianKernelBasis::
 project(const BivariateGaussianKernelElement& elem_1,
 	const BivariateGaussianKernelElement& elem_2) const
 {
-  std::cout << "Projecting bivariate Gaussian kernel elements" << std::endl;
   int N = 1.0/dx_;
   int dimension = 2;
 
@@ -395,11 +394,12 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions()
 // Performing Gram-Schmidt Orthogonalization
 void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
 {
-  std::cout << "IN set_orthonormal_functions" << std::endl;
+  std::cout << "IN set_orthonormal_functions_stable" << std::endl;
   std::cout << "Number basis elements = " << basis_functions_.size()
 	    << std::endl;
 
   // initializing inner product matrix
+  std::cout << "constructing inner_product_matrix_" << std::endl;
   gsl_matrix_free(inner_product_matrix_);
   inner_product_matrix_ = gsl_matrix_alloc(basis_functions_.size(),
 					   basis_functions_.size());
@@ -411,10 +411,6 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
   			     basis_functions_[j]));
       gsl_matrix_set(inner_product_matrix_, j, i,
   		     gsl_matrix_get(inner_product_matrix_,i,j));
-      
-      std::cout << "projection(" << i << "," << j << ") = "
-  		<< gsl_matrix_get(inner_product_matrix_,i,j)
-  		<< std::endl;
     }
   }
   
@@ -428,31 +424,36 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
       std::vector<const BivariateElement*> elements =
 	std::vector<const BivariateElement*> {&basis_functions_[i]};
 
-      orthonormal_functions_.push_back(BivariateLinearCombinationElement(elements,
-								coefficients));
+      BivariateLinearCombinationElement current_orthonormal_element =
+	BivariateLinearCombinationElement(elements,
+					  coefficients);
+
+      orthonormal_functions_.push_back(current_orthonormal_element);
     } else {
       std::cout << "(" << i << ")" << std::endl;
-      
       std::vector<double> coefficients(i+1, 0.0);
-      std::vector<const BivariateElement*> elements(0);
+      std::vector<const BivariateElement*> elements(i+1);
+
+      for (unsigned j=0; j<i+1; ++j) {
+	elements[j] = &basis_functions_[j];
+      }
       coefficients[i] = 1.0;
+      double projection = 0.0;
+
+      BivariateLinearCombinationElement current_orthonormal_element =
+	BivariateLinearCombinationElement(elements,
+					  coefficients);
 
       for (unsigned j=0; j<i; ++j) {
-	elements.push_back(&basis_functions_[j]);
-	double projection = 0;
+	projection = project(current_orthonormal_element,
+			     orthonormal_functions_[j]);
 
 	for (unsigned k=0; k<j+1; ++k) {
-	  projection = projection +
-	    gsl_matrix_get(inner_product_matrix_, i, k) *
+	  coefficients[k] = coefficients[k] - projection*
 	    orthonormal_functions_[j].get_coefficient(k);
 	}
-
-	for (unsigned k=0; k<j+1; ++k) {
-	  coefficients[k] = coefficients[k] -
-	    projection * orthonormal_functions_[j].get_coefficient(k);
-	}
+	current_orthonormal_element.set_coefficients(coefficients);
       }
-      elements.push_back(&basis_functions_[i]);
 
       double current_norm = 0;
       for (unsigned j=0; j < i+1; ++j) {
@@ -467,8 +468,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
       for (unsigned k=0; k<i+1; ++k) {
 	coefficients[k] = coefficients[k]/current_norm;
       }
-      orthonormal_functions_.push_back(BivariateLinearCombinationElement(elements,
-									 coefficients));
+      current_orthonormal_element.set_coefficients(coefficients);
+      orthonormal_functions_.push_back(current_orthonormal_element);
     }
   }
 }

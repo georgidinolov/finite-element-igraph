@@ -36,7 +36,6 @@ class BivariateElement
 {
 public:
   BivariateElement() {};
-
   virtual const gsl_matrix* get_function_grid() const =0;
 };
 
@@ -55,9 +54,11 @@ public:
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
 
-    
+  
   double get_coefficient(unsigned i) const;
-  std::vector<double> get_coefficients() const;
+  const std::vector<double>& get_coefficients() const;
+  void set_coefficients(const std::vector<double>& new_coefs);
+  
   inline virtual double get_dx() const { return dx_; }
   const std::vector<const BivariateElement*> get_elements() const;
   inline virtual const gsl_matrix* get_function_grid() const

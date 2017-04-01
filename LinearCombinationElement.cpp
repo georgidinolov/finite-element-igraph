@@ -83,9 +83,16 @@ get_elements() const
   return elements_;
 }
 
-std::vector<double> BivariateLinearCombinationElement::get_coefficients() const
+const std::vector<double>& BivariateLinearCombinationElement::get_coefficients() const
 {
   return coefficients_;
+}
+
+void BivariateLinearCombinationElement::
+set_coefficients(const std::vector<double>& new_coefs)
+{
+  coefficients_ = new_coefs;
+  set_function_grids();
 }
 
 double BivariateLinearCombinationElement::get_coefficient(unsigned i) const
@@ -100,40 +107,38 @@ double BivariateLinearCombinationElement::get_coefficient(unsigned i) const
 
 void BivariateLinearCombinationElement::set_function_grids()
 {
-
-  auto t1 = std::chrono::high_resolution_clock::now();
   double dx = get_dx();
   double in = 0;
   double in_dx = 0;
   double in_dy = 0;
 
-  std::cout << "1/dx = " << 1/get_dx() << std::endl;
-  std::cout << "size_1 = "
-	    << elements_[0]->get_function_grid()->size1
-	    << std::endl;
-  std::cout << "size_2 = "
-	    << elements_[0]->get_function_grid()->size2
-	    << std::endl;
-  
-  for (int i=0; i<1/dx; ++i) {
-    for (int j=0; j<1/dx; ++j) {
-      in = 0;
-      for (unsigned k=0; k<elements_.size(); ++k) {
-	in = in + coefficients_[k]*
-	  gsl_matrix_get(elements_[k]->get_function_grid(),i,j);
-	// in_dx = in_dx + coefficients_[k]*
-	//   gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
-	// in_dy = in_dy + coefficients_[k]*
-	//   gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
-      }
-      gsl_matrix_set(function_grid_, i,j, in);
-      // gsl_matrix_set(deriv_function_grid_dx_, i,j, in_dx);
-      // gsl_matrix_set(deriv_function_grid_dy_, i,j, in_dy);
+  gsl_matrix_memcpy(function_grid_, elements_[0]->get_function_grid());
+  gsl_matrix_scale(function_grid_, coefficients_[0]);
+
+  for (unsigned k=1; k<elements_.size(); ++k) {
+    if ( std::abs(coefficients_[k]) > 1e-16) {
+      gsl_matrix_scale(function_grid_, 1.0/coefficients_[k]);
+      gsl_matrix_add(function_grid_, elements_[k]->get_function_grid());
+      gsl_matrix_scale(function_grid_, coefficients_[k]);
     }
   }
-  
-  auto t2 = std::chrono::high_resolution_clock::now();
-  std::cout << "duration = "
-	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-    	    << " milliseconds\n";
+
+  // for (int i=0; i<1/get_dx(); ++i) {
+  //   for (int j=0; j<1/get_dx(); ++j) {
+  //     in = 0;
+      
+  //     for (unsigned k=0; k<elements_.size(); ++k) {
+  // 	in = in + coefficients_[k]*
+  // 	  gsl_matrix_get(elements_[k]->get_function_grid(),i,j);
+  // 	// in_dx = in_dx + coefficients_[k]*
+  // 	//   gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
+  // 	// in_dy = in_dy + coefficients_[k]*
+  // 	//   gsl_matrix_get(elements_[k]->get_deriv_function_grid_dx(),i,j);
+  //     }
+  //     gsl_matrix_set(function_grid_, i,j, in);
+  //     // gsl_matrix_set(deriv_function_grid_dx_, i,j, in_dx);
+  //     // gsl_matrix_set(deriv_function_grid_dy_, i,j, in_dy);
+  //   }
+  // }
+
 }
