@@ -68,6 +68,8 @@ private:
 			   double std_dev_factor);
   
   void set_orthonormal_functions();
+  // TODO: NEEDS TO BE IMPLEMENTED !!
+  void set_orthonormal_functions_stable();
   void set_mass_matrix();
   void set_system_matrices();
   
