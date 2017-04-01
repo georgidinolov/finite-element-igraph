@@ -1,4 +1,6 @@
+#include <algorithm>
 #include "BasisTypes.hpp"
+#include <fstream>
 #include <iostream>
 #include <vector>
 
@@ -22,6 +24,11 @@ int main() {
   const BivariateLinearCombinationElement& ortho_e_99 =
     basis.get_orthonormal_element(98);
 
+  const BivariateLinearCombinationElement& last_ortho_elem =
+    basis.get_orthonormal_element(basis.
+				  get_orthonormal_elements().
+				  size()-1);
+
   std::cout << "<ortho_e_1 | ortho_e_1> = "
 	    << basis.project(ortho_e_1, ortho_e_1) << std::endl;
   
@@ -42,8 +49,41 @@ int main() {
 
   std::cout << "<ortho_e_99 | ortho_e_100> = "
 	    << basis.project(ortho_e_99, ortho_e_100) << std::endl;
+
+  // OUTPUTTING FUNCTION GRID START
+  int N = 1/dx;
+  double x = 0.0;
+  double y = 0.0;
+  double min_out = 0;
+  double max_out = 0;
   
+  gsl_matrix_minmax(ortho_e_2.get_function_grid(), &min_out, &max_out);
+  std::cout << "min_out = " << min_out << "\n";
+  std::cout << "max_out = " << max_out << std::endl;
+  std::vector<double> minmax = std::vector<double> {std::abs(min_out),
+						    std::abs(max_out)};
+  double abs_max = *std::max_element(minmax.begin(),
+				     minmax.end());
+  std::ofstream output_file;
+  output_file.open("orthonormal-element.csv");
+
+  // header
+  output_file << "x, y, function.val\n";
   
+  for ( unsigned i=0; i<N; ++i) {
+    x = dx*i;
+    for (unsigned j=0; j<N; ++j) {
+      y = dx*j;
+
+      output_file << x << ","
+		  << y << ","
+		  << (gsl_matrix_get(ortho_e_2.get_function_grid(),
+				     i, j) - min_out) / (max_out-min_out) << "\n";
+    }
+  }
+  output_file.close();
+  // OUTPUTTING FUNCTION GRID END
+
   // const igraph_matrix_t& mass_matrix = basis.get_mass_matrix();
   // std::cout << &mass_matrix << std::endl;
   // std::cout << igraph_matrix_e(&mass_matrix, 0, 0) << " ";

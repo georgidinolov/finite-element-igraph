@@ -73,6 +73,12 @@ get_orthonormal_element(unsigned i) const
   }
 }
 
+const std::vector<BivariateLinearCombinationElement>& BivariateGaussianKernelBasis::
+get_orthonormal_elements() const
+{
+  return orthonormal_functions_;
+}
+
 const gsl_matrix* BivariateGaussianKernelBasis::
 get_system_matrix_dx_dx() const
 {

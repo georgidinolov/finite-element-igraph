@@ -39,6 +39,8 @@ public:
   ~BivariateGaussianKernelBasis();
 
   virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const;
+  virtual const std::vector<BivariateLinearCombinationElement>&
+  get_orthonormal_elements() const;
   
   virtual const gsl_matrix* get_mass_matrix() const;
   virtual const gsl_matrix* get_system_matrix_dx_dx() const;
