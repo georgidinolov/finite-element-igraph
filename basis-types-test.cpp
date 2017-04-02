@@ -51,13 +51,16 @@ int main() {
 	    << basis.project(ortho_e_99, ortho_e_100) << std::endl;
 
   // OUTPUTTING FUNCTION GRID START
+  const BivariateElement& printed_elem = basis.get_orthonormal_element(50);
+  std::cout << "norm of printed_elem = " << printed_elem.norm() << std::endl;
+
   int N = 1/dx;
   double x = 0.0;
   double y = 0.0;
   double min_out = 0;
   double max_out = 0;
   
-  gsl_matrix_minmax(ortho_e_1.get_deriv_function_grid_dx(), &min_out, &max_out);
+  gsl_matrix_minmax(printed_elem.get_deriv_function_grid_dy(), &min_out, &max_out);
   std::cout << "min_out = " << min_out << "\n";
   std::cout << "max_out = " << max_out << std::endl;
   std::vector<double> minmax = std::vector<double> {std::abs(min_out),
@@ -77,7 +80,7 @@ int main() {
 
       output_file << x << ","
 		  << y << ","
-		  << (gsl_matrix_get(ortho_e_1.get_deriv_function_grid_dx(),
+		  << (gsl_matrix_get(printed_elem.get_deriv_function_grid_dy(),
 				     i, j) - min_out) / (max_out-min_out) << "\n";
     }
   }

@@ -38,6 +38,7 @@ public:
 			       double std_dev_factor);
   ~BivariateGaussianKernelBasis();
 
+  virtual const BivariateGaussianKernelElement& get_basis_element(unsigned i) const;
   virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const;
   virtual const std::vector<BivariateLinearCombinationElement>&
   get_orthonormal_elements() const;

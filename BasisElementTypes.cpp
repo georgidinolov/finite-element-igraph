@@ -473,8 +473,7 @@ void BivariateGaussianKernelElement::set_function_grids()
   for (int i=0; i<1/dx; ++i) {
     x = i*dx;
 
-    mollifier_x = pow(x, get_exponent_power())*
-      pow((1.0-x), get_exponent_power());
+    mollifier_x = pow(x, alpha)*pow((1.0-x), alpha);
     
     for (int j=0; j<1/dx; ++j) {
       y = j*dx;
@@ -482,8 +481,7 @@ void BivariateGaussianKernelElement::set_function_grids()
       gsl_vector_set(input, 0, x);
       gsl_vector_set(input, 1, y);
 
-      mollifier_y = pow(y, get_exponent_power())*
-	pow((1.0-y), get_exponent_power());
+      mollifier_y = pow(y, alpha)*pow((1.0-y), alpha);
 
       gsl_vector_sub(input, get_mean_vector());
       gsl_blas_dsymv(CblasUpper,1.0,get_winv(),input,0.0,ym);

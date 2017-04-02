@@ -46,6 +46,8 @@ BivariateLinearCombinationElement(const BivariateLinearCombinationElement& eleme
 	      << std::endl;
   }
   gsl_matrix_memcpy(function_grid_, element.function_grid_);
+  gsl_matrix_memcpy(deriv_function_grid_dx_, element.deriv_function_grid_dx_);
+  gsl_matrix_memcpy(deriv_function_grid_dy_, element.deriv_function_grid_dy_);
 }
 
 BivariateLinearCombinationElement::~BivariateLinearCombinationElement()
@@ -68,10 +70,15 @@ operator()(const gsl_vector* input) const
 double BivariateLinearCombinationElement::norm() const
 {
   double integral = 0;
-  for (unsigned i=0; i<elements_.size(); ++i) {
-    const BivariateElement* curr_element = elements_[i];
-    integral = integral + coefficients_[i]*(curr_element->norm());
+  for (int i=0; i<1/get_dx(); ++i) {
+    for (int j=0; j<1/get_dx(); ++j) {
+      integral = integral + 
+	std::pow(gsl_matrix_get(get_function_grid(), i,j), 2);
+    }
   }
+
+  integral = std::sqrt(integral * std::pow(get_dx(), 2));
+
   return integral;
 }
 
