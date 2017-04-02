@@ -17,7 +17,8 @@ public:
 		  double rho,
 		  double x_0,
 		  double y_0,
-		  double t);
+		  double t,
+		  double dx);
   ~BivariateSolver();
 
   inline double get_t() const
@@ -42,6 +43,7 @@ private:
   const BivariateBasis& basis_;
   BivariateSolverClassical small_t_solution_;
   double t_;
+  double dx_;
 
   // gsl_vector * xi_eta_input_;
   // gsl_vector * initial_condition_xi_eta_;

@@ -20,6 +20,7 @@ public:
   virtual const gsl_matrix* get_system_matrix_dy_dx() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dy() const =0;
   virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const=0;
+  virtual const std::vector<BivariateLinearCombinationElement>& get_orthonormal_elements() const=0;
 
   virtual double project(const BivariateElement& elem_1,
 			 const BivariateElement& elem_2) const =0;

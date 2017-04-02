@@ -201,8 +201,15 @@ public:
   double get_t() const;
   inline virtual double get_dx() const
   { return 0.0; }
+
   virtual const gsl_matrix* get_function_grid() const;
   virtual void set_function_grid(double dx);
+
+  // TODO(georgid): THIS NEEDS TO BE IMPLEMETED
+  inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
+  { return NULL; }
+  virtual const gsl_matrix* get_deriv_function_grid_dy() const 
+  { return NULL; }
   
 private:
   double sigma_x_;

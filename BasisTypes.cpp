@@ -115,21 +115,9 @@ project(const BivariateElement& elem_1,
 	const BivariateElement& elem_2) const
 {
   long int N = 1.0/dx_;
-  int dimension = 2;
-
   double integral = 0;
-  gsl_vector* input = gsl_vector_alloc(dimension);
-  double x;
-  double y;
-
   for (long int i=0; i<N; ++i) {
-    x = i*dx_;
-    gsl_vector_set(input, 0, x);
-
     for (long int j=0; j<N; ++j) {
-      y = j*dx_;
-      gsl_vector_set(input, 1, y);
-
       // integral = integral + elem_1(input)*elem_2(input);
       integral = integral + 
 	gsl_matrix_get(elem_1.get_function_grid(), i,j)*
@@ -137,8 +125,6 @@ project(const BivariateElement& elem_1,
     }
   }
   integral = integral * std::pow(dx_, 2);
-  
-  gsl_vector_free(input);
   return integral;
 }
 
