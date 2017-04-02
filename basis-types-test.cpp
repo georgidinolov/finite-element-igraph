@@ -5,7 +5,7 @@
 #include <vector>
 
 int main() {
-  double dx = 2e-3;
+  double dx = 5e-3;
   BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
 								    0.9,
 								    0.3,
@@ -57,7 +57,7 @@ int main() {
   double min_out = 0;
   double max_out = 0;
   
-  gsl_matrix_minmax(ortho_e_2.get_function_grid(), &min_out, &max_out);
+  gsl_matrix_minmax(ortho_e_1.get_deriv_function_grid_dx(), &min_out, &max_out);
   std::cout << "min_out = " << min_out << "\n";
   std::cout << "max_out = " << max_out << std::endl;
   std::vector<double> minmax = std::vector<double> {std::abs(min_out),
@@ -77,7 +77,7 @@ int main() {
 
       output_file << x << ","
 		  << y << ","
-		  << (gsl_matrix_get(ortho_e_2.get_function_grid(),
+		  << (gsl_matrix_get(ortho_e_1.get_deriv_function_grid_dx(),
 				     i, j) - min_out) / (max_out-min_out) << "\n";
     }
   }

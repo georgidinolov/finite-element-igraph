@@ -54,12 +54,19 @@ public:
   // TODO(georgi): THIS NEEDS FASTER, SYMBOLIC IMPLEMENTATION
   virtual double project(const BivariateGaussianKernelElement& g_elem_1,
 			 const BivariateGaussianKernelElement& g_elem_2) const;
-  
-  virtual double project_deriv(const BivariateElement& elem_1,
-			       long int coord_indeex_1, 
-			       const BivariateElement& elem_2,
-			       long int coord_indeex_2) const;
 
+  // coord_indeex_{1,2} = {0,1}, where 0 = dx, 1 = dy
+  // TODO(georgi) : this needs to be done with enumerable elements instead of ints
+  virtual double project_deriv(const BivariateElement& elem_1,
+			       int coord_indeex_1, 
+			       const BivariateElement& elem_2,
+			       int coord_indeex_2) const;
+
+  virtual double project_deriv_analytic(const BivariateElement& elem_1,
+					long int coord_indeex_1, 
+					const BivariateElement& elem_2,
+					long int coord_indeex_2) const;
+  
   
 private:
   double dx_;
@@ -70,10 +77,11 @@ private:
 			   double std_dev_factor);
   
   void set_orthonormal_functions();
-  // TODO: NEEDS TO BE IMPLEMENTED !!
   void set_orthonormal_functions_stable();
   void set_mass_matrix();
+
   void set_system_matrices();
+  void set_system_matrices_stable();
   
   std::vector<BivariateGaussianKernelElement> basis_functions_;
   std::vector<BivariateLinearCombinationElement> orthonormal_functions_;

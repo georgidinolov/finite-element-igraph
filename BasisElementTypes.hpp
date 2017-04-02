@@ -37,6 +37,8 @@ class BivariateElement
 public:
   BivariateElement() {};
   virtual const gsl_matrix* get_function_grid() const =0;
+  virtual const gsl_matrix* get_deriv_function_grid_dx() const =0;
+  virtual const gsl_matrix* get_deriv_function_grid_dy() const =0;
 };
 
 // ============== LINEAR COMBINATION ELEMENT =====================
@@ -61,8 +63,13 @@ public:
   
   inline virtual double get_dx() const { return dx_; }
   const std::vector<const BivariateElement*> get_elements() const;
+
   inline virtual const gsl_matrix* get_function_grid() const
   { return function_grid_; };
+  inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
+  { return deriv_function_grid_dx_; }
+  inline virtual const gsl_matrix* get_deriv_function_grid_dy() const
+  { return deriv_function_grid_dy_; }
   
 private:
   void set_function_grids();
@@ -72,6 +79,8 @@ private:
 
   double dx_;
   gsl_matrix * function_grid_;
+  gsl_matrix * deriv_function_grid_dx_;
+  gsl_matrix * deriv_function_grid_dy_;
 };
 
 

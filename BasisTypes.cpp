@@ -31,11 +31,11 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
   // second create the orthonormal list of elements
   set_orthonormal_functions_stable();
 
-  // //
-  // set_mass_matrix();
+  //
+  set_mass_matrix();
 
-  // //
-  // set_system_matrices();
+  //
+  set_system_matrices();
     
   // igraph_matrix_init(&system_matrix_, 2, 2);
   // igraph_matrix_fill(&system_matrix_, 1);
@@ -171,10 +171,10 @@ project(const BivariateGaussianKernelElement& elem_1,
 }
 
 double BivariateGaussianKernelBasis::
-project_deriv(const BivariateElement& elem_1,
-	      long int coord_indeex_1, 
-	      const BivariateElement& elem_2,
-	      long int coord_indeex_2) const
+project_deriv_analytic(const BivariateElement& elem_1,
+		       long int coord_indeex_1, 
+		       const BivariateElement& elem_2,
+		       long int coord_indeex_2) const
 {
   int N = 1.0/dx_;
   int dimension = 2;
@@ -200,6 +200,46 @@ project_deriv(const BivariateElement& elem_1,
   integral = integral * std::pow(dx_, 2);
   
   gsl_vector_free(input);
+  return integral;
+}
+
+double BivariateGaussianKernelBasis::
+project_deriv(const BivariateElement& elem_1,
+	      int coord_indeex_1, 
+	      const BivariateElement& elem_2,
+	      int coord_indeex_2) const
+{
+  int N = 1.0/dx_;
+  int dimension = 2;
+
+  const gsl_matrix* elem_1_deriv_mat = NULL;
+  const gsl_matrix* elem_2_deriv_mat = NULL;
+
+  if (coord_indeex_1 == 0) {
+    elem_1_deriv_mat = elem_1.get_deriv_function_grid_dx();
+  } else if (coord_indeex_1 == 1) {
+    elem_1_deriv_mat = elem_1.get_deriv_function_grid_dy();
+  } else {
+    std::cout << "WRONG COORD INPUT!" << std::endl;
+  }
+
+  if (coord_indeex_2 == 0) {
+    elem_2_deriv_mat = elem_2.get_deriv_function_grid_dx();
+  } else if (coord_indeex_2 == 1) {
+    elem_2_deriv_mat = elem_2.get_deriv_function_grid_dy();
+  } else {
+    std::cout << "WRONG COORD INPUT!" << std::endl;
+  }
+
+  double integral = 0;
+  for (int i=0; i<N; ++i) {
+    for (int j=0; j<N; ++j) {
+      integral = integral +
+	gsl_matrix_get(elem_1_deriv_mat, i, j)*
+	gsl_matrix_get(elem_2_deriv_mat, i, j);
+    }
+  }
+  integral = integral * std::pow(dx_, 2);
   return integral;
 }
 
@@ -686,4 +726,148 @@ void BivariateGaussianKernelBasis::set_system_matrices()
      }
      std::cout << std::endl;
    }
+}
+
+
+void BivariateGaussianKernelBasis::set_system_matrices_stable()
+{
+  gsl_matrix_free(deriv_inner_product_matrix_dx_dx_);
+  deriv_inner_product_matrix_dx_dx_ =
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+
+  gsl_matrix_free(deriv_inner_product_matrix_dx_dy_);
+  deriv_inner_product_matrix_dx_dy_ = 
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+  
+  gsl_matrix_free(deriv_inner_product_matrix_dy_dx_);
+  deriv_inner_product_matrix_dy_dx_ = 
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+  
+  gsl_matrix_free(deriv_inner_product_matrix_dy_dy_);
+  deriv_inner_product_matrix_dy_dy_ =
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+  
+  for (unsigned i=0; i<basis_functions_.size(); ++i) {
+    for (unsigned j=i; j<basis_functions_.size(); ++j) {
+      gsl_matrix_set(deriv_inner_product_matrix_dx_dx_,
+		     i, j,
+		     project_deriv(basis_functions_[i], 0,
+				   basis_functions_[j], 0));
+      gsl_matrix_set(deriv_inner_product_matrix_dx_dx_,
+		     j, i,
+		     gsl_matrix_get(deriv_inner_product_matrix_dx_dx_,
+				    i,j));
+      
+      gsl_matrix_set(deriv_inner_product_matrix_dx_dy_,
+		     i, j,
+		     project_deriv(basis_functions_[i], 0,
+				       basis_functions_[j], 1));
+      gsl_matrix_set(deriv_inner_product_matrix_dx_dy_,
+		     j, i,
+		     gsl_matrix_get(deriv_inner_product_matrix_dx_dy_,
+				    i,j));
+      
+      
+      gsl_matrix_set(deriv_inner_product_matrix_dy_dx_,
+		     i, j,
+		     project_deriv(basis_functions_[i], 0,
+				   basis_functions_[j], 1));
+      gsl_matrix_set(deriv_inner_product_matrix_dy_dx_,
+		     j, i,
+		     gsl_matrix_get(deriv_inner_product_matrix_dy_dx_,
+				    i,j));
+      
+      gsl_matrix_set(deriv_inner_product_matrix_dy_dy_,
+		     i, j,
+		     project_deriv(basis_functions_[i], 0,
+				   basis_functions_[j], 1));
+      gsl_matrix_set(deriv_inner_product_matrix_dy_dy_,
+		     j, i,
+		     gsl_matrix_get(deriv_inner_product_matrix_dy_dy_,
+				    i,j));
+      
+      std::cout << "deriv_inner_product_matrix_dx_dx_[" << i
+		<< "," << j << "] = "
+		<< gsl_matrix_get(deriv_inner_product_matrix_dx_dx_,
+				  i,j)
+		<< " ";
+    }
+    std::cout << std::endl;
+  }
+  
+  gsl_matrix_free(system_matrix_dx_dx_);
+  system_matrix_dx_dx_ = 
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+  
+  gsl_matrix_free(system_matrix_dx_dy_);
+  system_matrix_dx_dy_ =
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+  
+  gsl_matrix_free(system_matrix_dy_dx_);
+  system_matrix_dy_dx_ =
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+  
+  gsl_matrix_free(system_matrix_dy_dy_);
+  system_matrix_dy_dy_ = 
+    gsl_matrix_alloc(basis_functions_.size(),
+		     basis_functions_.size());
+
+  for (unsigned i=0; i<orthonormal_functions_.size(); ++i) {
+    for (unsigned j=i; j<orthonormal_functions_.size(); ++j) {
+
+      // system_matrix_dx_dx_
+      double entry = project_deriv(orthonormal_functions_[i], 0,
+				   orthonormal_functions_[j], 0);
+      gsl_matrix_set(system_matrix_dx_dx_,
+		     i, j,
+		     entry);
+      gsl_matrix_set(system_matrix_dx_dx_,
+		     j, i,
+		     entry);
+      
+      // system_matrix_dx_dy_
+      entry = project_deriv(orthonormal_functions_[i], 0,
+			    orthonormal_functions_[j], 1);
+      gsl_matrix_set(system_matrix_dx_dy_,
+		     i, j,
+		     entry);
+      gsl_matrix_set(system_matrix_dx_dy_,
+		     j, i,
+		     entry);
+      
+      // system_matrix_dy_dx_
+      entry = project_deriv(orthonormal_functions_[i], 1,
+			    orthonormal_functions_[j], 0);
+      gsl_matrix_set(system_matrix_dy_dx_,
+		     i, j,
+		     entry);
+      gsl_matrix_set(system_matrix_dy_dx_,
+		     j, i,
+		     entry);
+      
+      // system_matrix_dy_dy_
+      entry = project_deriv(orthonormal_functions_[i], 1,
+			    orthonormal_functions_[j], 1);
+      gsl_matrix_set(system_matrix_dy_dy_,
+		     i, j,
+		     entry);
+      gsl_matrix_set(system_matrix_dy_dy_,
+		     j, i,
+		     entry);
+      
+      std::cout << "system_matrix_dx_dx_[" << i
+		<< "," << j << "] = "
+		<< gsl_matrix_get(system_matrix_dx_dx_,
+				  i,j)
+		<< " ";
+    }
+    std::cout << std::endl;
+  }
 }
