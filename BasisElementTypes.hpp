@@ -46,7 +46,7 @@ class BivariateLinearCombinationElement
   : public virtual BivariateElement
 {
 public:
-  BivariateLinearCombinationElement(const std::vector<const BivariateElement*> elements,
+  BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
 			   const std::vector<double>& coefficients);
   BivariateLinearCombinationElement(const BivariateLinearCombinationElement& lin_comb_element);
 
@@ -74,7 +74,7 @@ public:
 private:
   void set_function_grids();
   
-  const std::vector<const BivariateElement*> elements_;
+  std::vector<const BivariateElement*> elements_;
   std::vector<double> coefficients_;
 
   double dx_;

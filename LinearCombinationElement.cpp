@@ -7,7 +7,7 @@
 
 // ============== LINEAR COMBINATION ELEMENT =====================
 BivariateLinearCombinationElement::
-BivariateLinearCombinationElement(const std::vector<const BivariateElement*> elements,
+BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
 				  const std::vector<double>& coefficients)
   : elements_(elements),
     coefficients_(coefficients),
@@ -142,7 +142,7 @@ void BivariateLinearCombinationElement::set_function_grids()
   gsl_matrix_scale(deriv_function_grid_dy_, coefficients_[0]);
 
   for (unsigned k=1; k<elements_.size(); ++k) {
-    if ( std::abs(coefficients_[k]) > 1e-16) {
+    if ( std::abs(coefficients_[k]) > 1e-32) {
       gsl_matrix_scale(function_grid_, 1.0/coefficients_[k]);
       gsl_matrix_add(function_grid_, elements_[k]->get_function_grid());
       gsl_matrix_scale(function_grid_, coefficients_[k]);

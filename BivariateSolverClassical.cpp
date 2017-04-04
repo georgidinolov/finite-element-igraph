@@ -26,6 +26,9 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
+  std::cout << "sigma_x_ = " << sigma_x_ << "\n"
+	    << "sigma_y_ = " << sigma_y_ << "\n"
+	    << "rho_ = " << rho_ << std::endl;
   
   double cc = std::sin(M_PI/4.0);
 

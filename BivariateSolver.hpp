@@ -25,12 +25,15 @@ public:
   {
     return t_;
   }
-  inline void set_t(double t)
-  {
-    t_ = t;
-  }
+  // need to reset t_ AND solution_coefs_!
+  void set_t(double t);
+  // need to reset IC_coefs_, mass_matrix_, stiffness_matrix_, eval_,
+  // evec_, solution_coefs_
+  void set_diffusion_parameters(double sigma_x,
+				double sigma_y,
+				double rho);
+    
   
-  // IMPLEMENT
   virtual double operator()(const gsl_vector* input) const;
   
 private:
@@ -44,7 +47,21 @@ private:
   BivariateSolverClassical small_t_solution_;
   double t_;
   double dx_;
+  gsl_vector* IC_coefs_;
+  gsl_matrix* mass_matrix_;
+  gsl_matrix* stiffness_matrix_;
+  gsl_vector* eval_;
+  gsl_matrix* evec_;
+  gsl_vector* solution_coefs_;
 
+  void set_IC_coefs();
+  // requires sigma_x_, sigma_y_, rho_;
+  void set_mass_and_stiffness_matrices();
+  // requires mass_matrix_ and stiffness_matrix_;
+  void set_eval_and_evec();
+  // requires t_, eval_, evec_;
+  void set_solution_coefs();
+  
   // gsl_vector * xi_eta_input_;
   // gsl_vector * initial_condition_xi_eta_;
   // gsl_matrix * Rotation_matrix_;

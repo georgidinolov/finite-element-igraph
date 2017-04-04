@@ -133,12 +133,9 @@ project(const BivariateGaussianKernelElement& elem_1,
 	const BivariateGaussianKernelElement& elem_2) const
 {
   int N = 1.0/dx_;
-  int dimension = 2;
 
   double integral = 0;
   gsl_vector* input = gsl_vector_alloc(2);
-  double x;
-  double y;
 
   gsl_matrix * function_grid_matrix = gsl_matrix_alloc(N,N);
   gsl_matrix_memcpy(function_grid_matrix, elem_1.get_function_grid());
@@ -168,7 +165,6 @@ project_deriv_analytic(const BivariateElement& elem_1,
 		       long int coord_indeex_2) const
 {
   int N = 1.0/dx_;
-  int dimension = 2;
 
   double integral = 0;
   gsl_vector* input = gsl_vector_alloc(2);
@@ -201,7 +197,6 @@ project_deriv(const BivariateElement& elem_1,
 	      int coord_indeex_2) const
 {
   int N = 1.0/dx_;
-  int dimension = 2;
 
   const gsl_matrix* elem_1_deriv_mat = NULL;
   const gsl_matrix* elem_2_deriv_mat = NULL;
@@ -436,7 +431,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
 	    << std::endl;
 
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
-    std::cout << "(" << i << ")" << std::endl;
+    std::cout << "(" << i << ") out of "
+	      << basis_functions_.size() << std::endl;
     std::vector<double> coefficients(i+1, 0.0);
     std::vector<const BivariateElement*> elements(i+1);
     
