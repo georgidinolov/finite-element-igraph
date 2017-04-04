@@ -38,8 +38,10 @@ cc_binary(
 	name = "bivariate-solver-test",
 	srcs = ["bivariate-solver-test.cpp"],
 	includes = ["BivariateSolver.hpp"],
-	deps = [":bivariate-solver"],
+	deps = [":bivariate-solver",
+    	        "//src/brownian-motion:2d-brownian-motion"],
 	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/brownian-motion",
 	      	 "-Isrc/multivariate-normal"],
 	visibility = ["//visibility:public"],
 )

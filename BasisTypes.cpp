@@ -430,6 +430,10 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
   std::cout << "Number basis elements = " << basis_functions_.size()
 	    << std::endl;
 
+  // HAVE A MATRIX VIEW HERE ON THE STACK!
+  gsl_matrix* workspace_left = gsl_matrix_alloc(1/get_dx(), 1/get_dx());
+  gsl_matrix* workspace_right = gsl_matrix_alloc(1/get_dx(), 1/get_dx());
+
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
     std::cout << "(" << i << ") out of "
 	      << basis_functions_.size() << std::endl;
@@ -446,10 +450,24 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
       BivariateLinearCombinationElement(elements,
 					coefficients);
     
+    // This is where the work happens:
     for (unsigned j=0; j<i; ++j) {
       projection = project(current_orthonormal_element,
 			   orthonormal_functions_[j]);
+      gsl_matrix_memcpy(workspace_right, 
+			orthonormal_functions_[j].get_function_grid());
+      gsl_matrix_scale(workspace_right, -1.0*projection);
+      gsl_matrix_memcpy(workspace_left, 
+			current_orthonormal_element.get_function_grid());
+      // left workspace is current_orthonormal_element function
+      // grid. Setting it as so.
+      gsl_matrix_add(workspace_left, workspace_right);
+      current_orthonormal_element.set_function_grid(workspace_left);
       
+      
+      // current_orthonormal_element = current_orthonormal_element -
+      // project(current_orthonormal_element,orthonormal_functions_[j])*
+      //         orthonormal_functions_[j]
       for (unsigned k=0; k<j+1; ++k) {
 	coefficients[k] = coefficients[k] - projection*
 	  orthonormal_functions_[j].get_coefficient(k);
@@ -465,6 +483,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
     current_orthonormal_element.set_coefficients(coefficients);
     orthonormal_functions_.push_back(current_orthonormal_element);
   }
+  gsl_matrix_free(workspace_left);
+  gsl_matrix_free(workspace_right);
 }
 
 void BivariateGaussianKernelBasis::set_mass_matrix()

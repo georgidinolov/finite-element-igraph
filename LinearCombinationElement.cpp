@@ -123,6 +123,25 @@ double BivariateLinearCombinationElement::get_coefficient(unsigned i) const
   }
 }
 
+void BivariateLinearCombinationElement::
+set_function_grid(const gsl_matrix* new_function_grid) 
+{
+  gsl_matrix_memcpy(function_grid_, new_function_grid);
+}
+
+void BivariateLinearCombinationElement::
+set_deriv_function_grid_dx(const gsl_matrix* new_deriv_function_grid_dx) 
+{
+  gsl_matrix_memcpy(deriv_function_grid_dx_, new_deriv_function_grid_dx);
+}
+
+void BivariateLinearCombinationElement::
+set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy) 
+{
+  gsl_matrix_memcpy(deriv_function_grid_dy_, new_deriv_function_grid_dy);
+}
+
+
 void BivariateLinearCombinationElement::set_function_grids()
 {
   double dx = get_dx();

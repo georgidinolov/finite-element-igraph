@@ -66,10 +66,24 @@ public:
 
   inline virtual const gsl_matrix* get_function_grid() const
   { return function_grid_; };
+  // WARNING: Call this function ONLY if you are sure the
+  // function_grid_ is in agreement with the elements_ and
+  // coefficients_.
+  virtual void set_function_grid(const gsl_matrix* new_function_grid);
+
   inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
   { return deriv_function_grid_dx_; }
+  // WARNING: Call this function ONLY if you are sure the
+  // deriv_function_grid_dx_ is in agreement with the elements_ and
+  // coefficients_.
+  virtual void set_deriv_function_grid_dx(const gsl_matrix* new_deriv_function_grid_dx);
+
   inline virtual const gsl_matrix* get_deriv_function_grid_dy() const
   { return deriv_function_grid_dy_; }
+  // WARNING: Call this function ONLY if you are sure the
+  // deriv_function_grid_dy_ is in agreement with the elements_ and
+  // coefficients_.
+  virtual void set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy);
   
 private:
   void set_function_grids();
