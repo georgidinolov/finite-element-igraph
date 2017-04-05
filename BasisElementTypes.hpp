@@ -84,6 +84,9 @@ public:
   // deriv_function_grid_dy_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy);
+
+  // sets coefficients and copies the provided function grids
+  virtual void set_coefficients_without_function_grids(const std::vector<double>& cs);
   
 private:
   void set_function_grids();

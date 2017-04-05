@@ -431,8 +431,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
 	    << std::endl;
 
   // HAVE A MATRIX VIEW HERE ON THE STACK!
-  gsl_matrix* workspace_left = gsl_matrix_alloc(1/get_dx(), 1/get_dx());
-  gsl_matrix* workspace_right = gsl_matrix_alloc(1/get_dx(), 1/get_dx());
+  gsl_matrix* workspace_left = gsl_matrix_alloc(1/dx_, 1/dx_);
+  gsl_matrix* workspace_right = gsl_matrix_alloc(1/dx_, 1/dx_);
 
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
     std::cout << "(" << i << ") out of "
@@ -454,6 +454,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
     for (unsigned j=0; j<i; ++j) {
       projection = project(current_orthonormal_element,
 			   orthonormal_functions_[j]);
+
+      // SETTING FUNCTION_GRID_
       gsl_matrix_memcpy(workspace_right, 
 			orthonormal_functions_[j].get_function_grid());
       gsl_matrix_scale(workspace_right, -1.0*projection);
@@ -463,7 +465,28 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
       // grid. Setting it as so.
       gsl_matrix_add(workspace_left, workspace_right);
       current_orthonormal_element.set_function_grid(workspace_left);
-      
+
+      // SETTING DERIV_FUNCTION_GRID_DX_
+      gsl_matrix_memcpy(workspace_right, 
+			orthonormal_functions_[j].get_deriv_function_grid_dx());
+      gsl_matrix_scale(workspace_right, -1.0*projection);
+      gsl_matrix_memcpy(workspace_left, 
+			current_orthonormal_element.get_deriv_function_grid_dx());
+      // left workspace is current_orthonormal_element function
+      // grid. Setting it as so.
+      gsl_matrix_add(workspace_left, workspace_right);
+      current_orthonormal_element.set_deriv_function_grid_dx(workspace_left);
+
+      // SETTING DERIV_FUNCTION_GRID_DY__
+      gsl_matrix_memcpy(workspace_right, 
+			orthonormal_functions_[j].get_deriv_function_grid_dy());
+      gsl_matrix_scale(workspace_right, -1.0*projection);
+      gsl_matrix_memcpy(workspace_left, 
+			current_orthonormal_element.get_deriv_function_grid_dy());
+      // left workspace is current_orthonormal_element function
+      // grid. Setting it as so.
+      gsl_matrix_add(workspace_left, workspace_right);
+      current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
       
       // current_orthonormal_element = current_orthonormal_element -
       // project(current_orthonormal_element,orthonormal_functions_[j])*
@@ -472,7 +495,8 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
 	coefficients[k] = coefficients[k] - projection*
 	  orthonormal_functions_[j].get_coefficient(k);
       }
-      current_orthonormal_element.set_coefficients(coefficients);
+      current_orthonormal_element.
+	set_coefficients_without_function_grids(coefficients);
     }
     
     double current_norm = current_orthonormal_element.norm();
@@ -698,6 +722,7 @@ void BivariateGaussianKernelBasis::set_system_matrices()
 
 void BivariateGaussianKernelBasis::set_system_matrices_stable()
 {
+  std::cout << "setting system matrices" << std::endl;
   gsl_matrix_free(deriv_inner_product_matrix_dx_dx_);
   deriv_inner_product_matrix_dx_dx_ =
     gsl_matrix_alloc(basis_functions_.size(),
@@ -780,13 +805,6 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       gsl_matrix_set(system_matrix_dy_dy_,
 		     j, i,
 		     entry);
-      
-      std::cout << "system_matrix_dx_dx_[" << i
-		<< "," << j << "] = "
-		<< gsl_matrix_get(system_matrix_dx_dx_,
-				  i,j)
-		<< " ";
     }
-    std::cout << std::endl;
   }
 }

@@ -141,6 +141,12 @@ set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy)
   gsl_matrix_memcpy(deriv_function_grid_dy_, new_deriv_function_grid_dy);
 }
 
+void BivariateLinearCombinationElement::
+set_coefficients_without_function_grids(const std::vector<double>& new_coefs)
+{
+  coefficients_ = new_coefs;
+}
+
 
 void BivariateLinearCombinationElement::set_function_grids()
 {
