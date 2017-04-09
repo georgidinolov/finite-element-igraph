@@ -56,10 +56,10 @@ int main() {
   
   BivariateLinearCombinationElement add =
     BivariateLinearCombinationElement(std::vector<const BivariateElement*>
-				      {&kernel_element,
-					  &kernel_element_2,
-					  &kernel_element_3},
-				      std::vector<double> {100, 1, 1});
+  				      {&kernel_element,
+  					  &kernel_element_2,
+  					  &kernel_element_3},
+  				      std::vector<double> {100, 1, 1});
   
   std::cout << kernel_element(input)
   	    << "\n" << std::endl;

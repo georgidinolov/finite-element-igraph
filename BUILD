@@ -27,11 +27,18 @@ cc_library(
 	        "BivariateSolverClassical.cpp"],
 	hdrs = ["BasisElementTypes.hpp"],
 	deps = ["//src/igraph-0.7.1:igraph",
-	        "//src/multivariate-normal:multivariate-normal"],
+	        "//src/multivariate-normal:multivariate-normal",
+		":rmath"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal",
-		 "-O"],
+		 "-O3"],
 	visibility = ["//visibility:public"],
+)
+
+cc_library(
+	name = "rmath",
+	hdrs = ["Rmath.h"],
+	copts = ["-lRmath", "-lm", "-lcmath"],
 )
 
 cc_binary(

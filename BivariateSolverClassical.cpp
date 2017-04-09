@@ -210,7 +210,7 @@ const gsl_matrix* BivariateSolverClassical::get_function_grid() const
 void BivariateSolverClassical::set_function_grid(double dx)
 {
   gsl_matrix_free(function_grid_);
-  function_grid_ = gsl_matrix_alloc(1/dx, 1/dx);
+  function_grid_ = gsl_matrix_alloc(1/dx + 1, 1/dx + 1);
 
   auto t1 = std::chrono::high_resolution_clock::now();
   double out = 0;
@@ -218,11 +218,11 @@ void BivariateSolverClassical::set_function_grid(double dx)
   double x = 0;
   double y = 0;
 
-  for (int i=0; i<1/dx; ++i) {
+  for (int i=0; i<1/dx + 1; ++i) {
     x = i*dx;
     gsl_vector_set(input, 0, x);
 
-    for (int j=0; j<1/dx; ++j) {
+    for (int j=0; j<1/dx + 1; ++j) {
       y = j*dx;
       gsl_vector_set(input, 1, y);
 

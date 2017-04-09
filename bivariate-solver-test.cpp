@@ -22,6 +22,15 @@ int main() {
 				     x_0,
 				     y_0,
 				     t);
+
+  std::cout << "ax = " << BM.get_a() << std::endl;
+  std::cout << "x_T = " << BM.get_x_T() << std::endl;
+  std::cout << "bx = " << BM.get_b() << std::endl;
+
+  std::cout << "ay = " << BM.get_c() << std::endl;
+  std::cout << "y_T = " << BM.get_y_T() << std::endl;
+  std::cout << "by = " << BM.get_d() << std::endl;
+
   // Transformation 1: Scaling so that both boundary tuples are 1 unit
   // apart. Diffusion parameters, including t, stay the same.
   double L_x = BM.get_b() - BM.get_a();
@@ -53,28 +62,30 @@ int main() {
 
   double dx = 5e-3;
   BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
-								    rho_data_gen,
-								    0.30,
-								    1,
-								    0.5);
+  								    rho_data_gen,
+  								    0.30,
+  								    1,
+  								    0.5);
   BivariateSolver FEM_solver = BivariateSolver(basis,
   					       sigma_x_scaled, 
-					       sigma_y_scaled,
-					       rho_data_gen,
+  					       sigma_y_scaled,
+  					       rho_data_gen,
   					       x_0_2, y_0_2,
   					       t,
   					       dx);
   double x = 0;
   double y = 0;
 
-  unsigned N = 1.0/dx;
+  unsigned N = 1.0/dx + 1;
   gsl_vector* input = gsl_vector_alloc(2);
   gsl_vector_set(input, 0, 0.5);
   gsl_vector_set(input, 1, 0.5);
   std::cout << "FEM_solver(input) = " 
-	    << FEM_solver(input) << std::endl;
+  	    << FEM_solver(input) << std::endl;
   std::cout << "x_T_2 = " << x_T_2 << "\n"
-	    << "y_T_2 = " << y_T_2 << std::endl;
+  	    << "y_T_2 = " << y_T_2 << std::endl;
+  std::cout << "x_0_2 = " << x_0_2 << "\n"
+  	    << "y_0_2 = " << y_0_2 << std::endl;
 
   std::ofstream output_file;
   output_file.open("bivariate-solution.csv");
@@ -96,39 +107,6 @@ int main() {
   }
   output_file.close();
   gsl_vector_free(input);
-
-  
-  // double x = 0;
-  // double y = 0;
-  
-  // double dx = 0.002;
-  // double dy = 0.002;
-
-  // unsigned N = 1.0/dx;
-  // unsigned M = 1.0/dx;
-
-  // gsl_vector* input = gsl_vector_alloc(2);
-
-  // std::ofstream output_file;
-  // output_file.open("/home/georgi/research/PDE-solvers/classical-solution.csv");
-  // // header
-  // output_file << "x, y, solution\n";
-  
-  // for ( unsigned i=0; i<N; ++i) {
-  //   x = dx*i;
-  //   gsl_vector_set(input, 0, x);
-
-  //   for (unsigned j=0; j<M; ++j) {
-  //     y = dy*j;
-  //     gsl_vector_set(input, 1, y);
-
-  //     output_file << x << ","
-  // 		  << y << ","
-  // 		  << classical_solver(input) << "\n";
-  //   }
-  // }
-  // output_file.close();
-  // gsl_vector_free(input);
   return 0;
 }
 

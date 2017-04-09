@@ -54,7 +54,7 @@ int main() {
   const BivariateElement& printed_elem = basis.get_orthonormal_element(10);
   std::cout << "norm of printed_elem = " << printed_elem.norm() << std::endl;
 
-  int N = 1/dx;
+  int N = 1/dx + 1;
   double x = 0.0;
   double y = 0.0;
   double min_out = 0;

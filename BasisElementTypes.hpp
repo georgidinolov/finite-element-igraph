@@ -6,9 +6,11 @@
 extern "C" {
 #include "igraph.h"
 }
+
 #include "MultivariateNormal.hpp"
-#include <vector>
 #include <iostream>
+#include <string>
+#include <vector>
 
 // NEEDS TO BE UPDATED AS MORE TYPES ARE ADDED
 enum BasisType { linear_combination, gaussian, other};
@@ -37,6 +39,7 @@ class BivariateElement
 public:
   BivariateElement() {};
   virtual const gsl_matrix* get_function_grid() const =0;
+  virtual void save_function_grid(std::string file_name) const;
   virtual const gsl_matrix* get_deriv_function_grid_dx() const =0;
   virtual const gsl_matrix* get_deriv_function_grid_dy() const =0;
 };
@@ -46,6 +49,7 @@ class BivariateLinearCombinationElement
   : public virtual BivariateElement
 {
 public:
+  
   BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
 			   const std::vector<double>& coefficients);
   BivariateLinearCombinationElement(const BivariateLinearCombinationElement& lin_comb_element);
@@ -66,21 +70,21 @@ public:
 
   inline virtual const gsl_matrix* get_function_grid() const
   { return function_grid_; };
-  // WARNING: Call this function ONLY if you are sure the
+  // WARNING: Call below function ONLY if you are sure the
   // function_grid_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_function_grid(const gsl_matrix* new_function_grid);
 
   inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
   { return deriv_function_grid_dx_; }
-  // WARNING: Call this function ONLY if you are sure the
+  // WARNING: Call below function ONLY if you are sure the
   // deriv_function_grid_dx_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_deriv_function_grid_dx(const gsl_matrix* new_deriv_function_grid_dx);
 
   inline virtual const gsl_matrix* get_deriv_function_grid_dy() const
   { return deriv_function_grid_dy_; }
-  // WARNING: Call this function ONLY if you are sure the
+  // WARNING: Call below function ONLY if you are sure the
   // deriv_function_grid_dy_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy);

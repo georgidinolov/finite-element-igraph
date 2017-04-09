@@ -1,9 +1,11 @@
 #include <algorithm>
-#include <chrono>
 #include "BasisElementTypes.hpp"
+#include <chrono>
+#include <fstream>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
 #include <iostream>
+#include <string>
 
 // ============== LINEAR COMBINATION ELEMENT =====================
 BivariateLinearCombinationElement::
@@ -12,19 +14,17 @@ BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& el
   : elements_(elements),
     coefficients_(coefficients),
     dx_(elements[0]->get_dx()),
-    function_grid_(gsl_matrix_alloc(1/elements[0]->get_dx(),
-    				    1/elements[0]->get_dx())),
-    deriv_function_grid_dx_(gsl_matrix_alloc(1/elements_[0]->get_dx(),
-					     1/elements_[0]->get_dx())),
-    deriv_function_grid_dy_(gsl_matrix_alloc(1/elements_[0]->get_dx(),
-					     1/elements_[0]->get_dx()))
+    function_grid_(gsl_matrix_alloc(1/elements[0]->get_dx() + 1,
+    				    1/elements[0]->get_dx() + 1)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(1/elements_[0]->get_dx() + 1,
+					     1/elements_[0]->get_dx() + 1)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(1/elements_[0]->get_dx() + 1,
+					     1/elements_[0]->get_dx() + 1))
 {
   if (elements_.size() != coefficients_.size()) {
     std::cout << "ERROR: elements and coefficients not of same size!"
 	      << std::endl;
   }
-  std::cout << "size_1 = " << function_grid_->size1 << std::endl;
-  std::cout << "size_2 = " << function_grid_->size2 << std::endl;
   set_function_grids();
 }
 
@@ -33,12 +33,12 @@ BivariateLinearCombinationElement(const BivariateLinearCombinationElement& eleme
   : elements_(element.elements_),
     coefficients_(element.coefficients_),
     dx_(element.elements_[0]->get_dx()),
-    function_grid_(gsl_matrix_alloc(1/elements_[0]->get_dx(),
-				    1/elements_[0]->get_dx())),
-    deriv_function_grid_dx_(gsl_matrix_alloc(1/elements_[0]->get_dx(),
-					     1/elements_[0]->get_dx())),
-    deriv_function_grid_dy_(gsl_matrix_alloc(1/elements_[0]->get_dx(),
-					     1/elements_[0]->get_dx()))
+    function_grid_(gsl_matrix_alloc(1/elements_[0]->get_dx() + 1,
+				    1/elements_[0]->get_dx() + 1)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(1/elements_[0]->get_dx() + 1,
+					     1/elements_[0]->get_dx() + 1)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(1/elements_[0]->get_dx() + 1,
+					     1/elements_[0]->get_dx() + 1))
     
 {
   if (elements_.size() != coefficients_.size()) {
@@ -70,16 +70,14 @@ operator()(const gsl_vector* input) const
 double BivariateLinearCombinationElement::norm() const
 {
   double integral = 0;
-  for (int i=0; i<1/get_dx(); ++i) {
-    for (int j=0; j<1/get_dx(); ++j) {
+  for (int i=0; i<1/get_dx()+1; ++i) {
+    for (int j=0; j<1/get_dx()+1; ++j) {
       integral = integral + 
-	std::pow(gsl_matrix_get(get_function_grid(), i,j), 2);
+	std::pow(gsl_matrix_get(function_grid_, i,j), 2);
     }
   }
 
-  integral = std::sqrt(integral * std::pow(get_dx(), 2));
-
-  return integral;
+  return std::sqrt(integral * std::pow(get_dx(), 2));
 }
 
 double BivariateLinearCombinationElement::
@@ -147,13 +145,15 @@ set_coefficients_without_function_grids(const std::vector<double>& new_coefs)
   coefficients_ = new_coefs;
 }
 
-
 void BivariateLinearCombinationElement::set_function_grids()
 {
   double dx = get_dx();
   double in = 0;
   double in_dx = 0;
   double in_dy = 0;
+
+  gsl_matrix* workspace_left = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
+  gsl_matrix* workspace_right = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
 
   gsl_matrix_memcpy(function_grid_, elements_[0]->get_function_grid());
   gsl_matrix_scale(function_grid_, coefficients_[0]);
@@ -168,24 +168,41 @@ void BivariateLinearCombinationElement::set_function_grids()
 
   for (unsigned k=1; k<elements_.size(); ++k) {
     if ( std::abs(coefficients_[k]) > 1e-32) {
-      gsl_matrix_scale(function_grid_, 1.0/coefficients_[k]);
-      gsl_matrix_add(function_grid_, elements_[k]->get_function_grid());
-      gsl_matrix_scale(function_grid_, coefficients_[k]);
-
-      gsl_matrix_scale(deriv_function_grid_dx_, 1.0/coefficients_[k]);
-      gsl_matrix_add(deriv_function_grid_dx_,
-      		     elements_[k]->get_deriv_function_grid_dx());
-      gsl_matrix_scale(deriv_function_grid_dx_, coefficients_[k]);
-
-      gsl_matrix_scale(deriv_function_grid_dy_, 1.0/coefficients_[k]);
-      gsl_matrix_add(deriv_function_grid_dy_,
-      		     elements_[k]->get_deriv_function_grid_dy());
-      gsl_matrix_scale(deriv_function_grid_dy_, coefficients_[k]);
+      gsl_matrix_memcpy(workspace_right, elements_[k]->get_function_grid());
+      gsl_matrix_scale(workspace_right, coefficients_[k]);
+      gsl_matrix_add(function_grid_, workspace_right);
+      
+      gsl_matrix_memcpy(workspace_right, elements_[k]->get_deriv_function_grid_dx());
+      gsl_matrix_scale(workspace_right, coefficients_[k]);
+      gsl_matrix_add(deriv_function_grid_dx_, workspace_right);
+      
+      gsl_matrix_memcpy(workspace_right, elements_[k]->get_deriv_function_grid_dy());
+      gsl_matrix_scale(workspace_right, coefficients_[k]);
+      gsl_matrix_add(deriv_function_grid_dy_, workspace_right);
     }
+
+    // if ( std::abs(coefficients_[k]) > 1e-32) {
+    //   gsl_matrix_scale(function_grid_, 1.0/coefficients_[k]);
+    //   gsl_matrix_add(function_grid_, elements_[k]->get_function_grid());
+    //   gsl_matrix_scale(function_grid_, coefficients_[k]);
+
+    //   gsl_matrix_scale(deriv_function_grid_dx_, 1.0/coefficients_[k]);
+    //   gsl_matrix_add(deriv_function_grid_dx_,
+    //   		     elements_[k]->get_deriv_function_grid_dx());
+    //   gsl_matrix_scale(deriv_function_grid_dx_, coefficients_[k]);
+
+    //   gsl_matrix_scale(deriv_function_grid_dy_, 1.0/coefficients_[k]);
+    //   gsl_matrix_add(deriv_function_grid_dy_,
+    //   		     elements_[k]->get_deriv_function_grid_dy());
+    //   gsl_matrix_scale(deriv_function_grid_dy_, coefficients_[k]);
+    // }
   }
 
-  // for (int i=0; i<1/get_dx(); ++i) {
-  //   for (int j=0; j<1/get_dx(); ++j) {
+  gsl_matrix_free(workspace_left);
+  gsl_matrix_free(workspace_right);
+
+  // for (int i=0; i<1/get_dx() + 1; ++i) {
+  //   for (int j=0; j<1/get_dx() + 1; ++j) {
   //     in = 0;
   //     for (unsigned k=0; k<elements_.size(); ++k) {
   // 	in = in + coefficients_[k]*
