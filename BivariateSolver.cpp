@@ -89,9 +89,18 @@ operator()(const gsl_vector* input) const
     return small_t_solution_(input, t_);
   } else {
     double out = 0;
+    double x = gsl_vector_get(input,0);
+    double y = gsl_vector_get(input,1);
+    int x_int = x/dx_;
+    int y_int = y/dx_;
+
+    std::cout << "x_int = " << x_int << "; y_int = " << y_int << std::endl;
+    
     for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
       out = out + gsl_vector_get(solution_coefs_, i)*
-	(basis_.get_orthonormal_element(i))(input);
+	(gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+			x_int,
+			y_int));
     }
     return out;
   }

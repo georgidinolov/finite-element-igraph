@@ -204,6 +204,8 @@ project_deriv(const BivariateElement& elem_1,
 
   const gsl_matrix* elem_1_deriv_mat = NULL;
   const gsl_matrix* elem_2_deriv_mat = NULL;
+  const gsl_matrix* elem_1_mat = elem_1.get_function_grid();
+  const gsl_matrix* elem_2_mat = elem_2.get_function_grid();  
 
   if (coord_indeex_1 == 0) {
     elem_1_deriv_mat = elem_1.get_deriv_function_grid_dx();
@@ -222,15 +224,89 @@ project_deriv(const BivariateElement& elem_1,
   }
 
   double integral = 0;
-  for (int i=0; i<N; ++i) {
-    for (int j=0; j<N; ++j) {
-      integral = integral +
-	gsl_matrix_get(elem_1_deriv_mat, i, j)*
-	gsl_matrix_get(elem_2_deriv_mat, i, j);
-    }
+
+  if (coord_indeex_1 == 0 && coord_indeex_2 == 0) {
+    for (int i=0; i<N-1; ++i) {
+      for (int j=0; j<N-1; ++j) {
+	integral = integral +
+	  (gsl_matrix_get(elem_1_mat,
+			  i + 1,
+			  j) -
+	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
+	  (gsl_matrix_get(elem_2_mat,
+			  i + 1, 
+			  j) -
+	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+      }
+    } 
+  } else if (coord_indeex_1 == 0 && coord_indeex_2 == 1) {
+    for (int i=0; i<N-1; ++i) {
+      for (int j=0; j<N-1; ++j) {
+	integral = integral +
+	  (gsl_matrix_get(elem_1_mat,
+			  i + 1,
+			  j) -
+	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
+	  (gsl_matrix_get(elem_2_mat,
+			  i, 
+			  j + 1) -
+	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+      }
+    } 
+  } else if (coord_indeex_1 == 1 && coord_indeex_2 == 0) {
+    for (int i=0; i<N-1; ++i) {
+      for (int j=0; j<N-1; ++j) {
+	integral = integral +
+	  (gsl_matrix_get(elem_1_mat,
+			  i,
+			  j + 1) -
+	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
+	  (gsl_matrix_get(elem_2_mat,
+			  i + 1, 
+			  j) -
+	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+      }
+    } 
+  } else if (coord_indeex_1 == 1 && coord_indeex_2 == 1) {
+    for (int i=0; i<N-1; ++i) {
+      for (int j=0; j<N-1; ++j) {
+	integral = integral +
+	  (gsl_matrix_get(elem_1_mat,
+			  i,
+			  j + 1) -
+	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
+	  (gsl_matrix_get(elem_2_mat,
+			  i, 
+			  j + 1) -
+	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+      }
+    } 
+  } else {
+    std::cout << "WRONG COORD INPUT!" << std::endl;    
   }
+
   integral = integral * std::pow(dx_, 2);
   return integral;
+}
+
+void BivariateGaussianKernelBasis::save_matrix(const gsl_matrix* mat,
+					       std::string file_name) const
+{
+  std::ofstream output_file;
+  output_file.open(file_name);
+  output_file << std::fixed << std::setprecision(32);
+  for (int i=0; i<mat->size1; ++i) {
+    for (int j=0; j<mat->size2; ++j) {
+      if (j==mat->size2-1) 
+	{
+	  output_file << gsl_matrix_get(mat, i,j) 
+		      << "\n";
+	} else {
+	output_file << gsl_matrix_get(mat, i,j) << ",";
+      }
+    }
+  }
+  output_file.close();
 }
 
 void BivariateGaussianKernelBasis::set_basis_functions(double rho,
@@ -456,7 +532,6 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
     BivariateLinearCombinationElement current_orthonormal_element =
       BivariateLinearCombinationElement(elements,
 					coefficients);
-
     // This is where the work happens:
     for (unsigned j=0; j<i; ++j) {
       projection = project(current_orthonormal_element,
@@ -673,6 +748,8 @@ void BivariateGaussianKernelBasis::set_mass_matrix()
 			entry);
     }
   }
+  save_matrix(mass_matrix_,
+	      "mass_matrix.csv");
 }
 
 void BivariateGaussianKernelBasis::set_system_matrices()
@@ -699,6 +776,7 @@ void BivariateGaussianKernelBasis::set_system_matrices()
   
   for (unsigned i=0; i<basis_functions_.size(); ++i) {
     for (unsigned j=i; j<basis_functions_.size(); ++j) {
+
       gsl_matrix_set(deriv_inner_product_matrix_dx_dx_,
 		     i, j,
 		     project_deriv(basis_functions_[i], 0,
@@ -767,7 +845,6 @@ void BivariateGaussianKernelBasis::set_system_matrices()
 
    for (unsigned i=0; i<basis_functions_.size(); ++i) {
      for (unsigned j=i; j<basis_functions_.size(); ++j) {
-
        // system_matrix_dx_dx_
        double entry = 0;
        for (unsigned k=0; k<orthonormal_functions_[i].get_elements().size(); ++k) {
@@ -891,7 +968,7 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
 		     basis_functions_.size());
 
   for (unsigned i=0; i<orthonormal_functions_.size(); ++i) {
-    for (unsigned j=i; j<orthonormal_functions_.size(); ++j) {
+    for (unsigned j=0; j<orthonormal_functions_.size(); ++j) {
 
       // system_matrix_dx_dx_
       double entry = project_deriv(orthonormal_functions_[i], 0,
@@ -899,9 +976,9 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       gsl_matrix_set(system_matrix_dx_dx_,
 		     i, j,
 		     entry);
-      gsl_matrix_set(system_matrix_dx_dx_,
-		     j, i,
-		     entry);
+      // gsl_matrix_set(system_matrix_dx_dx_,
+      // 		     j, i,
+      // 		     entry);
 
       
       // system_matrix_dx_dy_
@@ -910,9 +987,9 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       gsl_matrix_set(system_matrix_dx_dy_,
 		     i, j,
 		     entry);
-      gsl_matrix_set(system_matrix_dx_dy_,
-		     j, i,
-		     entry);
+      // gsl_matrix_set(system_matrix_dx_dy_,
+      // 		     j, i,
+      // 		     entry);
       
       // system_matrix_dy_dx_
       entry = project_deriv(orthonormal_functions_[i], 1,
@@ -920,9 +997,9 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       gsl_matrix_set(system_matrix_dy_dx_,
 		     i, j,
 		     entry);
-      gsl_matrix_set(system_matrix_dy_dx_,
-		     j, i,
-		     entry);
+      // gsl_matrix_set(system_matrix_dy_dx_,
+      // 		     j, i,
+      // 		     entry);
       
       // system_matrix_dy_dy_
       entry = project_deriv(orthonormal_functions_[i], 1,
@@ -930,9 +1007,18 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       gsl_matrix_set(system_matrix_dy_dy_,
 		     i, j,
 		     entry);
-      gsl_matrix_set(system_matrix_dy_dy_,
-		     j, i,
-		     entry);
+      // gsl_matrix_set(system_matrix_dy_dy_,
+      // 		     j, i,
+      // 		     entry);
     }
   }
+
+  save_matrix(system_matrix_dx_dx_,
+	      "system_matrix_dx_dx.csv");
+  save_matrix(system_matrix_dx_dy_,
+	      "system_matrix_dx_dy.csv");
+  save_matrix(system_matrix_dy_dx_,
+	      "system_matrix_dy_dx.csv");
+  save_matrix(system_matrix_dy_dy_,
+	      "system_matixr_dy_dy.csv");
 }

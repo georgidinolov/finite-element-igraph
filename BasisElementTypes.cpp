@@ -8,7 +8,6 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include "Rmath.h"
 
 // =================== BASIS ELEMENT CLASS ===================
 BasisElement::~BasisElement()
@@ -395,11 +394,11 @@ operator()(const gsl_vector* input) const
 
   double out = std::pow(x,exponent_power_)*std::pow((1.0-x),exponent_power_)*
     std::pow(y,exponent_power_)*std::pow((1.0-y),exponent_power_) *
-    gsl_ran_gaussian_pdf(x-gsl_vector_get(get_mean_vector(),0)-
+    (gsl_ran_gaussian_pdf(x-gsl_vector_get(get_mean_vector(),0)-
     			 sigma_x/sigma_y*rho*(y-gsl_vector_get(get_mean_vector(),1)),
     			 std::sqrt((1-rho*rho))*sigma_x) *
-    gsl_ran_gaussian_pdf( (y-gsl_vector_get(get_mean_vector(),1)), 
-    			  sigma_y);
+     gsl_ran_gaussian_pdf( (y-gsl_vector_get(get_mean_vector(),1)), 
+			   sigma_y));
 
   // double out = gsl_ran_bivariate_gaussian_pdf(x-gsl_vector_get(get_mean_vector(),0),
   // 					      y-gsl_vector_get(get_mean_vector(),1),

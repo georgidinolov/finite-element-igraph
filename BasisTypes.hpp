@@ -7,6 +7,7 @@ extern "C" {
 #include "igraph.h"
 }
 #include "BasisElementTypes.hpp"
+#include <string>
 #include <vector>
   
 // =================== BASE BASIS CLASS ======================
@@ -59,6 +60,7 @@ public:
 
   // coord_indeex_{1,2} = {0,1}, where 0 = dx, 1 = dy
   // TODO(georgi) : this needs to be done with enumerable elements instead of ints
+  // Differentiation is numeric according to grid.
   virtual double project_deriv(const BivariateElement& elem_1,
 			       int coord_indeex_1, 
 			       const BivariateElement& elem_2,
@@ -68,6 +70,8 @@ public:
 					long int coord_indeex_1, 
 					const BivariateElement& elem_2,
 					long int coord_indeex_2) const;
+  virtual void save_matrix(const gsl_matrix* mat,
+			   std::string file_name) const;
   
   
 private:
