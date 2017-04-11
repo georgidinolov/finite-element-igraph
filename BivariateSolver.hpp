@@ -52,7 +52,7 @@ private:
   double y_0_;
   MultivariateNormal mvtnorm_;
   const BivariateBasis& basis_;
-  BivariateSolverClassical small_t_solution_;
+  BivariateSolverClassical* small_t_solution_;
   double t_;
   double dx_;
   gsl_vector* IC_coefs_;

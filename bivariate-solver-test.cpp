@@ -33,6 +33,14 @@ int main() {
   std::cout << "y_T = " << BM.get_y_T() << std::endl;
   std::cout << "by = " << BM.get_d() << std::endl;
 
+  double ax = BM.get_a();
+  double x_T = BM.get_x_T();
+  double bx = BM.get_b();
+
+  double ay = BM.get_c();
+  double y_T = BM.get_y_T();
+  double by = BM.get_d();
+
   // STEP 1
   double x_0_1 = 0 - BM.get_a();
   double x_T_1 = BM.get_x_T() - BM.get_a();
@@ -82,15 +90,11 @@ int main() {
 
   unsigned N = 1.0/dx + 1;
   gsl_vector* input = gsl_vector_alloc(2);
-  gsl_vector_set(input, 0, 0.6958729225559119324629);
-  gsl_vector_set(input, 1, 0.5961599026475088436428);
+  gsl_vector_set(input, 0, BM.get_x_T());
+  gsl_vector_set(input, 1, BM.get_y_T());
   std::cout << "FEM_solver(input) = " 
   	    << FEM_solver(input) << std::endl;
 
-  gsl_vector_set(input, 0, 0.6958729225559119324629-dx);
-  gsl_vector_set(input, 1, 0.5961599026475088436428-dx);
-  std::cout << "FEM_solver(input) = " 
-  	    << FEM_solver(input) << std::endl;
   std::cout << "x_T_2 = " << x_T_2 << "\n"
   	    << "y_T_2 = " << y_T_2 << std::endl;
   std::cout << "x_0_2 = " << x_0_2 << "\n"
@@ -102,11 +106,11 @@ int main() {
   output_file << "x, y, solution\n";
   
   for ( unsigned i=0; i<N; ++i) {
-    x = dx*i;
+    x = (bx-ax)/(N-1)*i + ax;
     gsl_vector_set(input, 0, x);
 
     for (unsigned j=0; j<N; ++j) {
-      y = dx*j;
+      y = (by-ay)/(N-1)*j + ay;
       gsl_vector_set(input, 1, y);
 
       output_file << x << ","

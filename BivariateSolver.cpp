@@ -23,7 +23,7 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
     d_(d),
     mvtnorm_(MultivariateNormal()),
     basis_(basis),
-    small_t_solution_(BivariateSolverClassical()),
+    small_t_solution_(new BivariateSolverClassical()),
     t_(t),
     dx_(dx),
     IC_coefs_(gsl_vector_alloc(basis.get_orthonormal_elements().size())),
@@ -67,14 +67,16 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
   rho_ = rho;
   x_0_ = x_0_2;
   y_0_ = y_0_2;
-  small_t_solution_ = BivariateSolverClassical(sigma_x_,
-					       sigma_y_,
-					       rho_,
-					       x_0_,
-					       y_0_),
+
+  delete small_t_solution_;
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_,
+						   sigma_y_,
+						   rho_,
+						   x_0_,
+						   y_0_),
   
-  std::cout << "small tt = " << small_t_solution_.get_t() << std::endl;
-  small_t_solution_.set_function_grid(dx_);
+  std::cout << "small tt = " << small_t_solution_->get_t() << std::endl;
+  small_t_solution_->set_function_grid(dx_);
 
   set_IC_coefs();
   set_mass_and_stiffness_matrices();
@@ -84,6 +86,8 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 
 BivariateSolver::~BivariateSolver()
 {
+  delete small_t_solution_;
+  
   // freeing vectors
   gsl_vector_free(solution_coefs_);
   
@@ -105,11 +109,13 @@ void BivariateSolver::set_diffusion_parameters(double sigma_x,
   sigma_x_ = sigma_x;
   sigma_y_ = sigma_y;
   rho_ = rho;
-  small_t_solution_ = BivariateSolverClassical(sigma_x_,
-					       sigma_y_,
-					       rho_,
-					       x_0_,
-					       y_0_);
+
+  delete small_t_solution_;
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_,
+						   sigma_y_,
+						   rho_,
+						   x_0_,
+						   y_0_);
   set_mass_and_stiffness_matrices();
   set_eval_and_evec();
   set_solution_coefs();
@@ -118,25 +124,48 @@ void BivariateSolver::set_diffusion_parameters(double sigma_x,
 double BivariateSolver::
 operator()(const gsl_vector* input) const
 {
-  if ((t_ - small_t_solution_.get_t()) <= 1e-32) {
-    return small_t_solution_(input, t_);
-  } else {
-    double out = 0;
-    double x = gsl_vector_get(input,0);
-    double y = gsl_vector_get(input,1);
-    int x_int = x/dx_;
-    int y_int = y/dx_;
+  double x = gsl_vector_get(input,0);
+  double y = gsl_vector_get(input,1);
 
-    std::cout << "x_int = " << x_int << "; y_int = " << y_int << std::endl;
-    
+  // STEP 1
+  double x_1 = x - a_;
+  double y_1 = y - c_;
+
+  double a_1 = a_ - a_;
+  double b_1 = b_ - a_;
+  double c_1 = c_ - c_;
+  double d_1 = d_ - c_;
+  
+  // STEP 2
+  double Lx_2 = b_1 - a_1;
+  double x_2 =  x_1 / Lx_2;
+
+  double Ly_2 = d_1 - c_1;
+  double y_2 =  y_1 / Ly_2;
+
+  gsl_vector* scaled_input = gsl_vector_alloc(2);
+  gsl_vector_set(scaled_input, 0, x_2);
+  gsl_vector_set(scaled_input, 1, y_2);  
+
+  double out = 0;
+  if ((t_ - small_t_solution_->get_t()) <= 1e-32) {
+    out = (*small_t_solution_)(scaled_input, t_);
+  } else {
+    int x_int = x_2/dx_;
+    int y_int = y_2/dx_;
+
     for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
       out = out + gsl_vector_get(solution_coefs_, i)*
 	(gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
 			x_int,
 			y_int));
     }
-    return out;
   }
+
+  out = out / (Lx_2 * Ly_2);
+  return out;
+
+  gsl_vector_free(scaled_input);
 }
 
 void BivariateSolver::set_IC_coefs()
@@ -144,7 +173,7 @@ void BivariateSolver::set_IC_coefs()
   // Assigning coefficients for IC
   for (unsigned i=0; i<IC_coefs_->size; ++i) {
     gsl_vector_set(IC_coefs_, i,
-		   basis_.project(small_t_solution_,
+		   basis_.project(*small_t_solution_,
 				  basis_.get_orthonormal_element(i)));
   }
 }
@@ -224,7 +253,7 @@ void BivariateSolver::set_solution_coefs()
   for (unsigned i=0; i<K; ++i) {
     gsl_vector_view col_i = gsl_matrix_column(evec, i);
     gsl_vector_scale(&col_i.vector, std::exp(gsl_vector_get(eval_, i)*
-					     (t_-small_t_solution_.get_t())));
+					     (t_-small_t_solution_->get_t())));
   }
   // exp_system_matrix = [evec %*% diag(exp(eval*(t-t_small)))] %*% t(evec)
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,
