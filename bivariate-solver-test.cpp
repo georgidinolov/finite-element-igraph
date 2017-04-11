@@ -66,11 +66,16 @@ int main() {
   								    1,
   								    0.5);
   BivariateSolver FEM_solver = BivariateSolver(basis,
-  					       sigma_x_2, 
-  					       sigma_y_2,
+  					       sigma_x_data_gen, 
+  					       sigma_y_data_gen,
   					       rho_data_gen,
-  					       x_0_2, y_0_2,
-  					       0.02,
+  					       BM.get_a(),
+					       BM.get_x_0(),
+					       BM.get_b(),
+					       BM.get_c(),
+					       BM.get_y_0(),
+					       BM.get_d(),
+					       t,
   					       dx);
   double x = 0;
   double y = 0;

@@ -4,6 +4,22 @@
 #include <gsl/gsl_blas.h>
 #include <iostream>
 
+BivariateSolverClassical::BivariateSolverClassical()
+  : sigma_x_(1.0),
+    sigma_y_(1.0),
+    rho_(0.0),
+    x_0_(0.5),
+    y_0_(0.5),
+    mvtnorm_(MultivariateNormal()),
+    xi_eta_input_(gsl_vector_alloc(2)),
+    initial_condition_xi_eta_(gsl_vector_alloc(2)),
+    Rotation_matrix_(gsl_matrix_alloc(2,2)),
+    tt_(0),
+    Variance_(gsl_matrix_alloc(2,2)),
+    initial_condition_xi_eta_reflected_(gsl_vector_alloc(2)),
+    function_grid_(gsl_matrix_alloc(1,1))
+{}
+
 BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
 						   double sigma_y,
 						   double rho,

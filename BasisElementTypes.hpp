@@ -205,6 +205,7 @@ class BivariateSolverClassical
   : public virtual BivariateElement
 {
 public:
+  BivariateSolverClassical();
   BivariateSolverClassical(double sigma_x,
 			   double sigma_y,
 			   double rho,

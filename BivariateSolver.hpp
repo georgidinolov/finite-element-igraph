@@ -15,8 +15,12 @@ public:
 		  double sigma_x,
 		  double sigma_y,
 		  double rho,
+		  double a,
 		  double x_0,
+		  double b,
+		  double c,
 		  double y_0,
+		  double d,
 		  double t,
 		  double dx);
   ~BivariateSolver();
@@ -37,6 +41,10 @@ public:
   virtual double operator()(const gsl_vector* input) const;
   
 private:
+  double a_;
+  double b_;
+  double c_;
+  double d_;
   double sigma_x_;
   double sigma_y_;
   double rho_;

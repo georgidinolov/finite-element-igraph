@@ -9,22 +9,21 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 				 double sigma_x,
 				 double sigma_y,
 				 double rho,
+				 double a,
 				 double x_0,
+				 double b,
+				 double c,
 				 double y_0,
+				 double d,
 				 double t,
 				 double dx)
-  : sigma_x_(sigma_x),
-    sigma_y_(sigma_y),
-    rho_(rho),
-    x_0_(x_0),
-    y_0_(y_0),
+  : a_(a),
+    b_(b),
+    c_(c),
+    d_(d),
     mvtnorm_(MultivariateNormal()),
     basis_(basis),
-    small_t_solution_(BivariateSolverClassical(sigma_x,
-					       sigma_y,
-					       rho,
-					       x_0,
-					       y_0)),
+    small_t_solution_(BivariateSolverClassical()),
     t_(t),
     dx_(dx),
     IC_coefs_(gsl_vector_alloc(basis.get_orthonormal_elements().size())),
@@ -40,6 +39,40 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
+
+  // STEP 1
+  double x_0_1 = 0 - a;
+  double b_1 = b - a;
+  double a_1 = a - a;
+
+  double y_0_1 = 0 - c;
+  double c_1 = c - c;
+  double d_1 = d - c;
+
+  // STEP 2
+  double Lx_2 = b_1 - a_1;
+  double x_0_2 =  x_0_1 / Lx_2;
+  double  a_2 = a_1 / Lx_2;
+  double b_2 = b_1 / Lx_2;
+  double sigma_x_2 = sigma_x / Lx_2;
+
+  double Ly_2 = d_1 - c_1;
+  double y_0_2 =  y_0_1 / Ly_2;
+  double c_2 = c_1 / Ly_2;
+  double d_2 = d_1 / Ly_2;
+  double sigma_y_2 = sigma_y / Ly_2;
+
+  sigma_x_ = sigma_x_2;
+  sigma_y_ = sigma_y_2;
+  rho_ = rho;
+  x_0_ = x_0_2;
+  y_0_ = y_0_2;
+  small_t_solution_ = BivariateSolverClassical(sigma_x_,
+					       sigma_y_,
+					       rho_,
+					       x_0_,
+					       y_0_),
+  
   std::cout << "small tt = " << small_t_solution_.get_t() << std::endl;
   small_t_solution_.set_function_grid(dx_);
 
