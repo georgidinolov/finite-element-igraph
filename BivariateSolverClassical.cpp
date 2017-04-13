@@ -2,6 +2,7 @@
 #include "BasisElementTypes.hpp"
 #include <chrono>
 #include <gsl/gsl_blas.h>
+#include <gsl/gsl_randist.h>
 #include <iostream>
 
 BivariateSolverClassical::BivariateSolverClassical()
@@ -71,12 +72,12 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   // gsl_vector_set(slopes, 3, -1.0*std::sqrt(1-rho_)/std::sqrt(1+rho_));
 
   // BORDER 1
-  double ss_1 = std::atan(-1.0*std::sqrt(1.0+rho_)/
-			  std::sqrt(1-rho_));
-  double C_1 = (-1.0*gsl_vector_get(initial_condition_xi_eta_,1)
-		+ xi_ic*
-		std::sqrt(1.0-rho_)/std::sqrt(1.0+rho_))/
-    (std::sin(ss_1) - std::cos(ss_1)*std::sqrt(1.0-rho_)/std::sqrt(1.0+rho_));
+
+  double ss_1 = atan(-1.0*sqrt(1.0+rho_)/sqrt(1-rho_));
+  
+  double C_1 = (-1.0*eta_ic + xi_ic*sqrt(1.0-rho_)/sqrt(1.0+rho_))/
+    (sin(ss_1) - cos(ss_1)*sqrt(1.0-rho_)/sqrt(1.0+rho_));
+
 
   // BORDER 2
   double ss_2 = M_PI + ss_1;
@@ -85,6 +86,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
 		 1.0/(sigma_y_*std::sqrt(1.0+rho_)*cc))/
 	      (std::sin(ss_2) - std::cos(ss_2)*std::sqrt(1-rho_)/
 	       std::sqrt(1+rho_));
+
 
   // BORDER 4
   double ss_4 = atan(sqrt(1.0+rho_)/sqrt(1.0-rho_));
@@ -97,6 +99,10 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   double C_3 = (-1.0*eta_ic - xi_ic*sqrt(1.0-rho_)/sqrt(1.0+rho_))/
     (sin(ss_3) + cos(ss_3)*sqrt(1.0-rho_)/sqrt(1.0+rho_));
 
+  // std::cout << "ss_1 = " << ss_1 << "; C_1 = " << C_1 << std::endl;
+  // std::cout << "ss_2 = " << ss_2 << "; C_2 = " << C_2 << std::endl;
+  // std::cout << "ss_3 = " << ss_3 << "; C_3 = " << C_3 << std::endl;
+  // std::cout << "ss_4 = " << ss_4 << "; C_4 = " << C_4 << std::endl;
 
   std::vector<double> Cs = std::vector<double> {C_1,
 						C_2,
@@ -117,7 +123,14 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   	    {
   	      return Cs[i1] < Cs[i2];
   	    });
-  tt_ = std::pow(Cs[Cs_indeces[1]]/4.0, 2.0);
+
+  for (unsigned i=0; i<4; ++i) {
+    std::cout << Cs_indeces[i] << " (" << Cs[Cs_indeces[i]] << "); ";
+  }
+  std::cout << std::endl;
+  
+  tt_ = std::pow(Cs[Cs_indeces[1]]/5.0, 2.0);
+  std::cout << "tt_ = " << tt_ << std::endl;
 
   for (int i=0; i<2; ++i) {
     for (int j=0; j<2; ++j) {
@@ -133,6 +146,9 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     + xi_ic;
   double eta_ic_reflected = 2.0*Cs[Cs_indeces[0]]*sin(ss_s[Cs_indeces[0]])
     + eta_ic;
+
+  std::cout << "xi_ic_reflected = " << xi_ic_reflected << std::endl;
+  std::cout << "eta_ic_reflected = " << eta_ic_reflected << std::endl;
 
   gsl_vector_set(initial_condition_xi_eta_reflected_, 0, xi_ic_reflected);
   gsl_vector_set(initial_condition_xi_eta_reflected_, 1, eta_ic_reflected);
@@ -161,15 +177,23 @@ operator()(const gsl_vector* input) const
 		 Rotation_matrix_, input, 0.0,
 		 xi_eta_input_);
 
-  double out = (mvtnorm_.dmvnorm(2,
-				 xi_eta_input_,
-				 initial_condition_xi_eta_,
-				 Variance_) -
-		mvtnorm_.dmvnorm(2,
-				 xi_eta_input_,
-				 initial_condition_xi_eta_reflected_,
-				 Variance_)) /
-		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+  double out =
+    gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
+			gsl_vector_get(initial_condition_xi_eta_,0),
+			sqrt(gsl_matrix_get(Variance_, 0,0))) *
+    gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,1)-
+			gsl_vector_get(initial_condition_xi_eta_,1),
+			sqrt(gsl_matrix_get(Variance_, 1,1)));
+
+  out = out -
+    gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
+  			gsl_vector_get(initial_condition_xi_eta_reflected_,0),
+  			sqrt(gsl_matrix_get(Variance_, 0,0))) *
+    gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,1)-
+  			gsl_vector_get(initial_condition_xi_eta_reflected_,1),
+  			sqrt(gsl_matrix_get(Variance_, 1,1)));
+
+  out = out / (sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
   return out;
 }
 

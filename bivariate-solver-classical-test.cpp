@@ -1,43 +1,27 @@
 #include "BasisElementTypes.hpp"
 #include <iostream>
+#include <iomanip>
 #include <fstream>
+#include <string>
 #include <vector>
 
 int main() {
+  std::cout << std::fixed << std::setprecision(32);
+  double x_T = 0.69587235906731104151390354672913;
+  double y_T = 0.59615714684947884727250766445650;
+  double x_0 = 0.42972231989526271656032463397423;
+  double y_0 = 0.00633588300194680778543165899919;
+  double sigma_x = 0.88008638461644062012112499360228;
+  double sigma_y = 0.94621168768833074924629045199254;
+  double rho = 0.400;
+  
   BivariateSolverClassical classical_solver =
-    BivariateSolverClassical(1.0, 0.1, 0.9,
-			     0.5, 0.5);
-  double x = 0;
-  double y = 0;
-  
-  double dx = 0.002;
-  double dy = 0.002;
+    BivariateSolverClassical(sigma_x, sigma_y, rho,
+			     x_0, y_0);
+  double dx = 0.005;
+  classical_solver.set_function_grid(dx);
+  classical_solver.save_function_grid("ic.csv");
 
-  unsigned N = 1.0/dx;
-  unsigned M = 1.0/dx;
-
-  gsl_vector* input = gsl_vector_alloc(2);
-
-  std::ofstream output_file;
-  output_file.open("/home/georgi/research/PDE-solvers/classical-solution.csv");
-  // header
-  output_file << "x, y, solution\n";
-  
-  for ( unsigned i=0; i<N; ++i) {
-    x = dx*i;
-    gsl_vector_set(input, 0, x);
-
-    for (unsigned j=0; j<M; ++j) {
-      y = dy*j;
-      gsl_vector_set(input, 1, y);
-
-      output_file << x << ","
-		  << y << ","
-		  << classical_solver(input) << "\n";
-    }
-  }
-  output_file.close();
-  gsl_vector_free(input);
   return 0;
 }
 

@@ -36,8 +36,9 @@ public:
   void set_diffusion_parameters(double sigma_x,
 				double sigma_y,
 				double rho);
-  const gsl_vector* get_solution_coefs();
-  const gsl_vector* get_evals();
+  const gsl_vector* get_solution_coefs() const;
+  const gsl_vector* get_ic_coefs() const;
+  const gsl_vector* get_evals() const;
   
   
   virtual double operator()(const gsl_vector* input) const;

@@ -653,10 +653,6 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
     }
 
     double current_norm = current_orthonormal_element.norm();
-    if (i==0) {
-      std::cout << std::fixed << std::setprecision(32);
-      std::cout << "current_norm = " << current_norm << "\n";
-    }
 
     std::string file_name = "orthonormal_function_" + std::to_string(i)
       + ".csv";
@@ -697,66 +693,6 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
 
     current_orthonormal_element.save_function_grid(file_name);
     orthonormal_functions_.push_back(current_orthonormal_element);
-    
-    // gsl_matrix_memcpy(workspace_left, current_orthonormal_element.get_function_grid());
-    // gsl_matrix_scale(workspace_left, 1.0/current_norm);
-    // current_orthonormal_element.set_function_grid(workspace_left);
-
-    // gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
-    // 		      get_deriv_function_grid_dx());
-    // gsl_matrix_scale(workspace_left, 1.0/current_norm);
-    // current_orthonormal_element.set_deriv_function_grid_dx(workspace_left);
-
-    // gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
-    // 		      get_deriv_function_grid_dy());
-    // gsl_matrix_scale(workspace_left, 1.0/current_norm);
-    // current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
-
-
-
-    double sum = 0;
-    if (i==30) {
-      std::cout << "i = " << i << std::endl;
-      std::cout << std::endl;
-      for (int j=0; j<1/dx_+1; ++j) {
-    	for (int k=0; k<1/dx_+1; ++k) {
-    	  // sum = sum + std::pow(gsl_matrix_get(orthonormal_functions_[i].
-    	  // 				      get_deriv_function_grid_dx(),
-    	  // 				      j,k), 2);
-    	  if (j==180 && k==180) {
-    	    std::cout << "ENTRY = "
-		      << gsl_matrix_get(basis_functions_[i].
-    	  				get_function_grid(),
-    	  				j,k)
-    	  	      << " ";
-    	  }
-    	  sum = sum + gsl_matrix_get(orthonormal_functions_[i].
-    				     get_function_grid(),j,k)*
-    	    gsl_matrix_get(orthonormal_functions_[i].
-    			   get_function_grid(),j,k);
-		       
-    	}
-    	//std::cout << std::endl;
-      }
-      std::cout << "\n sum = " << sum;
-      std::cout << "\n sum*dx_*dx_ = " << sum*dx_*dx_;
-      std::cout << "\n dx dx element [" << i << "," << i << "] = " 
-      		<< project_deriv(orthonormal_functions_[i], 0,
-      				 orthonormal_functions_[i], 0);
-      std::cout << "\n dy dy element [" << i << "," << i << "] = " 
-      		<< project_deriv(orthonormal_functions_[i], 1,
-      				 orthonormal_functions_[i], 1);
-      std::cout << "\n dx dy element [" << i << "," << i << "] = " 
-      		<< project_deriv(orthonormal_functions_[i], 0,
-      				 orthonormal_functions_[i], 1);
-      std::cout << "\n dy dx element [" << i << "," << i << "] = " 
-      		<< project_deriv(orthonormal_functions_[i], 1,
-      				 orthonormal_functions_[i], 0);
-      std::cout << "\n element [" << i << "," << i << "] = " 
-      		<< project(orthonormal_functions_[i],
-      			   orthonormal_functions_[i])
-      		<< std::endl;
-    }
   }
 
   gsl_matrix_free(workspace_left);
@@ -773,9 +709,6 @@ void BivariateGaussianKernelBasis::set_mass_matrix()
   double entry = 0;
    
   for (unsigned i=0; i<orthonormal_functions_.size(); ++i) {
-    if (i==50) {
-      std::cout << "row " << i << " of mass_matrix_ = \n";
-    }
     for (unsigned j=i; j<orthonormal_functions_.size(); ++j) {
 
       entry = project(orthonormal_functions_[i], 
@@ -793,10 +726,6 @@ void BivariateGaussianKernelBasis::set_mass_matrix()
       // 	}
       // }
       // entry = entry * std::pow(dx_, 2);
-
-      if (i==50) { 
-	std::cout << entry << "\n";
-      }
       gsl_matrix_set(mass_matrix_,
   			i, j,
 			entry);
@@ -870,14 +799,7 @@ void BivariateGaussianKernelBasis::set_system_matrices()
 		     j, i,
 		     gsl_matrix_get(deriv_inner_product_matrix_dy_dy_,
 				    i,j));
-      
-      std::cout << "deriv_inner_product_matrix_dx_dx_[" << i
-		<< "," << j << "] = "
-		<< gsl_matrix_get(deriv_inner_product_matrix_dx_dx_,
-				  i,j)
-		<< " ";
     }
-    std::cout << std::endl;
   }
   
   gsl_matrix_free(system_matrix_dx_dx_);
@@ -969,12 +891,6 @@ void BivariateGaussianKernelBasis::set_system_matrices()
        gsl_matrix_set(system_matrix_dy_dy_,
 			 j, i,
 			 entry);
-       
-       std::cout << "system_matrix_dx_dx_[" << i
-		 << "," << j << "] = "
-		 << gsl_matrix_get(system_matrix_dx_dx_,
-				    i,j)
-		 << " ";
      }
      std::cout << std::endl;
    }

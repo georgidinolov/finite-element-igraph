@@ -101,8 +101,14 @@ int main() {
   std::cout << "x_0_2 = " << x_0_2 << "\n"
   	    << "y_0_2 = " << y_0_2 << std::endl;
 
-  std::cout << "FEM_solver.get_evals[1] = "
-	    << gsl_vector_get(FEM_solver.get_evals(),1)
+  std::cout << "FEM_solver.get_evals[0] = "
+	    << gsl_vector_get(FEM_solver.get_evals(),0)
+	    << std::endl;
+  std::cout << "FEM_solver.get_ic_coefs[56] = "
+	    << gsl_vector_get(FEM_solver.get_ic_coefs(),55)
+	      << std::endl;
+  std::cout << "FEM_solver.get_solution_coefs[56] = "
+	    << gsl_vector_get(FEM_solver.get_solution_coefs(),0)
 	    << std::endl;
     
 

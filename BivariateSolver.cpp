@@ -53,14 +53,14 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
   // STEP 2
   double Lx_2 = b_1 - a_1;
   double x_0_2 =  x_0_1 / Lx_2;
-  double  a_2 = a_1 / Lx_2;
-  double b_2 = b_1 / Lx_2;
+  // double  a_2 = a_1 / Lx_2;
+  // double b_2 = b_1 / Lx_2;
   double sigma_x_2 = sigma_x / Lx_2;
 
   double Ly_2 = d_1 - c_1;
   double y_0_2 =  y_0_1 / Ly_2;
-  double c_2 = c_1 / Ly_2;
-  double d_2 = d_1 / Ly_2;
+  // double c_2 = c_1 / Ly_2;
+  // double d_2 = d_1 / Ly_2;
   double sigma_y_2 = sigma_y / Ly_2;
 
   sigma_x_ = sigma_x_2;
@@ -76,12 +76,13 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 						   x_0_,
 						   y_0_),
   
-  std::cout << "small tt = " << small_t_solution_->get_t() << std::endl;
   small_t_solution_->set_function_grid(dx_);
+  basis_.save_matrix(small_t_solution_->get_function_grid(),
+		     "ic.csv");
 
-  set_IC_coefs();
   set_mass_and_stiffness_matrices();
   set_eval_and_evec();
+  set_IC_coefs();
   set_solution_coefs();
 }
 
@@ -122,12 +123,17 @@ void BivariateSolver::set_diffusion_parameters(double sigma_x,
   set_solution_coefs();
 }
 
-const gsl_vector* BivariateSolver::get_solution_coefs()
+const gsl_vector* BivariateSolver::get_solution_coefs() const 
 {
   return solution_coefs_;
 }
 
-const gsl_vector* BivariateSolver::get_evals()
+const gsl_vector* BivariateSolver::get_ic_coefs() const
+{
+  return IC_coefs_;
+}
+
+const gsl_vector* BivariateSolver::get_evals() const
 {
   return eval_;
 }
@@ -165,8 +171,6 @@ operator()(const gsl_vector* input) const
     int x_int = x_2/dx_;
     int y_int = y_2/dx_;
 
-    std::cout << "x_int = " << x_int << "; y_int = " << y_int << std::endl;
-
     for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
       out = out + gsl_vector_get(solution_coefs_, i)*
 	(gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
@@ -183,12 +187,24 @@ operator()(const gsl_vector* input) const
 
 void BivariateSolver::set_IC_coefs()
 {
+  unsigned K = basis_.get_orthonormal_elements().size();
+  
   // Assigning coefficients for IC
+  gsl_vector* IC_coefs_projection = gsl_vector_alloc(IC_coefs_->size);
   for (unsigned i=0; i<IC_coefs_->size; ++i) {
-    gsl_vector_set(IC_coefs_, i,
+    gsl_vector_set(IC_coefs_projection, i,
 		   basis_.project(*small_t_solution_,
 				  basis_.get_orthonormal_element(i)));
   }
+  int s = 0;
+  gsl_permutation * p = gsl_permutation_alloc(K);
+  gsl_linalg_LU_decomp(mass_matrix_, p, &s);
+  gsl_linalg_LU_solve(mass_matrix_, p,
+		      IC_coefs_projection,
+		      IC_coefs_);
+
+  gsl_vector_free(IC_coefs_projection);
+  gsl_permutation_free(p);
 }
 
 void BivariateSolver::set_mass_and_stiffness_matrices()
@@ -242,7 +258,8 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
 
 void BivariateSolver::set_eval_and_evec()
 {
-  // System matrix
+  // System matrix: The system matrix Sys is given by M^{-1} S = Sys,
+  // where M is the mass matrix and S is the stiffness_matrix_
   int s = 0;
   unsigned K = basis_.get_orthonormal_elements().size();
 
@@ -252,13 +269,16 @@ void BivariateSolver::set_eval_and_evec()
   gsl_matrix* exp_system_matrix = gsl_matrix_alloc(K,K);
 
   gsl_linalg_LU_decomp(mass_matrix_, p, &s);
-  gsl_linalg_LU_invert(mass_matrix_, p, mass_matrix_inv);
+  // First we solve S = M * Sys = L (U * Sys).
+  for (unsigned k=0; k<K; ++k) {
+    gsl_vector_const_view col_k_stiffness_mat =
+      gsl_matrix_const_column(stiffness_matrix_, k);
 
-  gsl_blas_dsymm(CblasLeft, CblasUpper, 1.0,
-		 mass_matrix_inv,
-		 stiffness_matrix_,
-		 0.0,
-		 system_matrix);
+    gsl_vector_view col_k_system_mat = gsl_matrix_column(system_matrix, k);
+    gsl_linalg_LU_solve(mass_matrix_, p,
+			&col_k_stiffness_mat.vector,
+			&col_k_system_mat.vector);
+  }
 
   gsl_matrix *evec_tr = gsl_matrix_alloc(K, K);
 
