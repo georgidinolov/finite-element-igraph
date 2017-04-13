@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "BasisTypes.hpp"
+#include <cmath>
 #include <fstream>
 #include <gsl/gsl_blas.h>
 #include <iostream>
@@ -119,78 +120,23 @@ project(const BivariateElement& elem_1,
 {
   int N = 1.0/dx_ + 1;
   double integral = 0;
-
-  gsl_matrix * function_grid_matrix = gsl_matrix_alloc(N,N);
-  gsl_matrix_memcpy(function_grid_matrix, elem_1.get_function_grid());
-  gsl_matrix_mul_elements(function_grid_matrix, elem_2.get_function_grid());
+  double row_sum = 0;
 
   for (int i=0; i<N; ++i) {
-    for (int j=0; j<N; ++j) {
-      // integral = integral + elem_1(input)*elem_2(input);
-      integral = integral + 
-	gsl_matrix_get(function_grid_matrix, i,j);
-    }
+    gsl_vector_const_view row_i_1 =
+      gsl_matrix_const_row(elem_1.get_function_grid(),
+			   i);
+    gsl_vector_const_view row_i_2 =
+      gsl_matrix_const_row(elem_2.get_function_grid(),
+			   i);
+    gsl_blas_ddot(&row_i_1.vector, &row_i_2.vector, &row_sum);
+    integral = integral + row_sum;
   }
-  integral = integral * std::pow(dx_, 2);
-  return integral;
-}
-
-double BivariateGaussianKernelBasis::
-project(const BivariateGaussianKernelElement& elem_1,
-	const BivariateGaussianKernelElement& elem_2) const
-{
-  int N = 1.0/dx_ + 1;
-  double integral = 0;
-
-  gsl_matrix * function_grid_matrix = gsl_matrix_alloc(N,N);
-  gsl_matrix_memcpy(function_grid_matrix, elem_1.get_function_grid());
-  gsl_matrix_mul_elements(function_grid_matrix, elem_2.get_function_grid());
-  
-  for (int i=0; i<N; ++i) {
-    for (int j=0; j<N; ++j) {
-      // x = i*dx_;
-      // y = j*dx_;
-      // gsl_vector_set(input, 0, x);
-      // gsl_vector_set(input, 1, y);
-      // integral = integral + elem_1(input)*elem_2(input);
-      integral = integral + gsl_matrix_get(function_grid_matrix,i,j);
-    }
+  if (std::signbit(integral)) {
+    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
+  } else {
+    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
   }
-  integral = integral * std::pow(dx_, 2);
-  
-  gsl_matrix_free(function_grid_matrix);
-  return integral;
-}
-
-double BivariateGaussianKernelBasis::
-project_deriv_analytic(const BivariateElement& elem_1,
-		       long int coord_indeex_1, 
-		       const BivariateElement& elem_2,
-		       long int coord_indeex_2) const
-{
-  int N = 1.0/dx_;
-
-  double integral = 0;
-  gsl_vector* input = gsl_vector_alloc(2);
-  double x;
-  double y;
-
-  for (int i=0; i<N; ++i) {
-    x = i*dx_;
-    gsl_vector_set(input, 0, x);
-    
-    for (int j=0; j<N; ++j) {
-      y = j*dx_;
-      gsl_vector_set(input, 1, y);
-
-      integral = integral +
-	elem_1.first_derivative(input, coord_indeex_1)*
-	elem_2.first_derivative(input, coord_indeex_2);
-    }
-  }
-  integral = integral * std::pow(dx_, 2);
-  
-  gsl_vector_free(input);
   return integral;
 }
 
@@ -224,68 +170,183 @@ project_deriv(const BivariateElement& elem_1,
   }
 
   double integral = 0;
+  double row_sum = 0;
+
+  gsl_vector* left_1 = gsl_vector_alloc(N-1);
+  gsl_vector* left_2 = gsl_vector_alloc(N-1);
+  gsl_vector* right = gsl_vector_alloc(N-1);
+
+  // // Both derivatives wrt x, so that we take differences of *ROWS*,
+  // // since each row corresponds to constant x
+  // if (coord_indeex_1 == 0 && coord_indeex_2 == 0) {
+  //   for (int i=0; i<N-1; ++i) {
+  //     gsl_vector_const_view row_i_1 =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i);
+  //     gsl_vector_const_view row_i_1_plus_dx =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i+1);
+  //     gsl_vector_memcpy(left_1, &row_i_1_plus_dx.vector);
+  //     gsl_vector_sub(left_1, &row_i_1.vector);
+
+  //     gsl_vector_const_view row_i_2 =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view row_i_2_plus_dx =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &row_i_2_plus_dx.vector);
+  //     gsl_vector_sub(left_2, &row_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   }
+  //   // Both derivatives wrt x and y, so that we take differences of
+  //   // *ROWS* and *COLUMNS*
+  // } else if (coord_indeex_1 == 0 && coord_indeex_2 == 1) {
+  //   for (int i=0; i<N-1; ++i) {
+
+  //     gsl_vector_const_view row_i_1 =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i);
+  //     gsl_vector_const_view row_i_1_plus_dx =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i+1);
+  //     gsl_vector_memcpy(left_1, &row_i_1_plus_dx.vector);
+  //     gsl_vector_sub(left_1, &row_i_1.vector);
+
+  //     gsl_vector_const_view col_i_2 =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_2_plus_dy =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &col_i_2_plus_dy.vector);
+  //     gsl_vector_sub(left_2, &col_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   }
+  //   // Both derivatives wrt x and y, so that we take differences of
+  //   // *ROWS* and *COLUMNS*
+  // } else if (coord_indeex_1 == 1 && coord_indeex_2 == 0) {
+
+  //   for (int i=0; i<N-1; ++i) {
+  //     gsl_vector_const_view col_i_1 =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_1_plus_dy =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_1, &col_i_1_plus_dy.vector);
+  //     gsl_vector_sub(left_1, &col_i_1.vector);
+
+  //     gsl_vector_const_view row_i_2 =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view row_i_2_plus_dx =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &row_i_2_plus_dx.vector);
+  //     gsl_vector_sub(left_2, &row_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   }
+    
+  //   // Both derivatives wrt x, so that we take differences of *COLUMNS*
+  // } else if (coord_indeex_1 == 1 && coord_indeex_2 == 1) {
+  //   for (int i=0; i<N-1; ++i) {
+  //     gsl_vector_const_view col_i_1 =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_1_plus_dy =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_1, &col_i_1_plus_dy.vector);
+  //     gsl_vector_sub(left_1, &col_i_1.vector);
+
+  //     gsl_vector_const_view col_i_2 =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_2_plus_dy =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &col_i_2_plus_dy.vector);
+  //     gsl_vector_sub(left_2, &col_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   } 
+  // } else {
+  //   std::cout << "WRONG COORD INPUT!" << std::endl;    
+  // }
 
   if (coord_indeex_1 == 0 && coord_indeex_2 == 0) {
     for (int i=0; i<N-1; ++i) {
       for (int j=0; j<N-1; ++j) {
-	integral = integral +
-	  (gsl_matrix_get(elem_1_mat,
-			  i + 1,
-			  j) -
-	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
-	  (gsl_matrix_get(elem_2_mat,
-			  i + 1, 
-			  j) -
-	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+    	integral = integral +
+    	  (gsl_matrix_get(elem_1_mat,
+    			  i + 1,
+    			  j) -
+    	 gsl_matrix_get(elem_1_mat, i, j))*
+    	  (gsl_matrix_get(elem_2_mat,
+    			  i + 1, 
+    			  j) -
+    	   gsl_matrix_get(elem_2_mat, i, j));
       }
     } 
   } else if (coord_indeex_1 == 0 && coord_indeex_2 == 1) {
     for (int i=0; i<N-1; ++i) {
       for (int j=0; j<N-1; ++j) {
-	integral = integral +
-	  (gsl_matrix_get(elem_1_mat,
-			  i + 1,
-			  j) -
-	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
-	  (gsl_matrix_get(elem_2_mat,
-			  i, 
-			  j + 1) -
-	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+    	integral = integral +
+    	  (gsl_matrix_get(elem_1_mat,
+    			  i + 1,
+    			  j) -
+    	 gsl_matrix_get(elem_1_mat, i, j))*
+    	  (gsl_matrix_get(elem_2_mat,
+    			  i, 
+    			  j + 1) -
+    	   gsl_matrix_get(elem_2_mat, i, j));
       }
     } 
   } else if (coord_indeex_1 == 1 && coord_indeex_2 == 0) {
     for (int i=0; i<N-1; ++i) {
       for (int j=0; j<N-1; ++j) {
-	integral = integral +
-	  (gsl_matrix_get(elem_1_mat,
-			  i,
-			  j + 1) -
-	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
-	  (gsl_matrix_get(elem_2_mat,
-			  i + 1, 
-			  j) -
-	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+  	integral = integral +
+  	  (gsl_matrix_get(elem_1_mat,
+  			  i,
+  			  j + 1) -
+  	 gsl_matrix_get(elem_1_mat, i, j))*
+  	  (gsl_matrix_get(elem_2_mat,
+  			  i + 1, 
+  			  j) -
+  	   gsl_matrix_get(elem_2_mat, i, j));
       }
     } 
   } else if (coord_indeex_1 == 1 && coord_indeex_2 == 1) {
     for (int i=0; i<N-1; ++i) {
       for (int j=0; j<N-1; ++j) {
-	integral = integral +
-	  (gsl_matrix_get(elem_1_mat,
-			  i,
-			  j + 1) -
-	 gsl_matrix_get(elem_1_mat, i, j))/dx_*
-	  (gsl_matrix_get(elem_2_mat,
-			  i, 
-			  j + 1) -
-	   gsl_matrix_get(elem_2_mat, i, j))/dx_;
+  	integral = integral +
+  	  (gsl_matrix_get(elem_1_mat,
+  			  i,
+  			  j + 1) -
+  	 gsl_matrix_get(elem_1_mat, i, j))*
+  	  (gsl_matrix_get(elem_2_mat,
+  			  i, 
+  			  j + 1) -
+  	   gsl_matrix_get(elem_2_mat, i, j));
       }
     } 
   } else {
     std::cout << "WRONG COORD INPUT!" << std::endl;    
   }
 
-  integral = integral * std::pow(dx_, 2);
+  gsl_vector_free(left_1);
+  gsl_vector_free(left_2);
+  gsl_vector_free(right);
+  
+  integral = integral;
   return integral;
 }
 
@@ -656,10 +717,6 @@ void BivariateGaussianKernelBasis::set_orthonormal_functions_stable()
     double sum = 0;
     if (i==30) {
       std::cout << "i = " << i << std::endl;
-      std::cout << "coefficients = \n";
-      for (unsigned j=0; j<i+1; ++j) {
-	std::cout << coefficients[j] << "\n";
-      }
       std::cout << std::endl;
       for (int j=0; j<1/dx_+1; ++j) {
     	for (int k=0; k<1/dx_+1; ++k) {

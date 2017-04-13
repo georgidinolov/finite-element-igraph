@@ -4,6 +4,7 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_eigen.h>
 #include <iostream>
+#include <string>
 
 BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 				 double sigma_x,
@@ -121,6 +122,16 @@ void BivariateSolver::set_diffusion_parameters(double sigma_x,
   set_solution_coefs();
 }
 
+const gsl_vector* BivariateSolver::get_solution_coefs()
+{
+  return solution_coefs_;
+}
+
+const gsl_vector* BivariateSolver::get_evals()
+{
+  return eval_;
+}
+
 double BivariateSolver::
 operator()(const gsl_vector* input) const
 {
@@ -153,6 +164,8 @@ operator()(const gsl_vector* input) const
   } else {
     int x_int = x_2/dx_;
     int y_int = y_2/dx_;
+
+    std::cout << "x_int = " << x_int << "; y_int = " << y_int << std::endl;
 
     for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
       out = out + gsl_vector_get(solution_coefs_, i)*
@@ -189,16 +202,42 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
   const gsl_matrix* system_matrix_dx_dy = basis_.get_system_matrix_dx_dy();
   const gsl_matrix* system_matrix_dy_dx = basis_.get_system_matrix_dy_dx();
 
-  double in = 0;
-  for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
-    for (unsigned j=0; j<basis_.get_orthonormal_elements().size(); ++j) {
-      in = -0.5*std::pow(sigma_x_,2)*gsl_matrix_get(system_matrix_dx_dx, i, j)
-	+ -rho_*sigma_x_*sigma_y_*0.5*(gsl_matrix_get(system_matrix_dx_dy, i, j)+
-				       gsl_matrix_get(system_matrix_dy_dx, i, j))
-	+ -0.5*std::pow(sigma_y_,2)*gsl_matrix_get(system_matrix_dy_dy, i, j);
-      gsl_matrix_set(stiffness_matrix_, i, j, in);
-    }
-  } 
+  gsl_matrix* left = gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
+				      basis_.get_orthonormal_elements().size());
+  gsl_matrix* right = gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
+				       basis_.get_orthonormal_elements().size());
+
+  gsl_matrix_memcpy(left, system_matrix_dx_dx);
+  gsl_matrix_scale(left, -0.5*std::pow(sigma_x_,2));
+
+  gsl_matrix_memcpy(right, system_matrix_dx_dy);
+  gsl_matrix_add(right, system_matrix_dy_dx);
+  gsl_matrix_scale(right, -rho_*sigma_x_*sigma_y_*0.5);
+
+  gsl_matrix_add(left, right);
+
+  gsl_matrix_memcpy(right, system_matrix_dy_dy);
+  gsl_matrix_scale(right, -0.5*std::pow(sigma_y_,2));
+
+  gsl_matrix_add(left, right);
+
+  gsl_matrix_memcpy(stiffness_matrix_, left);
+
+  basis_.save_matrix(stiffness_matrix_, "stiffness_matrix.csv");
+  
+  // double in = 0;
+  // for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
+  //   for (unsigned j=0; j<basis_.get_orthonormal_elements().size(); ++j) {
+  //     in = -0.5*std::pow(sigma_x_,2)*gsl_matrix_get(system_matrix_dx_dx, i, j)
+  // 	+ -rho_*sigma_x_*sigma_y_*0.5*(gsl_matrix_get(system_matrix_dx_dy, i, j)+
+  // 				       gsl_matrix_get(system_matrix_dy_dx, i, j))
+  // 	+ -0.5*std::pow(sigma_y_,2)*gsl_matrix_get(system_matrix_dy_dy, i, j);
+  //     gsl_matrix_set(stiffness_matrix_, i, j, in);
+  //   }
+  // }
+  
+  gsl_matrix_free(left);
+  gsl_matrix_free(right);
 }
 
 void BivariateSolver::set_eval_and_evec()

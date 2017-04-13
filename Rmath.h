@@ -47,12 +47,14 @@
 # else
 #  include <math.h>
 # endif
+#else
+#warning "use of NO_C_HEADERS is deprecated"
 #endif
 
 /*-- Mathlib as part of R --  define this for standalone : */
 /* #undef MATHLIB_STANDALONE */
 
-#define R_VERSION_STRING "3.3.1"
+#define R_VERSION_STRING "3.3.3"
 
 #ifndef HAVE_EXPM1
 # define HAVE_EXPM1 1
@@ -212,7 +214,7 @@ double  Rlog1p(double);
  typedef enum { FALSE = 0, TRUE } Rboolean;
 # endif
 #else
-# include <R/R_ext/Boolean.h>
+# include <R_ext/Boolean.h>
 #endif
 
 
@@ -658,7 +660,7 @@ double  logspace_sub(double logx, double logy);
 /* second is defined by nmath.h */
 
 /* If isnan is a macro, as C99 specifies, the C++
-   math header will undefine it. This happens on OS X */
+   math header will undefine it. This happens on macOS */
 # ifdef __cplusplus
   int R_isnancpp(double); /* in mlutils.c */
 #  define ISNAN(x)     R_isnancpp(x)

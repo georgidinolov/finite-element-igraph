@@ -4,6 +4,7 @@
 #include <fstream>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
+#include <math.h>
 #include <iostream>
 #include <string>
 
@@ -69,15 +70,26 @@ operator()(const gsl_vector* input) const
 
 double BivariateLinearCombinationElement::norm() const
 {
+  int N = 1.0/dx_ + 1;
   double integral = 0;
-  for (int i=0; i<1/get_dx()+1; ++i) {
-    for (int j=0; j<1/get_dx()+1; ++j) {
-      integral = integral + 
-	std::pow(gsl_matrix_get(function_grid_, i,j), 2);
-    }
-  }
+  double row_sum = 0;
 
-  return std::sqrt(integral * std::pow(get_dx(), 2));
+  for (int i=0; i<N; ++i) {
+    gsl_vector_const_view row_i_1 =
+      gsl_matrix_const_row(get_function_grid(),
+			   i);
+    gsl_vector_const_view row_i_2 =
+      gsl_matrix_const_row(get_function_grid(),
+			   i);
+    gsl_blas_ddot(&row_i_1.vector, &row_i_2.vector, &row_sum);
+    integral = integral + row_sum;
+  }
+  if (std::signbit(integral)) {
+    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
+  } else {
+    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
+  }
+  return sqrt(integral);
 }
 
 double BivariateLinearCombinationElement::

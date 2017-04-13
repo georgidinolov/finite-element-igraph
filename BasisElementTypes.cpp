@@ -7,6 +7,7 @@
 #include <gsl/gsl_randist.h>
 #include <iostream>
 #include <iomanip>
+#include <math.h>
 #include <string>
 
 // =================== BASIS ELEMENT CLASS ===================
@@ -423,7 +424,26 @@ operator()(const gsl_vector* input) const
 
 double BivariateGaussianKernelElement::norm() const
 {
-  return GaussianKernelElement::norm();
+  int N = 1.0/get_dx() + 1;
+  double integral = 0;
+  double row_sum = 0;
+
+  for (int i=0; i<N; ++i) {
+    gsl_vector_const_view row_i_1 =
+      gsl_matrix_const_row(get_function_grid(),
+			   i);
+    gsl_vector_const_view row_i_2 =
+      gsl_matrix_const_row(get_function_grid(),
+			   i);
+    gsl_blas_ddot(&row_i_1.vector, &row_i_2.vector, &row_sum);
+    integral = integral + row_sum;
+  }
+  if (std::signbit(integral)) {
+    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(get_dx()));
+  } else {
+    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(get_dx()));
+  }
+  return sqrt(integral);
 }
 
 double BivariateGaussianKernelElement::

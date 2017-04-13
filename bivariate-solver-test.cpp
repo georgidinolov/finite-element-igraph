@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <string>
 #include <vector>
 
 int main() {
@@ -100,26 +101,38 @@ int main() {
   std::cout << "x_0_2 = " << x_0_2 << "\n"
   	    << "y_0_2 = " << y_0_2 << std::endl;
 
-  std::ofstream output_file;
-  output_file.open("bivariate-solution.csv");
-  // header
-  output_file << "x, y, solution\n";
-  
-  for ( unsigned i=0; i<N; ++i) {
-    x = (bx-ax)/(N-1)*i + ax;
-    gsl_vector_set(input, 0, x);
+  std::cout << "FEM_solver.get_evals[1] = "
+	    << gsl_vector_get(FEM_solver.get_evals(),1)
+	    << std::endl;
+    
 
-    for (unsigned j=0; j<N; ++j) {
-      y = (by-ay)/(N-1)*j + ay;
-      gsl_vector_set(input, 1, y);
-
-      output_file << x << ","
-  		  << y << ","
-  		  << FEM_solver(input) << "\n";
+  gsl_matrix* left = gsl_matrix_alloc(N,N);
+  gsl_matrix* right = gsl_matrix_alloc(N,N);
+  for (unsigned i=0; i<basis.get_orthonormal_elements().size(); ++i)
+    {
+      if (i==0)
+	{
+	  gsl_matrix_memcpy(left, basis.get_orthonormal_element(i).
+			    get_function_grid());
+	  gsl_matrix_scale(left, gsl_vector_get(FEM_solver.get_solution_coefs(),
+						i));
+	}
+      else
+	{
+	  gsl_matrix_memcpy(right, basis.get_orthonormal_element(i).
+			    get_function_grid());
+	  gsl_matrix_scale(right, gsl_vector_get(FEM_solver.get_solution_coefs(),
+						 i));
+	  gsl_matrix_add(left, right);
+	}
     }
-  }
-  output_file.close();
+
+  basis.save_matrix(left, "bivariate-solution.csv");
+  
   gsl_vector_free(input);
+  gsl_matrix_free(left);
+  gsl_matrix_free(right);
+
   return 0;
 }
 
