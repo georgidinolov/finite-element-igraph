@@ -22,6 +22,11 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
     b_(b),
     c_(c),
     d_(d),
+    sigma_x_(sigma_x),
+    sigma_y_(sigma_y),
+    rho_(rho),
+    x_0_(x_0),
+    y_0_(y_0),
     mvtnorm_(MultivariateNormal()),
     basis_(basis),
     small_t_solution_(new BivariateSolverClassical()),
@@ -37,48 +42,20 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
 			   basis_.get_orthonormal_elements().size())),
     solution_coefs_(gsl_vector_alloc(basis.get_orthonormal_elements().size()))
 {
-  if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
+  if (x_0 < a || x_0 > b || y_0 < c || y_0 > d) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
 
-  // STEP 1
-  double x_0_1 = 0 - a;
-  double b_1 = b - a;
-  double a_1 = a - a;
-
-  double y_0_1 = 0 - c;
-  double c_1 = c - c;
-  double d_1 = d - c;
-
-  // STEP 2
-  double Lx_2 = b_1 - a_1;
-  double x_0_2 =  x_0_1 / Lx_2;
-  // double  a_2 = a_1 / Lx_2;
-  // double b_2 = b_1 / Lx_2;
-  double sigma_x_2 = sigma_x / Lx_2;
-
-  double Ly_2 = d_1 - c_1;
-  double y_0_2 =  y_0_1 / Ly_2;
-  // double c_2 = c_1 / Ly_2;
-  // double d_2 = d_1 / Ly_2;
-  double sigma_y_2 = sigma_y / Ly_2;
-
-  sigma_x_ = sigma_x_2;
-  sigma_y_ = sigma_y_2;
-  rho_ = rho;
-  x_0_ = x_0_2;
-  y_0_ = y_0_2;
+  set_scaled_data();
 
   delete small_t_solution_;
-  small_t_solution_ = new BivariateSolverClassical(sigma_x_,
-						   sigma_y_,
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
+						   sigma_y_2_,
 						   rho_,
-						   x_0_,
-						   y_0_),
+						   x_0_2_,
+						   y_0_2_),
   
   small_t_solution_->set_function_grid(dx_);
-  basis_.save_matrix(small_t_solution_->get_function_grid(),
-		     "ic.csv");
 
   set_mass_and_stiffness_matrices();
   set_eval_and_evec();
@@ -111,17 +88,81 @@ void BivariateSolver::set_diffusion_parameters(double sigma_x,
   sigma_x_ = sigma_x;
   sigma_y_ = sigma_y;
   rho_ = rho;
+  set_scaled_data();
 
   delete small_t_solution_;
-  small_t_solution_ = new BivariateSolverClassical(sigma_x_,
-						   sigma_y_,
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
+						   sigma_y_2_,
 						   rho_,
-						   x_0_,
-						   y_0_);
+						   x_0_2_,
+						   y_0_2_);
+  small_t_solution_->set_function_grid(dx_);
+
   set_mass_and_stiffness_matrices();
   set_eval_and_evec();
+  set_IC_coefs();
+  set_solution_coefs();
+  
+}
+
+gsl_vector* BivariateSolver::scale_input(const gsl_vector* input) const
+{
+  double x = gsl_vector_get(input,0);
+  double y = gsl_vector_get(input,1);
+  
+  // STEP 1
+  double x_1 = x - a_;
+  double y_1 = y - c_;
+
+  double a_1 = a_ - a_;
+  double b_1 = b_ - a_;
+  double c_1 = c_ - c_;
+  double d_1 = d_ - c_;
+  
+  // STEP 2
+  double Lx_2 = b_1 - a_1;
+  double x_2 =  x_1 / Lx_2;
+
+  double Ly_2 = d_1 - c_1;
+  double y_2 =  y_1 / Ly_2;
+
+  gsl_vector* scaled_input = gsl_vector_alloc(2);
+  gsl_vector_set(scaled_input, 0, x_2);
+  gsl_vector_set(scaled_input, 1, y_2);
+
+  return scaled_input;
+}
+
+void BivariateSolver::set_data(double a,
+			       double x_0,
+			       double b,
+			       double c,
+			       double y_0,
+			       double d)
+{
+  a_ = a;
+  b_ = b;
+  c_ = c;
+  d_ = d;
+  x_0_ = x_0;
+  y_0_ = y_0;
+  set_scaled_data();
+  
+  delete small_t_solution_;
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
+						   sigma_y_2_,
+						   rho_,
+						   x_0_2_,
+						   y_0_2_);
+  small_t_solution_->set_function_grid(dx_);
+
+  set_mass_and_stiffness_matrices();
+  set_eval_and_evec();
+  set_IC_coefs();
   set_solution_coefs();
 }
+
+
 
 const gsl_vector* BivariateSolver::get_solution_coefs() const 
 {
@@ -141,48 +182,184 @@ const gsl_vector* BivariateSolver::get_evals() const
 double BivariateSolver::
 operator()(const gsl_vector* input) const
 {
-  double x = gsl_vector_get(input,0);
-  double y = gsl_vector_get(input,1);
-
-  // STEP 1
-  double x_1 = x - a_;
-  double y_1 = y - c_;
-
-  double a_1 = a_ - a_;
-  double b_1 = b_ - a_;
-  double c_1 = c_ - c_;
-  double d_1 = d_ - c_;
-  
-  // STEP 2
-  double Lx_2 = b_1 - a_1;
-  double x_2 =  x_1 / Lx_2;
-
-  double Ly_2 = d_1 - c_1;
-  double y_2 =  y_1 / Ly_2;
-
-  gsl_vector* scaled_input = gsl_vector_alloc(2);
-  gsl_vector_set(scaled_input, 0, x_2);
-  gsl_vector_set(scaled_input, 1, y_2);  
+  gsl_vector* scaled_input = scale_input(input);
 
   double out = 0;
   if ((t_ - small_t_solution_->get_t()) <= 1e-32) {
     out = (*small_t_solution_)(scaled_input, t_);
   } else {
-    int x_int = x_2/dx_;
-    int y_int = y_2/dx_;
+    int x_int = gsl_vector_get(scaled_input, 0)/dx_;
+    int y_int = gsl_vector_get(scaled_input, 1)/dx_;
+
+    double x = gsl_vector_get(scaled_input, 0);
+    double y = gsl_vector_get(scaled_input, 1);
+    
+    double x_1 = x_int*dx_;
+    double x_2 = (x_int+1)*dx_;
+    double y_1 = y_int*dx_;
+    double y_2 = (y_int+1)*dx_;
+
+    double f_11 = 0;
+    double f_12 = 0;
+    double f_21 = 0;
+    double f_22 = 0;
+    double current_f = 0;
 
     for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
-      out = out + gsl_vector_get(solution_coefs_, i)*
-	(gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
-			x_int,
-			y_int));
+      f_11 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+			    x_int,
+			    y_int);
+      f_12 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+			    x_int,
+			    y_int+1);
+      f_21 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+			    x_int+1,
+			    y_int);
+      f_22 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+			    x_int+1,
+			    y_int+1);
+      current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
+	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
+	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
+
+      current_f = current_f * gsl_vector_get(solution_coefs_, i);
+
+      out = out + current_f;
     }
   }
 
+  double Lx_2 = b_ - a_;
+  double Ly_2 = d_ - c_;
   out = out / (Lx_2 * Ly_2);
   return out;
 
   gsl_vector_free(scaled_input);
+}
+
+double BivariateSolver::numerical_likelihood(const gsl_vector* input,
+					     double h)
+{
+  // there are 16 solutions to be computed
+  double current_a = a_;
+  double current_b = b_;
+  double current_c = c_;
+  double current_d = d_;
+
+  std::vector<int> a_indeces {-1,1};
+  std::vector<int> b_indeces {-1,1};
+  std::vector<int> c_indeces {-1,1};
+  std::vector<int> d_indeces {-1,1};
+
+  int a_power=1;
+  int b_power=1;
+  int c_power=1;
+  int d_power=1;
+
+  double derivative = 0;
+  
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=1; } else { a_power=0; };
+    
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=1; } else { b_power=0; };
+
+      for (unsigned k=0; k<c_indeces.size(); ++k) {
+	if (k==0) { c_power=1; } else { c_power=0; };
+
+	for (unsigned l=0; l<d_indeces.size(); ++l) {
+	  if (l==0) { d_power=1; } else { d_power=0; };
+
+	  set_data(current_a + a_indeces[i]*h,
+		   x_0_,
+		   current_b + b_indeces[j]*h,
+		   current_c + c_indeces[k]*h,
+		   y_0_,
+		   current_d + d_indeces[l]*h);
+	  
+	  derivative = derivative + 
+	    a_indeces[i]*
+	    b_indeces[j]*
+	    c_indeces[k]*
+	    d_indeces[l]*(*this)(input);
+	}
+      }
+    }
+  }
+
+  // double log_derivative = log(abs(derivative)) - log(16) - 4*log(h);
+
+  // if (std::signbit(derivative)) {
+  //   derivative = -exp(log_derivative);
+  // } else {
+  //   derivative = exp(log_derivative);
+  // }
+
+  derivative = derivative / (16*h*h*h*h);
+  
+  return derivative;
+}
+
+double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input,
+							 double h)
+{
+  // there are 16 solutions to be computed
+  double current_a = a_;
+  double current_b = b_;
+  double current_c = c_;
+  double current_d = d_;
+
+  std::vector<int> a_indeces {-1,0};
+  std::vector<int> b_indeces {0,1};
+  std::vector<int> c_indeces {-1,0};
+  std::vector<int> d_indeces {0,1};
+
+  int a_power=1;
+  int b_power=1;
+  int c_power=1;
+  int d_power=1;
+
+  double derivative = 0;
+  
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=1; } else { a_power=0; };
+    
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=1; } else { b_power=0; };
+
+      for (unsigned k=0; k<c_indeces.size(); ++k) {
+	if (k==0) { c_power=1; } else { c_power=0; };
+
+	for (unsigned l=0; l<d_indeces.size(); ++l) {
+	  if (l==0) { d_power=1; } else { d_power=0; };
+
+	  set_data(current_a + a_indeces[i]*h,
+		   x_0_,
+		   current_b + b_indeces[j]*h,
+		   current_c + c_indeces[k]*h,
+		   y_0_,
+		   current_d + d_indeces[l]*h);
+	  
+	  derivative = derivative + 
+	    std::pow(-1, a_power)*
+	    std::pow(-1, b_power)*
+	    std::pow(-1, c_power)*
+	    std::pow(-1, d_power)*(*this)(input);
+	}
+      }
+    }
+  }
+
+  // double log_derivative = log(abs(derivative)) - log(16) - 4*log(h);
+
+  // if (std::signbit(derivative)) {
+  //   derivative = -exp(log_derivative);
+  // } else {
+  //   derivative = exp(log_derivative);
+  // }
+
+  derivative = derivative / (h*h*h*h);
+  
+  return derivative;
 }
 
 void BivariateSolver::set_IC_coefs()
@@ -224,16 +401,16 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
 				       basis_.get_orthonormal_elements().size());
 
   gsl_matrix_memcpy(left, system_matrix_dx_dx);
-  gsl_matrix_scale(left, -0.5*std::pow(sigma_x_,2));
+  gsl_matrix_scale(left, -0.5*std::pow(sigma_x_2_,2));
 
   gsl_matrix_memcpy(right, system_matrix_dx_dy);
   gsl_matrix_add(right, system_matrix_dy_dx);
-  gsl_matrix_scale(right, -rho_*sigma_x_*sigma_y_*0.5);
+  gsl_matrix_scale(right, -rho_*sigma_x_2_ * sigma_y_2_*0.5);
 
   gsl_matrix_add(left, right);
 
   gsl_matrix_memcpy(right, system_matrix_dy_dy);
-  gsl_matrix_scale(right, -0.5*std::pow(sigma_y_,2));
+  gsl_matrix_scale(right, -0.5*std::pow(sigma_y_2_,2));
 
   gsl_matrix_add(left, right);
 
@@ -326,4 +503,29 @@ void BivariateSolver::set_solution_coefs()
   gsl_matrix_free(evec);
   gsl_matrix_free(evec_tr);
   gsl_matrix_free(exp_system_matrix);
+}
+
+void BivariateSolver::set_scaled_data()
+{
+  // STEP 1
+  double x_0_1 = 0 - a_;
+  double b_1 = b_ - a_;
+  double a_1 = a_ - a_;
+
+  double y_0_1 = 0 - c_;
+  double c_1 = c_ - c_;
+  double d_1 = d_ - c_;
+
+  // STEP 2
+  double Lx_2 = b_1 - a_1;
+  x_0_2_ =  x_0_1 / Lx_2;
+  a_2_ = a_1 / Lx_2;
+  b_2_ = b_1 / Lx_2;
+  sigma_x_2_ = sigma_x_ / Lx_2;
+  
+  double Ly_2 = d_1 - c_1;
+  y_0_2_ =  y_0_1 / Ly_2;
+  c_2_ = c_1 / Ly_2;
+  d_2_ = d_1 / Ly_2;
+  sigma_y_2_ = sigma_y_ / Ly_2;
 }

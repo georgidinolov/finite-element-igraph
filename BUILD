@@ -32,6 +32,8 @@ cc_library(
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal",
 		 "-lm",
+		 "-lgsl",
+		 "-lgslcblas",
 		 "-O3"],
 	visibility = ["//visibility:public"],
 )
@@ -47,10 +49,12 @@ cc_binary(
 	srcs = ["bivariate-solver-test.cpp"],
 	includes = ["BivariateSolver.hpp"],
 	deps = [":bivariate-solver",
-    	        "//src/brownian-motion:2d-brownian-motion"],
+    	        "//src/brownian-motion:2d-brownian-motion",
+		"//src/images-expansion:2d-advection-diffusion-images"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/brownian-motion",
-	      	 "-Isrc/multivariate-normal"],
+	      	 "-Isrc/multivariate-normal",
+		 "-Isrc/images-expansion"],
 	visibility = ["//visibility:public"],
 )
 

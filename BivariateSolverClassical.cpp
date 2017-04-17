@@ -43,10 +43,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
-  std::cout << "sigma_x_ = " << sigma_x_ << "\n"
-	    << "sigma_y_ = " << sigma_y_ << "\n"
-	    << "rho_ = " << rho_ << std::endl;
-  
   double cc = std::sin(M_PI/4.0);
 
   gsl_matrix_set(Rotation_matrix_, 0, 0, cc / (sigma_x_*std::sqrt(1.0-rho_)));
@@ -124,13 +120,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   	      return Cs[i1] < Cs[i2];
   	    });
 
-  for (unsigned i=0; i<4; ++i) {
-    std::cout << Cs_indeces[i] << " (" << Cs[Cs_indeces[i]] << "); ";
-  }
-  std::cout << std::endl;
-  
-  tt_ = std::pow(Cs[Cs_indeces[1]]/5.0, 2.0);
-  std::cout << "tt_ = " << tt_ << std::endl;
+  tt_ = std::pow(Cs[Cs_indeces[1]]/3.0, 2.0);
 
   for (int i=0; i<2; ++i) {
     for (int j=0; j<2; ++j) {
@@ -146,9 +136,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     + xi_ic;
   double eta_ic_reflected = 2.0*Cs[Cs_indeces[0]]*sin(ss_s[Cs_indeces[0]])
     + eta_ic;
-
-  std::cout << "xi_ic_reflected = " << xi_ic_reflected << std::endl;
-  std::cout << "eta_ic_reflected = " << eta_ic_reflected << std::endl;
 
   gsl_vector_set(initial_condition_xi_eta_reflected_, 0, xi_ic_reflected);
   gsl_vector_set(initial_condition_xi_eta_reflected_, 1, eta_ic_reflected);
@@ -252,7 +239,7 @@ void BivariateSolverClassical::set_function_grid(double dx)
   gsl_matrix_free(function_grid_);
   function_grid_ = gsl_matrix_alloc(1/dx + 1, 1/dx + 1);
 
-  auto t1 = std::chrono::high_resolution_clock::now();
+  // auto t1 = std::chrono::high_resolution_clock::now();
   double out = 0;
   gsl_vector * input = gsl_vector_alloc(2);
   double x = 0;
@@ -270,10 +257,9 @@ void BivariateSolverClassical::set_function_grid(double dx)
       gsl_matrix_set(function_grid_, i, j, out);
     }
   }
-  auto t2 = std::chrono::high_resolution_clock::now();
-  std::cout << "duration in Bivariate Classical Solver = "
-	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-    	    << " milliseconds\n";
-
+  // auto t2 = std::chrono::high_resolution_clock::now();
+  // std::cout << "duration in Bivariate Classical Solver = "
+  // 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+  //   	    << " milliseconds\n";
   gsl_vector_free(input);
 }
