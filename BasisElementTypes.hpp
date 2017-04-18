@@ -42,6 +42,9 @@ public:
   virtual void save_function_grid(std::string file_name) const;
   virtual const gsl_matrix* get_deriv_function_grid_dx() const =0;
   virtual const gsl_matrix* get_deriv_function_grid_dy() const =0;
+
+  // Planar interpolation
+  virtual double operator()(const gsl_vector* input) const;
 };
 
 // ============== LINEAR COMBINATION ELEMENT =====================
@@ -49,54 +52,41 @@ class BivariateLinearCombinationElement
   : public virtual BivariateElement
 {
 public:
-  
   BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
-			   const std::vector<double>& coefficients);
+				    const std::vector<double>& coefficients);
   BivariateLinearCombinationElement(const BivariateLinearCombinationElement& lin_comb_element);
-
   virtual ~BivariateLinearCombinationElement();
-  virtual double operator()(const gsl_vector* input) const;
+
   virtual double norm() const;
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
 
-  
-  double get_coefficient(unsigned i) const;
-  const std::vector<double>& get_coefficients() const;
-  void set_coefficients(const std::vector<double>& new_coefs);
-  
+  // PUBLIC GETTERS
   inline virtual double get_dx() const { return dx_; }
-  const std::vector<const BivariateElement*> get_elements() const;
-
   inline virtual const gsl_matrix* get_function_grid() const
   { return function_grid_; };
+  inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
+  { return deriv_function_grid_dx_; }
+  inline virtual const gsl_matrix* get_deriv_function_grid_dy() const
+  { return deriv_function_grid_dy_; }
+
+  // PUBLIC SETTERS
   // WARNING: Call below function ONLY if you are sure the
   // function_grid_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_function_grid(const gsl_matrix* new_function_grid);
-
-  inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
-  { return deriv_function_grid_dx_; }
   // WARNING: Call below function ONLY if you are sure the
   // deriv_function_grid_dx_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_deriv_function_grid_dx(const gsl_matrix* new_deriv_function_grid_dx);
-
-  inline virtual const gsl_matrix* get_deriv_function_grid_dy() const
-  { return deriv_function_grid_dy_; }
   // WARNING: Call below function ONLY if you are sure the
   // deriv_function_grid_dy_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy);
-
-  // sets coefficients and copies the provided function grids
-  virtual void set_coefficients_without_function_grids(const std::vector<double>& cs);
   
 private:
-  void set_function_grids();
-  
-  std::vector<const BivariateElement*> elements_;
-  std::vector<double> coefficients_;
+  void set_function_grids(const std::vector<const BivariateElement*>& elements,
+			  const std::vector<double>& coefficients);
 
   double dx_;
   gsl_matrix * function_grid_;
@@ -116,7 +106,6 @@ public:
 			double exponent_power,
 			const gsl_vector* mean_vector,
 			const gsl_matrix* covariance_matrix);
-  
   GaussianKernelElement(const GaussianKernelElement& element);
 
   virtual ~GaussianKernelElement();
@@ -211,6 +200,7 @@ public:
 			   double rho,
 			   double x_0,
 			   double y_0);
+  BivariateSolverClassical(const BivariateSolverClassical& biv_sol_class);
   ~BivariateSolverClassical();
 
   virtual double operator()(const gsl_vector* input) const;

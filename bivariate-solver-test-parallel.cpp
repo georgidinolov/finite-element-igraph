@@ -29,7 +29,7 @@ int main() {
 				     y_0,
 				     t);
 
-  double dx = 1e-2;
+  double dx = 5e-3;
   BivariateGaussianKernelBasis* basis = new BivariateGaussianKernelBasis();
 
   // LIKELIHOOD LOOP
@@ -39,7 +39,7 @@ int main() {
   output_file << "log.likelihood\n";
   
   long unsigned seed_init = 2000;
-  unsigned N = 100;
+  unsigned N = 1000;
   // GENERATE DATA
   std::vector<BrownianMotion> BMs (0);
   for (unsigned i=0; i<N; ++i) {
@@ -74,12 +74,13 @@ int main() {
     double FEM_likelihood = 0;
 
     std::cout << "allocating solvers" << std::endl;
-
     auto t1 = std::chrono::high_resolution_clock::now();
     std::vector<BivariateSolver*> FEM_solvers (N);
-#pragma omp parallel private(i) shared(FEM_solvers, basis, sigma_x_data_gen, sigma_y_data_gen, rho, BMs, t, dx, N)
- {
-#pragma omp for
+
+//     omp_set_dynamic(1);
+// #pragma omp parallel private(i) shared(FEM_solvers, basis, sigma_x_data_gen, sigma_y_data_gen, rho, BMs, t, dx, N)
+//  {
+// #pragma omp for
     for (i=0; i<N; ++i) {
       delete FEM_solvers[i];
       FEM_solvers[i] = new BivariateSolver(basis,
@@ -95,7 +96,7 @@ int main() {
 					   t,
 					   dx);
     }
- }
+ // }
  
     for (i=0; i<N; ++i) {
       delete FEM_solvers[i];

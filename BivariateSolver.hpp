@@ -25,7 +25,7 @@ public:
 		  double d,
 		  double t,
 		  double dx);
-  ~BivariateSolver();
+  virtual ~BivariateSolver();
   virtual BivariateSolver& operator=(const BivariateSolver& rhs);
   
   inline double get_t() const

@@ -42,12 +42,11 @@ public:
 			       double sigma,
 			       double power,
 			       double std_dev_factor);
-  ~BivariateGaussianKernelBasis();
+  BivariateGaussianKernelBasis(const BivariateGaussianKernelBasis& basis);
+  virtual ~BivariateGaussianKernelBasis();
 
-  virtual const BivariateGaussianKernelElement& get_basis_element(unsigned i) const;
   virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const;
-  virtual const std::vector<BivariateLinearCombinationElement>&
-  get_orthonormal_elements() const;
+  virtual const std::vector<BivariateLinearCombinationElement>& get_orthonormal_elements() const;
   
   virtual const gsl_matrix* get_mass_matrix() const;
   virtual const gsl_matrix* get_system_matrix_dx_dx() const;
@@ -80,16 +79,11 @@ private:
 			   double power,
 			   double std_dev_factor);
   
-  void set_orthonormal_functions();
-  void set_orthonormal_functions_stable();
+  void set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElement>& basis_functions);
   void set_mass_matrix();
-
-  void set_system_matrices();
   void set_system_matrices_stable();
   
-  std::vector<BivariateGaussianKernelElement> basis_functions_;
   std::vector<BivariateLinearCombinationElement> orthonormal_functions_;
-
   gsl_matrix* system_matrix_dx_dx_;
   gsl_matrix* system_matrix_dx_dy_;
   gsl_matrix* system_matrix_dy_dx_;

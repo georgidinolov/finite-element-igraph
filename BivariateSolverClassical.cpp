@@ -144,6 +144,44 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   // gsl_vector_free(slopes);
 }
 
+BivariateSolverClassical::BivariateSolverClassical(const BivariateSolverClassical& solver)
+  : sigma_x_(solver.sigma_x_),
+    sigma_y_(solver.sigma_y_),
+    rho_(solver.rho_),
+    x_0_(solver.x_0_),
+    y_0_(solver.y_0_),
+    mvtnorm_(MultivariateNormal()),
+    xi_eta_input_(gsl_vector_alloc(solver.xi_eta_input_->size)),
+    initial_condition_xi_eta_(gsl_vector_alloc(solver.initial_condition_xi_eta_->size)),
+    Rotation_matrix_(gsl_matrix_alloc(solver.Rotation_matrix_->size1,
+				      solver.Rotation_matrix_->size2)),
+    tt_(solver.tt_),
+    Variance_(gsl_matrix_alloc(solver.Variance_->size1,
+			       solver.Variance_->size2)),
+    initial_condition_xi_eta_reflected_(gsl_vector_alloc(solver.
+							 initial_condition_xi_eta_reflected_->size)),
+    function_grid_(gsl_matrix_alloc(solver.function_grid_->size1,
+				    solver.function_grid_->size2))
+{
+  gsl_vector_memcpy(xi_eta_input_,
+		    solver.xi_eta_input_);
+
+  gsl_vector_memcpy(initial_condition_xi_eta_,
+		    solver.initial_condition_xi_eta_);
+
+  gsl_matrix_memcpy(Rotation_matrix_,
+		    solver.Rotation_matrix_);
+
+  gsl_matrix_memcpy(Variance_,
+		    solver.Variance_);
+
+  gsl_vector_memcpy(initial_condition_xi_eta_reflected_,
+		    solver.initial_condition_xi_eta_reflected_);
+
+  gsl_matrix_memcpy(function_grid_,
+		    solver.function_grid_);
+}
+
 BivariateSolverClassical::~BivariateSolverClassical()
 {
   // freeing vectors

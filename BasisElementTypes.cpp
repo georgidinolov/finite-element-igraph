@@ -36,6 +36,45 @@ void BivariateElement::save_function_grid(std::string file_name) const
   output_file.close();
 }
 
+double BivariateElement::operator()(const gsl_vector* input) const
+{
+  double dx = get_dx();
+  int x_int = gsl_vector_get(input, 0)/dx;
+  int y_int = gsl_vector_get(input, 1)/dx;
+
+  double x = gsl_vector_get(input, 0);
+  double y = gsl_vector_get(input, 1);
+    
+  double x_1 = x_int*dx;
+  double x_2 = (x_int+1)*dx;
+  double y_1 = y_int*dx;
+  double y_2 = (y_int+1)*dx;
+
+  double f_11 = 0;
+  double f_12 = 0;
+  double f_21 = 0;
+  double f_22 = 0;
+  double current_f = 0;
+
+  f_11 = gsl_matrix_get(get_function_grid(),
+			x_int,
+			y_int);
+  f_12 = gsl_matrix_get(get_function_grid(),
+			x_int,
+			y_int+1);
+  f_21 = gsl_matrix_get(get_function_grid(),
+			x_int+1,
+			y_int);
+  f_22 = gsl_matrix_get(get_function_grid(),
+			x_int+1,
+			y_int+1);
+  current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
+    ((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
+     (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
+  
+  return current_f;
+}
+
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 GaussianKernelElement::GaussianKernelElement()
   : dx_(1.0),
