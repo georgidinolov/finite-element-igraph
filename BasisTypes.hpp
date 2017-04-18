@@ -27,6 +27,7 @@ public:
 			 const BivariateElement& elem_2) const =0;
   virtual void save_matrix(const gsl_matrix* mat,
 			   std::string file_name) const =0;
+  virtual double get_dx() const=0;
 };
 
 
@@ -35,6 +36,7 @@ class BivariateGaussianKernelBasis
   : public BivariateBasis
 {
 public:
+  BivariateGaussianKernelBasis();
   BivariateGaussianKernelBasis(double dx,
 			       double rho,
 			       double sigma,
@@ -65,7 +67,10 @@ public:
 			       int coord_indeex_2) const;
   virtual void save_matrix(const gsl_matrix* mat,
 			   std::string file_name) const;
-  
+  inline double get_dx() const
+  {
+    return dx_;
+  }
   
 private:
   double dx_;

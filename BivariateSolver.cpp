@@ -6,7 +6,80 @@
 #include <iostream>
 #include <string>
 
-BivariateSolver::BivariateSolver(const BivariateBasis& basis,
+BivariateSolver::BivariateSolver()
+  : a_(0),
+    b_(1),
+    c_(0),
+    d_(1),
+    sigma_x_(1.0),
+    sigma_y_(1.0),
+    rho_(0.0),
+    x_0_(0.5),
+    y_0_(0.5),
+    mvtnorm_(MultivariateNormal()),
+    basis_(NULL),
+    small_t_solution_(new BivariateSolverClassical()),
+    t_(1),
+    dx_(0.01),
+    IC_coefs_(gsl_vector_alloc(1)),
+    mass_matrix_(gsl_matrix_alloc(1,1)),
+    stiffness_matrix_(gsl_matrix_alloc(1,1)),
+    eval_(gsl_vector_alloc(1)),
+    evec_(gsl_matrix_alloc(1,1)),
+    solution_coefs_(gsl_vector_alloc(1))
+{}
+
+BivariateSolver::BivariateSolver(BivariateBasis* basis)
+  : a_(0),
+    b_(1),
+    c_(0),
+    d_(1),
+    sigma_x_(1.0),
+    sigma_y_(1.0),
+    rho_(0.0),
+    x_0_(0.5),
+    y_0_(0.5),
+    mvtnorm_(MultivariateNormal()),
+    basis_(basis),
+    small_t_solution_(new BivariateSolverClassical()),
+    t_(1),
+    dx_(basis->get_dx()),
+    IC_coefs_(gsl_vector_alloc(basis->get_orthonormal_elements().size())),
+    mass_matrix_(gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				  basis_->get_orthonormal_elements().size())),
+    stiffness_matrix_(gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				       basis_->get_orthonormal_elements().size())),
+    eval_(gsl_vector_alloc(basis_->get_orthonormal_elements().size())),
+    evec_(gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+			   basis_->get_orthonormal_elements().size())),
+    solution_coefs_(gsl_vector_alloc(basis->get_orthonormal_elements().size()))
+{
+  set_scaled_data();
+
+  delete small_t_solution_;
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
+						   sigma_y_2_,
+						   rho_,
+						   x_0_2_,
+						   y_0_2_),
+  small_t_solution_->set_function_grid(dx_);
+
+  set_mass_and_stiffness_matrices();
+  set_eval_and_evec();
+  set_IC_coefs();
+  set_solution_coefs();
+
+  std::cout << "in BivariateSolver constructor, stiffness_matrix_->size2 = "
+	    << stiffness_matrix_->size2 << std::endl;
+  std::cout << "in BivariateSolver constructor, address of mass_matrix_ = "
+	    << mass_matrix_ << std::endl;
+  std::cout << "in BivariateSolver constructor, mass_matrix_->size2 = "
+	    << mass_matrix_->size2 << std::endl;
+  std::cout << "in BivariateSolver constructor, solution_coefs_->size = "
+	    << solution_coefs_->size << std::endl;
+}
+
+BivariateSolver::BivariateSolver(BivariateBasis* basis,
 				 double sigma_x,
 				 double sigma_y,
 				 double rho,
@@ -32,15 +105,15 @@ BivariateSolver::BivariateSolver(const BivariateBasis& basis,
     small_t_solution_(new BivariateSolverClassical()),
     t_(t),
     dx_(dx),
-    IC_coefs_(gsl_vector_alloc(basis.get_orthonormal_elements().size())),
-    mass_matrix_(gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
-				  basis_.get_orthonormal_elements().size())),
-    stiffness_matrix_(gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
-				       basis_.get_orthonormal_elements().size())),
-    eval_(gsl_vector_alloc(basis_.get_orthonormal_elements().size())),
-    evec_(gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
-			   basis_.get_orthonormal_elements().size())),
-    solution_coefs_(gsl_vector_alloc(basis.get_orthonormal_elements().size()))
+    IC_coefs_(gsl_vector_alloc(basis->get_orthonormal_elements().size())),
+    mass_matrix_(gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				  basis_->get_orthonormal_elements().size())),
+    stiffness_matrix_(gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				       basis_->get_orthonormal_elements().size())),
+    eval_(gsl_vector_alloc(basis_->get_orthonormal_elements().size())),
+    evec_(gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+			   basis_->get_orthonormal_elements().size())),
+    solution_coefs_(gsl_vector_alloc(basis->get_orthonormal_elements().size()))
 {
   if (x_0 < a || x_0 > b || y_0 < c || y_0 > d) {
     std::cout << "ERROR: IC out of range" << std::endl;
@@ -73,6 +146,95 @@ BivariateSolver::~BivariateSolver()
   // freeing matrices
   gsl_matrix_free(mass_matrix_);
   gsl_matrix_free(stiffness_matrix_);
+}
+
+BivariateSolver& BivariateSolver::
+operator=(const BivariateSolver& rhs)
+{
+  std::cout << "in overloaded = for BivariateSolver" << std::endl;
+  a_ = rhs.a_;
+  b_ = rhs.b_;
+  c_ = rhs.c_;
+  d_ = rhs.d_;
+  sigma_x_ = rhs.sigma_x_;
+  sigma_y_ = rhs.sigma_y_;
+  rho_ = rhs.rho_;
+  x_0_ = rhs.x_0_;
+  y_0_ = rhs.y_0_;
+  mvtnorm_ = MultivariateNormal();
+  basis_ = rhs.basis_;
+
+  t_ = rhs.t_;
+  dx_ = rhs.dx_;
+
+  std::cout << "IC_coefs_ BEFORE ASSIGNMENT" << std::endl;
+  std::cout << "IC_coefs_->size = " << IC_coefs_->size << std::endl;
+  gsl_vector_free(IC_coefs_);
+  IC_coefs_ = gsl_vector_alloc(basis_->get_orthonormal_elements().size());
+  gsl_vector_memcpy(IC_coefs_, rhs.IC_coefs_);
+  std::cout << std::endl;
+
+  std::cout << "mass_matrix_ BEFORE ASSIGNMENT" << std::endl;
+  std::cout << "mass_matrix_ address = " << mass_matrix_ << std::endl;
+  std::cout << "mass_matrix_->size1 = " << mass_matrix_->size1 << std::endl;
+  std::cout << "mass_matrix_->size2 = " << mass_matrix_->size2 << std::endl;
+  gsl_matrix_free(mass_matrix_);
+  std::cout << "mass_matrix_->size1 = " << mass_matrix_->size1 << std::endl;
+  std::cout << "mass_matrix_->size2 = " << mass_matrix_->size2 << std::endl;
+  mass_matrix_ = gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				  basis_->get_orthonormal_elements().size());
+  gsl_matrix_memcpy(mass_matrix_, rhs.mass_matrix_);
+  std::cout << "mass_matrix_->size1 = " << mass_matrix_->size1 << std::endl;
+  std::cout << "mass_matrix_->size2 = " << mass_matrix_->size2 << std::endl;
+  std::cout << std::endl;
+
+
+  std::cout << "stiffness_matrix_ BEFORE ASSIGNMENT" << std::endl;
+  std::cout << "stiffness_matrix_->size1 = " << stiffness_matrix_->size1 << std::endl;
+  std::cout << "stiffness_matrix_->size2 = " << stiffness_matrix_->size2 << std::endl;
+  gsl_matrix_free(stiffness_matrix_);
+  stiffness_matrix_ = gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				       basis_->get_orthonormal_elements().size());
+  gsl_matrix_memcpy(stiffness_matrix_, rhs.stiffness_matrix_);
+  std::cout << "stiffness_matrix_->size1 = " << stiffness_matrix_->size1 << std::endl;
+  std::cout << "stiffness_matrix_->size2 = " << stiffness_matrix_->size2 << std::endl;
+  std::cout << std::endl;
+
+  gsl_vector_free(eval_);
+  eval_ = gsl_vector_alloc(basis_->get_orthonormal_elements().size());
+  gsl_vector_memcpy(eval_, rhs.eval_);
+
+  gsl_matrix_free(evec_);
+  evec_ = gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+			   basis_->get_orthonormal_elements().size());
+  gsl_matrix_memcpy(evec_, rhs.evec_);
+
+  std::cout << "solution_coefs_ BEFORE ASSIGNMENT" << std::endl;
+  std::cout << "solution_coefs_ address = " << solution_coefs_ << std::endl;
+  std::cout << "solution_coefs_->size = " << solution_coefs_->size << std::endl;
+  gsl_vector_free(solution_coefs_);
+  solution_coefs_ = gsl_vector_alloc(basis_->get_orthonormal_elements().size());
+  std::cout << "solution_coefs_->size = " << solution_coefs_->size << std::endl;
+  gsl_vector_memcpy(solution_coefs_, rhs.solution_coefs_);
+
+  set_scaled_data();
+  std::cout << "deleting small_t_solution_" << std::endl;
+  delete small_t_solution_;
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
+						   sigma_y_2_,
+						   rho_,
+						   x_0_2_,
+						   y_0_2_),
+  small_t_solution_->set_function_grid(dx_);
+
+  std::cout << "setting mass and stiffness MATS" << std::endl;
+  set_mass_and_stiffness_matrices();
+  //  std::cout << "setting eval and evec MATS" << std::endl;
+  set_eval_and_evec();
+  set_IC_coefs();
+  set_solution_coefs();
+
+  return *this;
 }
 
 void BivariateSolver::set_t(double t)
@@ -205,17 +367,17 @@ operator()(const gsl_vector* input) const
     double f_22 = 0;
     double current_f = 0;
 
-    for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
-      f_11 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+    for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
+      f_11 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
 			    x_int,
 			    y_int);
-      f_12 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+      f_12 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
 			    x_int,
 			    y_int+1);
-      f_21 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+      f_21 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
 			    x_int+1,
 			    y_int);
-      f_22 = gsl_matrix_get(basis_.get_orthonormal_element(i).get_function_grid(),
+      f_22 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
 			    x_int+1,
 			    y_int+1);
       current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
@@ -364,14 +526,14 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
 
 void BivariateSolver::set_IC_coefs()
 {
-  unsigned K = basis_.get_orthonormal_elements().size();
+  unsigned K = basis_->get_orthonormal_elements().size();
   
   // Assigning coefficients for IC
   gsl_vector* IC_coefs_projection = gsl_vector_alloc(IC_coefs_->size);
   for (unsigned i=0; i<IC_coefs_->size; ++i) {
     gsl_vector_set(IC_coefs_projection, i,
-		   basis_.project(*small_t_solution_,
-				  basis_.get_orthonormal_element(i)));
+		   basis_->project(*small_t_solution_,
+				  basis_->get_orthonormal_element(i)));
   }
   int s = 0;
   gsl_permutation * p = gsl_permutation_alloc(K);
@@ -387,18 +549,18 @@ void BivariateSolver::set_IC_coefs()
 void BivariateSolver::set_mass_and_stiffness_matrices()
 {
   // Mass matrix
-  gsl_matrix_memcpy(mass_matrix_, basis_.get_mass_matrix());
+  gsl_matrix_memcpy(mass_matrix_, basis_->get_mass_matrix());
 
   // Stiffness matrix
-  const gsl_matrix* system_matrix_dx_dx = basis_.get_system_matrix_dx_dx();
-  const gsl_matrix* system_matrix_dy_dy = basis_.get_system_matrix_dy_dy();
-  const gsl_matrix* system_matrix_dx_dy = basis_.get_system_matrix_dx_dy();
-  const gsl_matrix* system_matrix_dy_dx = basis_.get_system_matrix_dy_dx();
+  const gsl_matrix* system_matrix_dx_dx = basis_->get_system_matrix_dx_dx();
+  const gsl_matrix* system_matrix_dy_dy = basis_->get_system_matrix_dy_dy();
+  const gsl_matrix* system_matrix_dx_dy = basis_->get_system_matrix_dx_dy();
+  const gsl_matrix* system_matrix_dy_dx = basis_->get_system_matrix_dy_dx();
 
-  gsl_matrix* left = gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
-				      basis_.get_orthonormal_elements().size());
-  gsl_matrix* right = gsl_matrix_alloc(basis_.get_orthonormal_elements().size(),
-				       basis_.get_orthonormal_elements().size());
+  gsl_matrix* left = gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				      basis_->get_orthonormal_elements().size());
+  gsl_matrix* right = gsl_matrix_alloc(basis_->get_orthonormal_elements().size(),
+				       basis_->get_orthonormal_elements().size());
 
   gsl_matrix_memcpy(left, system_matrix_dx_dx);
   gsl_matrix_scale(left, -0.5*std::pow(sigma_x_2_,2));
@@ -416,11 +578,11 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
 
   gsl_matrix_memcpy(stiffness_matrix_, left);
 
-  basis_.save_matrix(stiffness_matrix_, "stiffness_matrix.csv");
+  basis_->save_matrix(stiffness_matrix_, "stiffness_matrix.csv");
   
   // double in = 0;
-  // for (unsigned i=0; i<basis_.get_orthonormal_elements().size(); ++i) {
-  //   for (unsigned j=0; j<basis_.get_orthonormal_elements().size(); ++j) {
+  // for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
+  //   for (unsigned j=0; j<basis_->get_orthonormal_elements().size(); ++j) {
   //     in = -0.5*std::pow(sigma_x_,2)*gsl_matrix_get(system_matrix_dx_dx, i, j)
   // 	+ -rho_*sigma_x_*sigma_y_*0.5*(gsl_matrix_get(system_matrix_dx_dy, i, j)+
   // 				       gsl_matrix_get(system_matrix_dy_dx, i, j))
@@ -438,7 +600,7 @@ void BivariateSolver::set_eval_and_evec()
   // System matrix: The system matrix Sys is given by M^{-1} S = Sys,
   // where M is the mass matrix and S is the stiffness_matrix_
   int s = 0;
-  unsigned K = basis_.get_orthonormal_elements().size();
+  unsigned K = basis_->get_orthonormal_elements().size();
 
   gsl_permutation * p = gsl_permutation_alloc(K);
   gsl_matrix* system_matrix = gsl_matrix_alloc(K,K);
@@ -477,7 +639,7 @@ void BivariateSolver::set_eval_and_evec()
 
 void BivariateSolver::set_solution_coefs()
 {
-  unsigned K = basis_.get_orthonormal_elements().size();  
+  unsigned K = basis_->get_orthonormal_elements().size();  
   gsl_matrix* evec =gsl_matrix_alloc(K,K);
   gsl_matrix* evec_tr =gsl_matrix_alloc(K,K);
   gsl_matrix* exp_system_matrix =gsl_matrix_alloc(K,K);

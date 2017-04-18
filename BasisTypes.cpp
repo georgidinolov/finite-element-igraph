@@ -12,6 +12,33 @@ BivariateBasis::~BivariateBasis()
 {}
 
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
+BivariateGaussianKernelBasis::BivariateGaussianKernelBasis()
+  : dx_(0.1),
+    system_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
+    system_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
+    system_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
+    system_matrix_dy_dy_(gsl_matrix_alloc(1,1)),
+    mass_matrix_(gsl_matrix_alloc(1,1)),
+    inner_product_matrix_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1,1))
+{
+  // first create the list of basis elements
+  set_basis_functions(0.0,1.0,1.0,0.5);
+
+  // second create the orthonormal list of elements
+  set_orthonormal_functions_stable();
+
+  //
+  set_mass_matrix();
+
+  //
+  set_system_matrices_stable();
+}
+
+
 BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
 							   double rho,
 							   double sigma,

@@ -11,7 +11,9 @@ extern "C" {
 class BivariateSolver
 {
 public:
-  BivariateSolver(const BivariateBasis& basis,
+  BivariateSolver();
+  BivariateSolver(BivariateBasis* basis);
+  BivariateSolver(BivariateBasis* basis,
 		  double sigma_x,
 		  double sigma_y,
 		  double rho,
@@ -24,10 +26,16 @@ public:
 		  double t,
 		  double dx);
   ~BivariateSolver();
-
+  virtual BivariateSolver& operator=(const BivariateSolver& rhs);
+  
   inline double get_t() const
   {
     return t_;
+  }
+
+  inline const BivariateBasis* get_basis() const
+  {
+    return basis_;
   }
     
   // need to reset t_ AND solution_coefs_!
@@ -78,7 +86,7 @@ private:
   double y_0_2_;
   
   MultivariateNormal mvtnorm_;
-  const BivariateBasis& basis_;
+  BivariateBasis* basis_;
   BivariateSolverClassical* small_t_solution_;
   double t_;
   double dx_;

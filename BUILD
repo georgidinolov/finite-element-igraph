@@ -59,6 +59,21 @@ cc_binary(
 )
 
 cc_binary(
+	name = "bivariate-solver-test-parallel",
+	srcs = ["bivariate-solver-test-parallel.cpp"],
+	includes = ["BivariateSolver.hpp"],
+	deps = [":bivariate-solver",
+    	        "//src/brownian-motion:2d-brownian-motion"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/brownian-motion",
+	      	 "-Isrc/multivariate-normal",
+		 "-fopenmp"],
+	linkopts = ["-fopenmp", "-lm"],
+	visibility = ["//visibility:public"],
+)
+
+
+cc_binary(
 	name = "bivariate-solver-classical-test",
 	srcs = ["bivariate-solver-classical-test.cpp"],
 	includes = ["BasisElementTypes.hpp"],
