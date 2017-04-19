@@ -37,11 +37,14 @@ int main() {
 
   double dx = 5e-3;
   BivariateGaussianKernelBasis* basis = new BivariateGaussianKernelBasis(dx,
-  								    rho_data_gen,
-  								    0.30,
-  								    1,
-  								    0.5);
-  BivariateSolver FEM_solver = BivariateSolver(*basis,
+									 0.9,
+									 0.30,
+									 1,
+									 0.5);
+  std::cout << "N elements = " 
+	    << basis->get_orthonormal_elements().size() << std::endl;
+
+  BivariateSolver FEM_solver = BivariateSolver(basis,
   					       sigma_x_data_gen, 
   					       sigma_y_data_gen,
 					       rho_data_gen,
@@ -279,7 +282,7 @@ int main() {
   std::ofstream output_file;
   output_file.open("likelihood-rho.txt");
   output_file << std::fixed << std::setprecision(32);
-  output_file << "log.likelihood\n";
+  output_file << "log.likelihood, rho\n";
   
   long unsigned seed_init = 2000;
   N = 100;
@@ -303,18 +306,18 @@ int main() {
   double rho_init = -0.3;
   for (unsigned r=0; r<R; ++r) {
     double rho = rho_init + dr*r;
-    delete basis;
-    basis = new BivariateGaussianKernelBasis(dx,
-					     rho,
-					     0.30,
-					     1,
-					     0.5);
+    // delete basis;
+    // basis = new BivariateGaussianKernelBasis(dx,
+    // 					     rho,
+    // 					     0.30,
+    // 					     1,
+    // 					     0.5);
     double log_likelihood = 0;
     for (unsigned i=0; i<N; ++i) {
       gsl_vector_set(input, 0, BMs[i].get_x_T());
       gsl_vector_set(input, 1, BMs[i].get_y_T());
       
-      BivariateSolver FEM_solver_2 = BivariateSolver(*basis,
+      BivariateSolver FEM_solver_2 = BivariateSolver(basis,
 						     sigma_x_data_gen, 
 						     sigma_y_data_gen,
 						     rho,
@@ -339,22 +342,23 @@ int main() {
   					   BMs[i].get_b(),
   					   BMs[i].get_c(),
   					   BMs[i].get_d());
-      double FEM_likelihood = FEM_solver_2.
-	numerical_likelihood_first_order(input, dx);
+      double FEM_likelihood = 0.0;
+      FEM_likelihood = FEM_solver_2.numerical_likelihood_first_order(input, dx);
       
       std::cout << "i=" << i << "; ";
       std::cout << "FEM.numerical_likelihood(input,dx) = "
   		<< FEM_likelihood
   		<< "; MOI_solver /dadb analy = "
   		<< MOI_solver.likelihood(t,
-  					 BMs[i].get_x_T(), BMs[i].get_y_T());
+  					 BMs[i].get_x_T(), BMs[i].get_y_T())
+		<< "; r = " << r;
       std::cout << std::endl;
 
       if (FEM_likelihood > 1e-16) {
   	log_likelihood = log_likelihood + log(FEM_likelihood);
       }
     }
-    output_file << log_likelihood << "\n";
+    output_file << log_likelihood << ", " << rho << "\n";
   }
 
   gsl_vector_free(input);

@@ -182,6 +182,51 @@ BivariateSolverClassical::BivariateSolverClassical(const BivariateSolverClassica
 		    solver.function_grid_);
 }
 
+BivariateSolverClassical& BivariateSolverClassical::
+operator=(const BivariateSolverClassical& rhs) 
+{
+  sigma_x_ = rhs.sigma_x_;
+  sigma_y_ = rhs.sigma_y_;
+  rho_ = rhs.rho_;
+  x_0_ = rhs.x_0_;
+  y_0_ = rhs.y_0_;
+  mvtnorm_ = MultivariateNormal();
+
+  gsl_vector_free(xi_eta_input_);
+  xi_eta_input_ = gsl_vector_alloc(rhs.xi_eta_input_->size);
+  gsl_vector_memcpy(xi_eta_input_, rhs.xi_eta_input_);
+
+  gsl_vector_free(initial_condition_xi_eta_);
+  initial_condition_xi_eta_ = gsl_vector_alloc(rhs.initial_condition_xi_eta_->size);
+  gsl_vector_memcpy(initial_condition_xi_eta_, 
+		    rhs.initial_condition_xi_eta_);
+
+  gsl_matrix_free(Rotation_matrix_);
+  Rotation_matrix_ = gsl_matrix_alloc(rhs.Rotation_matrix_->size1,
+				      rhs.Rotation_matrix_->size2);
+  gsl_matrix_memcpy(Rotation_matrix_, rhs.Rotation_matrix_);
+
+  tt_ = rhs.tt_;
+
+  gsl_matrix_free(Variance_);
+  Variance_ = gsl_matrix_alloc(rhs.Variance_->size1,
+			       rhs.Variance_->size2);
+  gsl_matrix_memcpy(Variance_, rhs.Variance_);
+
+  gsl_vector_free(initial_condition_xi_eta_reflected_);
+  initial_condition_xi_eta_reflected_ = 
+    gsl_vector_alloc(rhs.initial_condition_xi_eta_reflected_->size);
+  gsl_vector_memcpy(initial_condition_xi_eta_reflected_, 
+		    rhs.initial_condition_xi_eta_reflected_);
+
+  gsl_matrix_free(function_grid_);
+  function_grid_ = gsl_matrix_alloc(rhs.function_grid_->size1,
+				    rhs.function_grid_->size2);
+  gsl_matrix_memcpy(function_grid_, rhs.function_grid_);
+
+  return *this;
+}
+
 BivariateSolverClassical::~BivariateSolverClassical()
 {
   // freeing vectors

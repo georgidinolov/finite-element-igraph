@@ -38,12 +38,12 @@ class BivariateElement
 {
 public:
   BivariateElement() {};
-  virtual const gsl_matrix* get_function_grid() const =0;
   virtual void save_function_grid(std::string file_name) const;
+
+  virtual const gsl_matrix* get_function_grid() const =0;
   virtual const gsl_matrix* get_deriv_function_grid_dx() const =0;
   virtual const gsl_matrix* get_deriv_function_grid_dy() const =0;
-
-  // Planar interpolation
+  // Implemented with planar interpolation
   virtual double operator()(const gsl_vector* input) const;
 };
 
@@ -52,9 +52,12 @@ class BivariateLinearCombinationElement
   : public virtual BivariateElement
 {
 public:
+  BivariateLinearCombinationElement();
   BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
 				    const std::vector<double>& coefficients);
   BivariateLinearCombinationElement(const BivariateLinearCombinationElement& lin_comb_element);
+  virtual BivariateLinearCombinationElement& operator=(const BivariateLinearCombinationElement& rhs);
+
   virtual ~BivariateLinearCombinationElement();
 
   virtual double norm() const;
@@ -160,10 +163,9 @@ public:
 				 const gsl_vector* mean_vector,
 				 const gsl_matrix* covariance_matrix);
   BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element);
-  
-  // BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element);
-  virtual ~BivariateGaussianKernelElement();
   virtual BivariateGaussianKernelElement& operator=(const BivariateGaussianKernelElement& rhs);
+  virtual ~BivariateGaussianKernelElement();
+
 
   virtual double operator()(const gsl_vector* input) const;
   virtual double norm() const;
@@ -201,6 +203,7 @@ public:
 			   double x_0,
 			   double y_0);
   BivariateSolverClassical(const BivariateSolverClassical& biv_sol_class);
+  virtual BivariateSolverClassical& operator=(const BivariateSolverClassical& rhs);
   ~BivariateSolverClassical();
 
   virtual double operator()(const gsl_vector* input) const;

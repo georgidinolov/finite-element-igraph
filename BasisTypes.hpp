@@ -43,6 +43,7 @@ public:
 			       double power,
 			       double std_dev_factor);
   BivariateGaussianKernelBasis(const BivariateGaussianKernelBasis& basis);
+  BivariateGaussianKernelBasis& operator=(const BivariateGaussianKernelBasis& rhs);
   virtual ~BivariateGaussianKernelBasis();
 
   virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const;

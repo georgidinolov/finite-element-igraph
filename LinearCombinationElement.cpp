@@ -9,6 +9,13 @@
 #include <string>
 
 // ============== LINEAR COMBINATION ELEMENT =====================
+BivariateLinearCombinationElement::BivariateLinearCombinationElement()
+  : dx_(1),
+    function_grid_(gsl_matrix_alloc(1,1)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(1,1)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(1,1))
+{}
+
 BivariateLinearCombinationElement::
 BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
 				  const std::vector<double>& coefficients)
@@ -41,6 +48,30 @@ BivariateLinearCombinationElement(const BivariateLinearCombinationElement& eleme
   gsl_matrix_memcpy(function_grid_, element.function_grid_);
   gsl_matrix_memcpy(deriv_function_grid_dx_, element.deriv_function_grid_dx_);
   gsl_matrix_memcpy(deriv_function_grid_dy_, element.deriv_function_grid_dy_);
+}
+
+BivariateLinearCombinationElement& BivariateLinearCombinationElement::
+operator=(const BivariateLinearCombinationElement& rhs)
+{
+  dx_ = rhs.get_dx();
+  
+  gsl_matrix_free(function_grid_);
+  function_grid_ = gsl_matrix_alloc(rhs.function_grid_->size1,
+				    rhs.function_grid_->size2);
+
+  gsl_matrix_free(deriv_function_grid_dx_);
+  deriv_function_grid_dx_ = gsl_matrix_alloc(1/rhs.get_dx() + 1,
+					     1/rhs.get_dx() + 1);
+
+  gsl_matrix_free(deriv_function_grid_dy_);
+  deriv_function_grid_dy_ = gsl_matrix_alloc(1/rhs.get_dx() + 1,
+					     1/rhs.get_dx() + 1);
+
+  gsl_matrix_memcpy(function_grid_, rhs.function_grid_);
+  gsl_matrix_memcpy(deriv_function_grid_dx_, rhs.deriv_function_grid_dx_);
+  gsl_matrix_memcpy(deriv_function_grid_dy_, rhs.deriv_function_grid_dy_);
+
+  return *this;
 }
 
 BivariateLinearCombinationElement::~BivariateLinearCombinationElement()

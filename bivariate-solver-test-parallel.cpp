@@ -36,10 +36,12 @@ int main() {
   std::ofstream output_file;
   output_file.open("likelihood-rho.txt");
   output_file << std::fixed << std::setprecision(32);
-  output_file << "log.likelihood\n";
+  // HEADER
+  output_file << "log.likelihood, rho\n";
+
   
   long unsigned seed_init = 2000;
-  unsigned N = 1000;
+  unsigned N = 100;
   // GENERATE DATA
   std::vector<BrownianMotion> BMs (0);
   for (unsigned i=0; i<N; ++i) {
@@ -56,11 +58,12 @@ int main() {
   }
   std::vector<double> neg_log_likelihoods (N, 0.0);
   
-  unsigned R = 3;
+  unsigned R = 7;
   double dr = 0.1;
   double rho_init = -0.3;
   for (unsigned r=0; r<R; ++r) {
     double rho = rho_init + dr*r;
+
     delete basis;
     basis = new BivariateGaussianKernelBasis(dx,
 					     rho,
@@ -68,19 +71,26 @@ int main() {
 					     1,
 					     0.5);
     
-    BivariateGaussianKernelBasis* null_basis = NULL;
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::cout << "copying basis" << std::endl;
+    // std::vector<BivariateGaussianKernelBasis> copied_bases = std::vector<BivariateGaussianKernelBasis> (N);
+    // for (unsigned i=0; i<N; ++i) {
+    //   copied_bases[i] = *basis;
+    // }
+    auto t2 = std::chrono::high_resolution_clock::now();
 
     unsigned i = 0;
     double FEM_likelihood = 0;
 
     std::cout << "allocating solvers" << std::endl;
-    auto t1 = std::chrono::high_resolution_clock::now();
+     t1 = std::chrono::high_resolution_clock::now();
     std::vector<BivariateSolver*> FEM_solvers (N);
 
 //     omp_set_dynamic(1);
 // #pragma omp parallel private(i) shared(FEM_solvers, basis, sigma_x_data_gen, sigma_y_data_gen, rho, BMs, t, dx, N)
 //  {
 // #pragma omp for
+    double neg_log_likelihood = 0.0;
     for (i=0; i<N; ++i) {
       delete FEM_solvers[i];
       FEM_solvers[i] = new BivariateSolver(basis,
@@ -95,16 +105,26 @@ int main() {
 					   BMs[i].get_d(),
 					   t,
 					   dx);
+
+      double FEM_likelihood = FEM_solvers[i]->
+	numerical_likelihood_first_order(input, dx);
+
+      if (FEM_likelihood > 1e-16) {
+  	neg_log_likelihood = neg_log_likelihood + -log(FEM_likelihood);
+      }
     }
  // }
- 
+    
+    output_file << neg_log_likelihood << ", " << rho << "\n";
+
     for (i=0; i<N; ++i) {
       delete FEM_solvers[i];
     }
-    auto t2 = std::chrono::high_resolution_clock::now();
+
+    t2 = std::chrono::high_resolution_clock::now();
     std::cout << "T to alloc " << N << " solvers = "
 	      << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-	      << " millisecnds." << std::endl;
+	      << " milliseconds." << std::endl;
 
     
 //     BivariateSolver FEM_solver_2 = BivariateSolver(*basis,
@@ -148,8 +168,6 @@ int main() {
 //   	neg_log_likelihoods[i] = -log(FEM_likelihood);
 //       }
 //     }
-
-  
   }
   
   gsl_vector_free(input);

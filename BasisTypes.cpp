@@ -110,6 +110,58 @@ BivariateGaussianKernelBasis(const BivariateGaussianKernelBasis& basis)
 
   orthonormal_functions_ = 
     std::vector<BivariateLinearCombinationElement> (basis.orthonormal_functions_.size());
+
+  for (unsigned i=0; i<basis.orthonormal_functions_.size(); ++i) {
+    orthonormal_functions_[i] = basis.orthonormal_functions_[i];
+  }
+}
+
+BivariateGaussianKernelBasis& BivariateGaussianKernelBasis::
+operator=(const BivariateGaussianKernelBasis& rhs) 
+{
+  dx_ = rhs.dx_;
+  system_matrix_dx_dx_ = gsl_matrix_alloc(rhs.system_matrix_dx_dx_->size1,
+					  rhs.system_matrix_dx_dx_->size2);
+  system_matrix_dx_dy_ = gsl_matrix_alloc(rhs.system_matrix_dx_dy_->size1,
+					  rhs.system_matrix_dx_dy_->size2);
+  system_matrix_dy_dx_ = gsl_matrix_alloc(rhs.system_matrix_dy_dx_->size1,
+					  rhs.system_matrix_dy_dx_->size2);
+  system_matrix_dy_dy_ = gsl_matrix_alloc(rhs.system_matrix_dy_dy_->size1,
+					  rhs.system_matrix_dy_dy_->size2);
+  // 
+  mass_matrix_ = gsl_matrix_alloc(rhs.mass_matrix_->size1,
+				  rhs.mass_matrix_->size2);
+  inner_product_matrix_ = gsl_matrix_alloc(rhs.inner_product_matrix_->size1,
+					   rhs.inner_product_matrix_->size2);
+  //
+  deriv_inner_product_matrix_dx_dx_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dx_dx_->size1,
+						       rhs.deriv_inner_product_matrix_dx_dx_->size2);
+  deriv_inner_product_matrix_dx_dy_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dx_dy_->size1,
+						       rhs.deriv_inner_product_matrix_dx_dy_->size2);
+  deriv_inner_product_matrix_dy_dx_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dy_dx_->size1,
+						       rhs.deriv_inner_product_matrix_dy_dx_->size2);
+  deriv_inner_product_matrix_dy_dy_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dy_dy_->size1,
+						       rhs.deriv_inner_product_matrix_dy_dy_->size2);
+
+  gsl_matrix_memcpy(system_matrix_dx_dx_, rhs.system_matrix_dx_dx_);
+  gsl_matrix_memcpy(system_matrix_dx_dy_, rhs.system_matrix_dx_dy_);
+  gsl_matrix_memcpy(system_matrix_dy_dx_, rhs.system_matrix_dy_dx_);
+  gsl_matrix_memcpy(system_matrix_dy_dy_, rhs.system_matrix_dy_dy_);
+
+  gsl_matrix_memcpy(mass_matrix_, rhs.mass_matrix_);
+  gsl_matrix_memcpy(inner_product_matrix_, rhs.inner_product_matrix_);
+  
+  gsl_matrix_memcpy(deriv_inner_product_matrix_dx_dx_, rhs.deriv_inner_product_matrix_dx_dx_);
+  gsl_matrix_memcpy(deriv_inner_product_matrix_dx_dy_, rhs.deriv_inner_product_matrix_dx_dy_);
+  gsl_matrix_memcpy(deriv_inner_product_matrix_dy_dx_, rhs.deriv_inner_product_matrix_dy_dx_);
+  gsl_matrix_memcpy(deriv_inner_product_matrix_dy_dy_, rhs.deriv_inner_product_matrix_dy_dy_);
+
+  orthonormal_functions_ = 
+    std::vector<BivariateLinearCombinationElement> (rhs.orthonormal_functions_.size());
+
+  for (unsigned i=0; i<rhs.orthonormal_functions_.size(); ++i) {
+    orthonormal_functions_[i] = rhs.orthonormal_functions_[i];
+  }
 }
 
 BivariateGaussianKernelBasis::~BivariateGaussianKernelBasis()
@@ -433,7 +485,6 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 						       double power,
 						       double std_dev_factor)
 {
-  std::cout << "IN set_basis_functions" << std::endl;
   // creating the x-nodes
   double by = std_dev_factor * sigma * std::sqrt(1-rho);
   double current = 0.5 - std::sqrt(2.0);
@@ -474,7 +525,6 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   last = std::unique(y_nodes.begin(), y_nodes.end());
   y_nodes.erase(last, y_nodes.end());
 
-  std::cout << "Allocating matrices" << std::endl;
   gsl_matrix *xy_nodes = gsl_matrix_alloc(2, x_nodes.size()*y_nodes.size());
   gsl_matrix *xieta_nodes = gsl_matrix_alloc(2, x_nodes.size()*y_nodes.size());
 
@@ -511,7 +561,6 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
       }
   }
 
-  std::cout << "Allocating matrices 2" << std::endl;  
   gsl_vector* mean_vector = gsl_vector_alloc(2);
   gsl_matrix* covariance_matrix = gsl_matrix_alloc(2,2);
   
@@ -552,10 +601,6 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 void BivariateGaussianKernelBasis::
 set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElement>& basis_functions)
 {
-  std::cout << "IN set_orthonormal_functions_stable" << std::endl;
-  std::cout << "Number basis elements = " << basis_functions.size()
-	    << std::endl;
-
   // HAVE A MATRIX VIEW HERE ON THE STACK!
   gsl_matrix* workspace_left = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
   gsl_matrix* workspace_right = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
@@ -662,8 +707,6 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
 
 void BivariateGaussianKernelBasis::set_mass_matrix()
 {
-  std::cout << "IN set_mass_matrix()" << std::endl;
-
   gsl_matrix_free(mass_matrix_);
   mass_matrix_ = gsl_matrix_alloc(orthonormal_functions_.size(),
 				  orthonormal_functions_.size());
@@ -701,7 +744,6 @@ void BivariateGaussianKernelBasis::set_mass_matrix()
 
 void BivariateGaussianKernelBasis::set_system_matrices_stable()
 {
-  std::cout << "setting system matrices" << std::endl;
   gsl_matrix_free(deriv_inner_product_matrix_dx_dx_);
   deriv_inner_product_matrix_dx_dx_ =
     gsl_matrix_alloc(orthonormal_functions_.size(),
