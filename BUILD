@@ -7,6 +7,7 @@ cc_library(
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
 	linkopts = ["-lm", "-lgsl", "-lgslcblas"],	
+	visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -67,7 +68,8 @@ cc_binary(
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/brownian-motion",
 	      	 "-Isrc/multivariate-normal",
-		 "-fopenmp"],
+		 "-fopenmp",
+		 "-O3"],
 	linkopts = ["-fopenmp", "-lm"],
 	visibility = ["//visibility:public"],
 )

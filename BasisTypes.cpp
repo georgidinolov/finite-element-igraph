@@ -120,26 +120,44 @@ BivariateGaussianKernelBasis& BivariateGaussianKernelBasis::
 operator=(const BivariateGaussianKernelBasis& rhs) 
 {
   dx_ = rhs.dx_;
+  gsl_matrix_free(system_matrix_dx_dx_);
   system_matrix_dx_dx_ = gsl_matrix_alloc(rhs.system_matrix_dx_dx_->size1,
 					  rhs.system_matrix_dx_dx_->size2);
+
+  gsl_matrix_free(system_matrix_dx_dy_);
   system_matrix_dx_dy_ = gsl_matrix_alloc(rhs.system_matrix_dx_dy_->size1,
 					  rhs.system_matrix_dx_dy_->size2);
+
+  gsl_matrix_free(system_matrix_dy_dx_);
   system_matrix_dy_dx_ = gsl_matrix_alloc(rhs.system_matrix_dy_dx_->size1,
 					  rhs.system_matrix_dy_dx_->size2);
+
+  gsl_matrix_free(system_matrix_dy_dy_);
   system_matrix_dy_dy_ = gsl_matrix_alloc(rhs.system_matrix_dy_dy_->size1,
 					  rhs.system_matrix_dy_dy_->size2);
   // 
+  gsl_matrix_free(mass_matrix_);
   mass_matrix_ = gsl_matrix_alloc(rhs.mass_matrix_->size1,
 				  rhs.mass_matrix_->size2);
+
+  gsl_matrix_free(inner_product_matrix_);
   inner_product_matrix_ = gsl_matrix_alloc(rhs.inner_product_matrix_->size1,
 					   rhs.inner_product_matrix_->size2);
   //
+  // 
+  gsl_matrix_free(deriv_inner_product_matrix_dx_dx_);
   deriv_inner_product_matrix_dx_dx_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dx_dx_->size1,
 						       rhs.deriv_inner_product_matrix_dx_dx_->size2);
+
+  gsl_matrix_free(deriv_inner_product_matrix_dx_dy_);
   deriv_inner_product_matrix_dx_dy_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dx_dy_->size1,
 						       rhs.deriv_inner_product_matrix_dx_dy_->size2);
+
+  gsl_matrix_free(deriv_inner_product_matrix_dy_dx_);
   deriv_inner_product_matrix_dy_dx_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dy_dx_->size1,
 						       rhs.deriv_inner_product_matrix_dy_dx_->size2);
+
+  gsl_matrix_free(deriv_inner_product_matrix_dy_dy_);
   deriv_inner_product_matrix_dy_dy_ = gsl_matrix_alloc(rhs.deriv_inner_product_matrix_dy_dy_->size1,
 						       rhs.deriv_inner_product_matrix_dy_dy_->size2);
 
@@ -582,8 +600,6 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
     							 power,
     							 mean_vector,
     							 covariance_matrix);
-    std::string file_name = "basis_function_" + std::to_string(i) + ".csv";
-    basis_functions_[i].save_function_grid(file_name);
   }
 
   // SETTING ORTHONORMAL ELEMENTS
@@ -665,9 +681,6 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
 
     double current_norm = current_orthonormal_element.norm();
 
-    std::string file_name = "orthonormal_function_" + std::to_string(i)
-      + ".csv";
-
     gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
 		      get_function_grid());
     for (int i=0; i<1/dx_+1; ++i) {
@@ -697,7 +710,6 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
     gsl_matrix_scale(workspace_left, 1.0/current_norm);
     current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
 
-    current_orthonormal_element.save_function_grid(file_name);
     orthonormal_functions_.push_back(current_orthonormal_element);
   }
 

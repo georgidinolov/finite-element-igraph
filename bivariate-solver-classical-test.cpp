@@ -18,7 +18,7 @@ int main() {
   BivariateSolverClassical classical_solver =
     BivariateSolverClassical(sigma_x, sigma_y, rho,
 			     x_0, y_0);
-  double dx = 0.005;
+  double dx = 0.002;
   classical_solver.set_function_grid(dx);
   classical_solver.save_function_grid("ic.csv");
 

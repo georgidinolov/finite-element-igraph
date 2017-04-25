@@ -109,7 +109,6 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
 						  ss_2,
 						  ss_3,
 						  ss_4};
-  
   std::vector<unsigned> Cs_indeces (Cs.size());
   unsigned n = 0;
   std::generate(Cs_indeces.begin(), Cs_indeces.end(), [&n]{ return n++; });
@@ -120,8 +119,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   	      return Cs[i1] < Cs[i2];
   	    });
 
-  tt_ = std::pow(Cs[Cs_indeces[1]]/3.0, 2.0);
-
+  tt_ = std::pow(Cs[Cs_indeces[1]]/5.0, 2.0);
   for (int i=0; i<2; ++i) {
     for (int j=0; j<2; ++j) {
       if (i==j) {
