@@ -144,10 +144,11 @@ std::vector<double> likelihood(const std::vector<BrownianMotion>& BMs,
       gsl_vector_set(input, 1, BMs[i].get_y_T());
       double likelihood = solver.numerical_likelihood_first_order(input, 
 								  dx_likelihood);
+      //      likelihood = solver(input);
       if (likelihood > 0) {
-	likelihoods[i] = log(likelihood);
+	likelihoods[i] = likelihood;
       } else {
-	likelihoods[i] = 0;
+	likelihoods[i] = likelihood;
 	printf("For rho=%f, data %d produces neg likelihood.\n", rho, i);
       }
     }
@@ -180,13 +181,13 @@ int main() {
   double x_0 = 0.0;
   double y_0 = 0.0;
   double t = 1;
-  long unsigned seed_init = 4002;
+  long unsigned seed_init = 4000;
   double dx = 5e-3;
-  double rho_min = -0.8;
-  double rho_max = 0.8;
-  unsigned n_rhos = 21;
+  double rho_min = 0.9;
+  double rho_max = 0.9;
+  unsigned n_rhos = 1;
   gsl_vector* input = gsl_vector_alloc(2);
-  unsigned N = 64;
+  unsigned N = 10;
 
   // LIKELIHOOD LOOP
   std::ofstream output_file;
@@ -277,8 +278,8 @@ int main() {
   std::cout << std::endl;
 
   double rho_init = -0.8;
-  double dr = 0.08;
-  unsigned R = 21;
+  double dr = 0.01;
+  unsigned R = 160;
   for (unsigned r=0; r<R; ++r) {
     double rho = rho_init + dr*r;
 

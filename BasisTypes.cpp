@@ -504,7 +504,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 						       double std_dev_factor)
 {
   // creating the x-nodes
-  double by = std_dev_factor * sigma * std::sqrt(1-rho);
+  double by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
   double current = 0.5 - std::sqrt(2.0);
 
   std::vector<double> x_nodes (0);
@@ -524,7 +524,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   x_nodes.erase(last, x_nodes.end());
 
   // creating the y-nodes
-  by = std_dev_factor * sigma * std::sqrt(1+rho);
+  by = std_dev_factor * sigma;
   current = 0.5 - std::sqrt(2.0);
 
   std::vector<double> y_nodes;

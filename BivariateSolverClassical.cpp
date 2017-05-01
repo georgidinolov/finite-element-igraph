@@ -119,7 +119,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   	      return Cs[i1] < Cs[i2];
   	    });
 
-  tt_ = std::pow(Cs[Cs_indeces[1]]/5.0, 2.0);
+  tt_ = std::pow(Cs[Cs_indeces[1]]/6.0, 2.0);
   for (int i=0; i<2; ++i) {
     for (int j=0; j<2; ++j) {
       if (i==j) {

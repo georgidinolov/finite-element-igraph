@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "BivariateSolver.hpp"
+#include <cmath>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_eigen.h>
@@ -314,8 +315,15 @@ operator()(const gsl_vector* input) const
   if ((t_ - small_t_solution_->get_t()) <= 1e-32) {
     out = (*small_t_solution_)(scaled_input, t_);
   } else {
-    int x_int = gsl_vector_get(scaled_input, 0)/dx_;
-    int y_int = gsl_vector_get(scaled_input, 1)/dx_;
+    int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
+    int y_int = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
+
+    if (x_int == 1/dx_) {
+      x_int = 1/dx_ - 1;
+    }
+    if (y_int == 1/dx_) {
+      y_int = 1/dx_ - 1;
+    }
 
     double x = gsl_vector_get(scaled_input, 0);
     double y = gsl_vector_get(scaled_input, 1);
@@ -333,37 +341,69 @@ operator()(const gsl_vector* input) const
 
     for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
       f_11 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-			    x_int,
-			    y_int);
+    			    x_int,
+    			    y_int);
       f_12 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-			    x_int,
-			    y_int+1);
+    			    x_int,
+    			    y_int+1);
       f_21 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-			    x_int+1,
-			    y_int);
+    			    x_int+1,
+    			    y_int);
       f_22 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-			    x_int+1,
-			    y_int+1);
+    			    x_int+1,
+    			    y_int+1);
       current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
-	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
-	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
+    	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
+    	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
 
       current_f = current_f * gsl_vector_get(solution_coefs_, i);
 
       out = out + current_f;
     }
+
+    // for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
+    //   current_f = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+    // 			    x_int,
+    // 			    y_int);
+    //   current_f = current_f * gsl_vector_get(solution_coefs_, i);
+    //   out = out + current_f;
+    // }
   }
+
 
   double Lx_2 = b_ - a_;
   double Ly_2 = d_ - c_;
   out = out / (Lx_2 * Ly_2);
-  return out;
 
   gsl_vector_free(scaled_input);
+  return out;
 }
 
-double BivariateSolver::numerical_likelihood(const gsl_vector* input,
+double BivariateSolver::numerical_likelihood(const gsl_vector* input, 
 					     double h)
+{
+  double x = gsl_vector_get(input, 0);
+  double y = gsl_vector_get(input, 1);
+  double likelihood = 0;
+  if (x > (a_+h) &&
+      x < (b_-h) &&
+      y > (c_+h) &&
+      y < (d_-h) && 
+      // 
+      x_0_ > (a_+h) &&
+      x_0_ < (b_-h) &&
+      y_0_ > (c_+h) &&
+      y_0_ < (d_-h)) {
+    likelihood = numerical_likelihood_second_order(input, h);
+  } else {
+    likelihood = numerical_likelihood_first_order(input, h);
+  }
+  return likelihood;
+}
+
+
+double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* input,
+							  double h)
 {
   // there are 16 solutions to be computed
   double current_a = a_;
@@ -412,16 +452,14 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
     }
   }
 
-  // double log_derivative = log(abs(derivative)) - log(16) - 4*log(h);
-
-  // if (std::signbit(derivative)) {
-  //   derivative = -exp(log_derivative);
-  // } else {
-  //   derivative = exp(log_derivative);
-  // }
-
-  derivative = derivative / (16*h*h*h*h);
-  
+  // derivative = derivative / (16*h^4);
+  if (std::signbit(derivative)) {
+    derivative = 
+      -std::exp(std::log(std::abs(derivative)) - log(16) - 4*std::log(h));
+  } else {
+    derivative = 
+      std::exp(std::log(std::abs(derivative)) - log(16) - 4*std::log(h));
+  }
   return derivative;
 }
 
@@ -475,16 +513,14 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
     }
   }
 
-  // double log_derivative = log(abs(derivative)) - log(16) - 4*log(h);
-
-  // if (std::signbit(derivative)) {
-  //   derivative = -exp(log_derivative);
-  // } else {
-  //   derivative = exp(log_derivative);
-  // }
-
-  derivative = derivative / (h*h*h*h);
-  
+  // derivative = derivative / (h^4);
+  if (std::signbit(derivative)) {
+    derivative = 
+      -std::exp(std::log(std::abs(derivative)) - 4*std::log(h));
+  } else {
+    derivative = 
+      std::exp(std::log(std::abs(derivative)) - 4*std::log(h));
+  }
   return derivative;
 }
 

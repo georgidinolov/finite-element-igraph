@@ -63,8 +63,9 @@ public:
   
   
   virtual double operator()(const gsl_vector* input) const;
-  virtual double numerical_likelihood(const gsl_vector* input, double h);
+  virtual double numerical_likelihood_second_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
+  virtual double numerical_likelihood(const gsl_vector* input, double h);
   
 private:
   double a_;
