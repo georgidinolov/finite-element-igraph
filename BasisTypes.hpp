@@ -57,6 +57,10 @@ public:
   
   virtual double project(const BivariateElement& elem_1,
 			 const BivariateElement& elem_2) const;
+  virtual double project_simple(const BivariateElement& elem_1,
+				const BivariateElement& elem_2) const;
+  virtual double project_omp(const BivariateElement& elem_1,
+			     const BivariateElement& elem_2) const;
 
   // coord_indeex_{1,2} = {0,1}, where 0 = dx, 1 = dy TODO(georgi) :
   // this needs to be done with enumerable elements instead of ints

@@ -5,8 +5,10 @@ cc_library(
 	deps = ["//src/igraph-0.7.1:igraph",
 		":basis-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
-	      	 "-Isrc/multivariate-normal"],
-	linkopts = ["-lm", "-lgsl", "-lgslcblas"],	
+	      	 "-Isrc/multivariate-normal",
+		 "-fopenmp"],
+	linkopts = ["-lm", "-lgsl", "-lgslcblas",
+		    "-fopenmp"],	
 	visibility = ["//visibility:public"],
 )
 

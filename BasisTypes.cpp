@@ -180,6 +180,8 @@ operator=(const BivariateGaussianKernelBasis& rhs)
   for (unsigned i=0; i<rhs.orthonormal_functions_.size(); ++i) {
     orthonormal_functions_[i] = rhs.orthonormal_functions_[i];
   }
+
+  return *this;
 }
 
 BivariateGaussianKernelBasis::~BivariateGaussianKernelBasis()
@@ -246,6 +248,13 @@ double BivariateGaussianKernelBasis::
 project(const BivariateElement& elem_1,
 	const BivariateElement& elem_2) const
 {
+  return project_simple(elem_1, elem_2);
+}
+
+double BivariateGaussianKernelBasis::
+project_simple(const BivariateElement& elem_1,
+	       const BivariateElement& elem_2) const
+{
   int N = 1.0/dx_ + 1;
   double integral = 0;
   double row_sum = 0;
@@ -260,6 +269,119 @@ project(const BivariateElement& elem_1,
     gsl_blas_ddot(&row_i_1.vector, &row_i_2.vector, &row_sum);
     integral = integral + row_sum;
   }
+  if (std::signbit(integral)) {
+    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
+  } else {
+    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
+  }
+  return integral;
+}
+
+double BivariateGaussianKernelBasis::
+project_omp(const BivariateElement& elem_1,
+	    const BivariateElement& elem_2) const
+{
+  int N = 1.0/dx_;
+  double integral = 0;
+  for (int i=0; i<N; ++i) {
+    double row_sum = 0;
+    double product = 0;
+
+    //     //     //     //     //     //     //      // 
+    gsl_vector_const_view row_i_1 =
+      gsl_matrix_const_row(elem_1.get_function_grid(),
+			   i);
+    gsl_vector_const_view row_ip1_1 =
+      gsl_matrix_const_row(elem_1.get_function_grid(),
+			   i+1);
+    
+    gsl_vector_const_view row_i_j_1 = 
+      gsl_vector_const_subvector(&row_i_1.vector, 0, N);
+    gsl_vector_const_view row_i_jp1_1 = 
+      gsl_vector_const_subvector(&row_i_1.vector, 1, N);
+    gsl_vector_const_view row_ip1_j_1 = 
+      gsl_vector_const_subvector(&row_ip1_1.vector, 0, N);
+    gsl_vector_const_view row_ip1_jp1_1 = 
+      gsl_vector_const_subvector(&row_ip1_1.vector, 1, N);
+    // //    //     //     //     //     //     // 
+    // //    //     //     //     //     //     // 
+    gsl_vector_const_view row_i_2 =
+      gsl_matrix_const_row(elem_2.get_function_grid(),
+			   i);
+    gsl_vector_const_view row_ip1_2 =
+      gsl_matrix_const_row(elem_2.get_function_grid(),
+			   i+1);
+    
+    gsl_vector_const_view row_i_j_2 = 
+      gsl_vector_const_subvector(&row_i_2.vector, 0, N);
+    gsl_vector_const_view row_i_jp1_2 = 
+      gsl_vector_const_subvector(&row_i_2.vector, 1, N);
+    gsl_vector_const_view row_ip1_j_2 = 
+      gsl_vector_const_subvector(&row_ip1_2.vector, 0, N);
+    gsl_vector_const_view row_ip1_jp1_2 = 
+      gsl_vector_const_subvector(&row_ip1_2.vector, 1, N);
+    //     //     //     //     //     // 
+
+    // f_11
+    // f_11 f_11
+    gsl_blas_ddot(&row_i_j_1.vector, &row_i_j_2.vector, &product);
+    row_sum += product * 1.0/9.0;
+    // f_11 f_21
+    gsl_blas_ddot(&row_i_j_1.vector, &row_ip1_j_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    // f_11 f_12
+    gsl_blas_ddot(&row_i_j_1.vector, &row_i_jp1_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    // f_11 f_22
+    gsl_blas_ddot(&row_i_j_1.vector, &row_ip1_jp1_2.vector, &product);
+    row_sum += product * 1.0/36;
+    //
+    // f_21
+    // f_21 f_11
+    gsl_blas_ddot(&row_ip1_j_1.vector, &row_i_j_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    // f_21 f_21
+    gsl_blas_ddot(&row_ip1_j_1.vector, &row_ip1_j_2.vector, &product);
+    row_sum += product * 1.0/9.0;
+    // f_21 f_12
+    gsl_blas_ddot(&row_ip1_j_1.vector, &row_i_jp1_2.vector, &product);
+    row_sum += product * 1.0/36;
+    // f_21 f_22
+    gsl_blas_ddot(&row_ip1_j_1.vector, &row_ip1_jp1_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    //
+    // f_12
+    // f_12 f_11
+    gsl_blas_ddot(&row_i_jp1_1.vector, &row_i_j_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    // f_12 f_21
+    gsl_blas_ddot(&row_i_jp1_1.vector, &row_ip1_j_2.vector, &product);
+    row_sum += product * 1.0/36.0;
+    // f_12 f_12
+    gsl_blas_ddot(&row_i_jp1_1.vector, &row_i_jp1_2.vector, &product);
+    row_sum += product * 1.0/9.0;
+    // f_12 f_22
+    gsl_blas_ddot(&row_i_jp1_1.vector, &row_ip1_jp1_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    //
+    // f_22 
+    // f_22 f_11
+    gsl_blas_ddot(&row_ip1_jp1_1.vector, &row_i_j_2.vector, &product);
+    row_sum += product * 1.0/36.0;
+    // f_22 f_21
+    gsl_blas_ddot(&row_ip1_jp1_1.vector, &row_ip1_j_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    // f_22 f_12 
+    gsl_blas_ddot(&row_ip1_jp1_1.vector, &row_i_jp1_2.vector, &product);
+    row_sum += product * 1.0/18.0;
+    // f_22 f_22
+    gsl_blas_ddot(&row_ip1_jp1_1.vector, &row_ip1_jp1_2.vector, &product);
+    row_sum += product * 1.0/9.0;
+    //
+
+    integral = integral + row_sum;
+  }
+
   if (std::signbit(integral)) {
     integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_));
   } else {
