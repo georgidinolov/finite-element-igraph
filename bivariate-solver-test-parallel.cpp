@@ -142,13 +142,13 @@ std::vector<double> likelihood(const std::vector<BrownianMotion>& BMs,
 					       dx);
       gsl_vector_set(input, 0, BMs[i].get_x_T());
       gsl_vector_set(input, 1, BMs[i].get_y_T());
-      double likelihood = solver.numerical_likelihood_first_order(input, 
-								  dx_likelihood);
+      double likelihood = solver.numerical_likelihood(input, 
+						      dx_likelihood);
       //      likelihood = solver(input);
       if (likelihood > 0) {
-	likelihoods[i] = likelihood;
+	likelihoods[i] = log(likelihood);
       } else {
-	likelihoods[i] = likelihood;
+	likelihoods[i] = log(1e-16);
 	printf("For rho=%f, data %d produces neg likelihood.\n", rho, i);
       }
     }
@@ -177,17 +177,17 @@ int main() {
   unsigned order = 1e6;
   double sigma_x_data_gen = 1.0;
   double sigma_y_data_gen = 1.0;
-  double rho_data_gen = 0.6;
+  double rho_data_gen = 0.9;
   double x_0 = 0.0;
   double y_0 = 0.0;
   double t = 1;
-  long unsigned seed_init = 4000;
-  double dx = 5e-3;
+  long unsigned seed_init = 3000;
+  double dx = 1e-2;
   double rho_min = 0.9;
   double rho_max = 0.9;
   unsigned n_rhos = 1;
   gsl_vector* input = gsl_vector_alloc(2);
-  unsigned N = 10;
+  unsigned N = 18;
 
   // LIKELIHOOD LOOP
   std::ofstream output_file;
@@ -237,7 +237,7 @@ int main() {
     } else if (current_rho < rho_min) {
       basis_rhos[k] = rho_min;
     } else {
-      printf("ERROR: rho cannot be set\n");
+      printf("WARNING: rho cannot be set\n");
       basis_rhos[k] = rho_min + (rho_max-rho_min)/2.0;
     }
     bases[k] =  BivariateGaussianKernelBasis(dx, 
@@ -251,7 +251,7 @@ int main() {
 
   // BASES COPY FOR THREADS START
   std::vector<double> likelihoods (N);
-  unsigned n_threads = 64;
+  unsigned n_threads = 3;
   tid = 0;
   unsigned i = 0;
 
@@ -278,8 +278,8 @@ int main() {
   std::cout << std::endl;
 
   double rho_init = -0.8;
-  double dr = 0.01;
-  unsigned R = 160;
+  double dr = 0.1;
+  unsigned R = 16;
   for (unsigned r=0; r<R; ++r) {
     double rho = rho_init + dr*r;
 

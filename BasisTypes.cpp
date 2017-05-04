@@ -248,7 +248,7 @@ double BivariateGaussianKernelBasis::
 project(const BivariateElement& elem_1,
 	const BivariateElement& elem_2) const
 {
-  return project_simple(elem_1, elem_2);
+  return project_omp(elem_1, elem_2);
 }
 
 double BivariateGaussianKernelBasis::
@@ -772,7 +772,10 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
       gsl_matrix_sub(workspace_left, workspace_right);
       current_orthonormal_element.set_function_grid(workspace_left);
 
-      double current_norm = current_orthonormal_element.norm();
+      // double current_norm = current_orthonormal_element.norm();
+      double current_norm = std::sqrt(project(current_orthonormal_element,
+					      current_orthonormal_element));
+      
       gsl_matrix_scale(workspace_left, 1.0/current_norm);
       current_orthonormal_element.set_function_grid(workspace_left);
 
@@ -801,7 +804,9 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
       current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
     }
 
-    double current_norm = current_orthonormal_element.norm();
+    // double current_norm = current_orthonormal_element.norm();
+    double current_norm = std::sqrt(project(current_orthonormal_element,
+					    current_orthonormal_element));
 
     gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
 		      get_function_grid());
