@@ -43,6 +43,7 @@ public:
   virtual const gsl_matrix* get_function_grid() const =0;
   virtual const gsl_matrix* get_deriv_function_grid_dx() const =0;
   virtual const gsl_matrix* get_deriv_function_grid_dy() const =0;
+
   // Implemented with planar interpolation
   virtual double operator()(const gsl_vector* input) const;
 };
