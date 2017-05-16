@@ -22,8 +22,8 @@ void BivariateElement::save_function_grid(std::string file_name) const
   output_file << std::fixed << std::setprecision(32);
   const gsl_matrix* function_grid = get_function_grid();
 
-  for (int i=0; i<function_grid->size1; ++i) {
-    for (int j=0; j<function_grid->size2; ++j) {
+  for (unsigned i=0; i<function_grid->size1; ++i) {
+    for (unsigned j=0; j<function_grid->size2; ++j) {
       if (j==function_grid->size2-1) 
 	{
 	  output_file << gsl_matrix_get(function_grid, i,j) 
@@ -73,6 +73,35 @@ double BivariateElement::operator()(const gsl_vector* input) const
      (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
   
   return current_f;
+}
+
+// ============== FOURIER INTERPOLANT INTERFACE CLASS =============
+double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
+{
+  double x = gsl_vector_get(input, 0);
+  double y = gsl_vector_get(input, 1);
+
+  int n = get_FFT_grid()->size2;
+  // Imaginary part is ignored.
+  double out = 0;
+  for (int i=0; i<n; ++i) {
+    
+    int k=i;
+    if (i > n/2) { k = i-n; } // if we are above the Nyquist
+			      // frequency, we envelope back.
+
+    for (int j=0; j<n; ++j) {
+      int l=j;
+      if (j > n/2) { l = j-n; } // see above
+
+      double real = gsl_matrix_get(get_FFT_grid(), 2*i, j);
+      double imag = gsl_matrix_get(get_FFT_grid(), 2*i+1, j);
+
+      out += real*std::cos(2*M_PI*(k*x + l*y)) - 
+	imag*std::sin(2*M_PI*(k*x + l*y));
+    }
+  }
+  return out / (n*n);
 }
 
 // ============== GAUSSIAN KERNEL ELEMENT =====================

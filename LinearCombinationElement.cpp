@@ -3,17 +3,21 @@
 #include <chrono>
 #include <fstream>
 #include <gsl/gsl_blas.h>
+#include <gsl/gsl_fft_complex.h>
+#include <gsl/gsl_fft_halfcomplex.h>
+#include <gsl/gsl_fft_real.h>
 #include <gsl/gsl_linalg.h>
 #include <math.h>
 #include <iostream>
+#include <iomanip>
 #include <string>
 
 // ============== LINEAR COMBINATION ELEMENT =====================
 BivariateLinearCombinationElement::BivariateLinearCombinationElement()
   : dx_(1),
-    function_grid_(gsl_matrix_alloc(1,1)),
-    deriv_function_grid_dx_(gsl_matrix_alloc(1,1)),
-    deriv_function_grid_dy_(gsl_matrix_alloc(1,1))
+    function_grid_(gsl_matrix_alloc(2,2)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(2,2)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(2,2))
 {}
 
 BivariateLinearCombinationElement::
@@ -38,12 +42,12 @@ BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& el
 BivariateLinearCombinationElement::
 BivariateLinearCombinationElement(const BivariateLinearCombinationElement& element)
   : dx_(element.get_dx()),
-    function_grid_(gsl_matrix_alloc(1/element.get_dx() + 1,
-				    1/element.get_dx() + 1)),
-    deriv_function_grid_dx_(gsl_matrix_alloc(1/element.get_dx() + 1,
-					     1/element.get_dx() + 1)),
-    deriv_function_grid_dy_(gsl_matrix_alloc(1/element.get_dx() + 1,
-					     1/element.get_dx() + 1))
+    function_grid_(gsl_matrix_alloc(element.function_grid_->size1,
+				    element.function_grid_->size2)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(element.deriv_function_grid_dx_->size1,
+					     element.deriv_function_grid_dx_->size2)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(element.deriv_function_grid_dy_->size1,
+					     element.deriv_function_grid_dy_->size2))
 {
   gsl_matrix_memcpy(function_grid_, element.function_grid_);
   gsl_matrix_memcpy(deriv_function_grid_dx_, element.deriv_function_grid_dx_);
@@ -145,10 +149,10 @@ void BivariateLinearCombinationElement::
 set_function_grids(const std::vector<const BivariateElement*>& elements,
 		   const std::vector<double>& coefficients)
 {
-  double dx = get_dx();
-  double in = 0;
-  double in_dx = 0;
-  double in_dy = 0;
+  // double dx = get_dx();
+  // double in = 0;
+  // double in_dx = 0;
+  // double in_dy = 0;
 
   gsl_matrix* workspace_left = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
   gsl_matrix* workspace_right = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
@@ -216,4 +220,111 @@ set_function_grids(const std::vector<const BivariateElement*>& elements,
   //   }
   // }
 
+}
+
+
+// ==================== FOURIER INTERPOLANT =====================
+BivariateLinearCombinationElementFourier::
+BivariateLinearCombinationElementFourier()
+  : BivariateLinearCombinationElement(),
+    FFT_grid_(gsl_matrix_alloc(2*2,2))   
+{}
+
+BivariateLinearCombinationElementFourier::BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElementFourier& element)
+  : BivariateLinearCombinationElement(element),
+    FFT_grid_(gsl_matrix_alloc(element.FFT_grid_->size1,
+			       element.FFT_grid_->size2))
+{
+  gsl_matrix_memcpy(FFT_grid_, element.FFT_grid_);
+}
+
+BivariateLinearCombinationElementFourier::BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElement& element)
+  : BivariateLinearCombinationElement(element),
+    FFT_grid_(gsl_matrix_alloc(1/get_dx(),
+			       1/get_dx()))
+{
+  set_FFT_grid();
+}
+
+BivariateLinearCombinationElementFourier& BivariateLinearCombinationElementFourier::operator=(const BivariateLinearCombinationElementFourier& rhs)
+{
+    FFT_grid_ = gsl_matrix_alloc(rhs.FFT_grid_->size1,
+				 rhs.FFT_grid_->size2);
+    gsl_matrix_memcpy(FFT_grid_, rhs.FFT_grid_);
+
+    return *this;
+}
+
+BivariateLinearCombinationElementFourier::~BivariateLinearCombinationElementFourier()
+{
+  gsl_matrix_free(FFT_grid_);
+}
+
+void BivariateLinearCombinationElementFourier::
+set_function_grid(const gsl_matrix* new_function_grid)
+{
+  BivariateLinearCombinationElement::set_function_grid(new_function_grid);
+  set_FFT_grid();
+}
+
+void BivariateLinearCombinationElementFourier::set_FFT_grid()
+{
+  
+  int n = 1/get_dx();
+  
+  gsl_matrix_free(FFT_grid_);
+  FFT_grid_ = gsl_matrix_alloc(2*n, n);
+
+  // FFT FIRST PASS (ROWS) START
+  for (unsigned i=0; i<n; ++i) {
+    double fft_row [2 * n];
+    for (unsigned j=0; j<n; ++j) {
+      fft_row[2*j] = gsl_matrix_get(get_function_grid(), i, j);
+      fft_row[2*j + 1] = 0.0;
+    }
+
+    gsl_fft_complex_radix2_forward(fft_row, 1, n);
+
+    for (unsigned j=0; j<n; ++j) {
+      gsl_matrix_set(FFT_grid_, 2*i, j, fft_row[2*j]);
+      gsl_matrix_set(FFT_grid_, 2*i + 1, j, fft_row[2*j + 1]);
+    }
+  }
+  // FFT FIRST PASS END
+
+  // FFT SECOND PASS (COLUMNS) START
+  for (unsigned j=0; j<n; ++j) {
+    double fft_col [2 * n];
+    gsl_vector_view fft_col_view = gsl_vector_view_array(fft_col, 2*n);
+    gsl_vector_view fft_col_rhs = gsl_matrix_column(FFT_grid_,j);
+    gsl_vector_memcpy(&fft_col_view.vector, &fft_col_rhs.vector);
+
+    gsl_fft_complex_radix2_forward(fft_col, 1, n);
+
+    gsl_vector_memcpy(&fft_col_rhs.vector, &fft_col_view.vector);
+  }
+  // FFT SECOND PASS END
+}
+
+
+void BivariateLinearCombinationElementFourier::
+save_FFT_grid(std::string file_name) const
+{
+
+  std::ofstream output_file;
+  output_file.open(file_name);
+  output_file << std::fixed << std::setprecision(32);
+
+  for (unsigned i=0; i<FFT_grid_->size1; ++i) {
+    for (unsigned j=0; j<FFT_grid_->size2; ++j) {
+      if (j==FFT_grid_->size2-1) 
+	{
+	  output_file << gsl_matrix_get(FFT_grid_, i,j) 
+		      << "\n";
+	} else {
+	output_file << gsl_matrix_get(FFT_grid_, i,j) << ",";
+      }
+    }
+  }
+  output_file.close();
 }

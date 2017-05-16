@@ -1,4 +1,4 @@
-#include "BasisElementTypes.hpp"
+#include "BasisTypes.hpp"
 #include <fstream>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_fft_complex.h>
@@ -152,32 +152,21 @@ int main() {
   double dx = 1.0/256.0;
   unsigned dxinv = std::round(1.0/dx);
   unsigned n = dxinv;
-  printf("dx = %.16f\n", dx);
-  printf("1/dx = %.16d\n", dxinv);
-  long unsigned dimension = 2;
-  double exponent_power = 1;
-  
-  gsl_vector* mean = gsl_vector_alloc(dimension);
-  gsl_vector* input = gsl_vector_alloc(dimension);
-  gsl_vector_set_all(mean, 0.5);
-  gsl_vector_set_all(input, 0.5);
 
+  BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx, 
+								    0.6,
+								    0.3,
+								    1, 
+								    0.5);
 
-  gsl_matrix* cov = gsl_matrix_alloc(dimension, dimension);
-  gsl_matrix_set_all(cov, 0.5);
+  BivariateLinearCombinationElement kernel_element = 
+    basis.get_orthonormal_element(basis.get_orthonormal_elements().size()-3);
 
-  for (unsigned i=0; i<dimension; ++i) {
-    gsl_matrix_set(cov, i, i, 1.0);
-  }
-
-  BivariateGaussianKernelElement kernel_element = BivariateGaussianKernelElement(dx,
-  										 exponent_power,
-  										 mean,
-  										 cov);
+    
   //  kernel_element.save_function_grid("trig-test.csv");
 
-  double f [(2*n+1)*(2*n+1)];
-  gsl_matrix_view fun_grid_odd_extension = gsl_matrix_view_array(f, 2*n+1, 2*n+1);
+  double f [(n+1)*(n+1)];
+  gsl_matrix_view fun_grid_odd_extension = gsl_matrix_view_array(f, n+1, n+1);
 
   // for (int i=0; i<2*n+1; ++i) {
   //   double x = i*dx;
@@ -190,55 +179,27 @@ int main() {
     
   
   for (unsigned i=0; i<n+1; ++i) {
-    for (unsigned j=0; j<n; ++j) {
-      
+    for (unsigned j=0; j<n+1; ++j) {
       gsl_matrix_set(&fun_grid_odd_extension.matrix, i, j,
   		     gsl_matrix_get(kernel_element.get_function_grid(), i,j));
-
-      gsl_matrix_set(&fun_grid_odd_extension.matrix, i, -j + 2*n,
-  		     -gsl_matrix_get(kernel_element.get_function_grid(), i,j));
-
-      // odd_extension[2*i] = row.vector.data[i];
-      // odd_extension[2*i + 1] = 0.0;
-      
-      // odd_extension[2*(-i + 2*n)] = -row.vector.data[i];
-      // odd_extension[2*(-i + 2*n) + 1] = 0.0;
-
     }
-    gsl_matrix_set(&fun_grid_odd_extension.matrix, i, n,
-  		   gsl_matrix_get(kernel_element.get_function_grid(), i,n));
   }
   //  save_function_grid("odd-extension-1.csv", &fun_grid_odd_extension.matrix);
-
-  for (unsigned i=0; i<n; ++i) {
-    for (unsigned j=0; j< 2*n+1; ++j) {
-      gsl_matrix_set(&fun_grid_odd_extension.matrix, 2*n-i, j,
-  		     -gsl_matrix_get(&fun_grid_odd_extension.matrix, i, j));
-    }
-  }
-
-  for (unsigned j=0; j<2*n + 1; ++j) {
-    gsl_matrix_set(&fun_grid_odd_extension.matrix, n, j,
-  		   gsl_matrix_get(&fun_grid_odd_extension.matrix, n, j));
-  }
-
   //  save_function_grid("odd-extension.csv", &fun_grid_odd_extension.matrix);
 
-  double fft [2 * 2*n * 2*n];
-  gsl_matrix * fft_mat = gsl_matrix_alloc(2 * 2*n, 2*n);
+  gsl_matrix * fft_mat = gsl_matrix_alloc(2 * n, n);
   
   // FFT FIRST PASS START
-  for (unsigned i=0; i<2*n; ++i) {
-    double fft_row [2 * 2*n];
-    for (unsigned j=0; j<2*n; ++j) {
+  for (unsigned i=0; i<n; ++i) {
+    double fft_row [2 * n];
+    for (unsigned j=0; j<n; ++j) {
       fft_row[2*j] = gsl_matrix_get(&fun_grid_odd_extension.matrix, i, j);
       fft_row[2*j + 1] = 0.0;
     }
 
-    gsl_fft_complex_radix2_forward(fft_row, 1, 2*n);
+    gsl_fft_complex_radix2_forward(fft_row, 1, n);
 
-
-    for (unsigned j=0; j<2*n; ++j) {
+    for (unsigned j=0; j<n; ++j) {
       gsl_matrix_set(fft_mat, 2*i, j, fft_row[2*j]);
       gsl_matrix_set(fft_mat, 2*i + 1, j, fft_row[2*j + 1]);
     }
@@ -248,25 +209,27 @@ int main() {
   //  save_function_grid("odd-extension-fft-first-pass.csv", fft_mat);
 
   // FFT SECOND PASS START
-  for (int j=0; j<2*n; ++j) {
-    gsl_vector_view fft_col_view = gsl_matrix_column(fft_mat,j);
+  for (unsigned j=0; j<n; ++j) {
+    double fft_col [2 * n];
+    gsl_vector_view fft_col_view = gsl_vector_view_array(fft_col, 2*n);
+    gsl_vector_view fft_col_rhs = gsl_matrix_column(fft_mat,j);
+    gsl_vector_memcpy(&fft_col_view.vector, &fft_col_rhs.vector);
+    // for (unsigned i=0; i<2*n; ++i) {
+    //   fft_col[i] = gsl_matrix_get(fft_mat, i, j);
+    // }
 
-    double fft_col [2 * 2*n];
-    for (int i=0; i<2*2*n; ++i) {
-      fft_col[i] = gsl_matrix_get(fft_mat, i, j);
-    }
-
-    gsl_fft_complex_radix2_forward(fft_col, 1, 2*n);
-
-    for (int i=0; i<2*2*n; ++i) {
-      gsl_matrix_set(fft_mat, i, j, fft_col[i]);
-    }
+    gsl_fft_complex_radix2_forward(fft_col, 1, n);
+    
+    gsl_vector_memcpy(&fft_col_rhs.vector, &fft_col_view.vector);
+    // for (unsigned i=0; i<2*n; ++i) {
+    //   gsl_matrix_set(fft_mat, i, j, fft_col[i]);
+    // }
   }
   // FFT SECOND PASS END
   
   double approximate_norm = 0;
-  for (int i=0; i<2*n; ++i) {
-    for (int j=0; j<2*n; ++j) {
+  for (unsigned i=0; i<n; ++i) {
+    for (unsigned j=0; j<n; ++j) {
       double A = 
 	std::sqrt(
 	gsl_matrix_get(fft_mat, 2*i, j)*
@@ -279,7 +242,7 @@ int main() {
   }
   std::cout << "approximate_norm = " << std::sqrt(approximate_norm / std::pow(n,4)) << std::endl;
 
-  //  save_function_grid("odd-extension-fft.csv", fft_mat);
+  save_function_grid("odd-extension-fft.csv", fft_mat);
   
 
   // odd_extension[2*n] = row.vector.data[n];
