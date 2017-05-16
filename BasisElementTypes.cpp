@@ -269,7 +269,7 @@ first_derivative_finite_diff(const gsl_vector* input,
 
 double GaussianKernelElement::norm_finite_diff() const
 {
-  long int N = 1.0/dx_;
+  long int N = std::round(1.0/dx_);
 
   double integral = 0;
   gsl_vector* input = gsl_vector_alloc(dimension_);
@@ -341,9 +341,9 @@ const gsl_matrix* GaussianKernelElement::get_covariance_matrix() const
 // ============== BIVARIATE GAUSSIAN KERNEL ELEMENT ================
 BivariateGaussianKernelElement::BivariateGaussianKernelElement()
   : GaussianKernelElement(),
-    function_grid_(gsl_matrix_alloc(1/get_dx() + 1, 1/get_dx() + 1)),
-    deriv_function_grid_dx_(gsl_matrix_alloc(1/get_dx() + 1, 1/get_dx() + 1)),
-    deriv_function_grid_dy_(gsl_matrix_alloc(1/get_dx() + 1, 1/get_dx() + 1))
+    function_grid_(gsl_matrix_alloc(std::round(1/get_dx()) + 1, std::round(1/get_dx()) + 1)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(std::round(1/get_dx()) + 1, std::round(1/get_dx()) + 1)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(std::round(1/get_dx()) + 1, std::round(1/get_dx()) + 1))
 {}
 
 BivariateGaussianKernelElement::
@@ -356,11 +356,10 @@ BivariateGaussianKernelElement(double dx,
 			  exponent_power,
 			  mean_vector,
 			  covariance_matrix),
-    function_grid_(gsl_matrix_alloc(1/dx + 1, 1/dx + 1)),
-    deriv_function_grid_dx_(gsl_matrix_alloc(1/dx + 1, 1/dx + 1)),
-    deriv_function_grid_dy_(gsl_matrix_alloc(1/dx + 1, 1/dx + 1))
+    function_grid_(gsl_matrix_alloc(std::round(1/dx) + 1, std::round(1/dx) + 1)),
+    deriv_function_grid_dx_(gsl_matrix_alloc(std::round(1/dx) + 1, std::round(1/dx) + 1)),
+    deriv_function_grid_dy_(gsl_matrix_alloc(std::round(1/dx) + 1, std::round(1/dx) + 1))
 {
-  // set_function_grid();
   set_function_grids();
 }
 
@@ -368,12 +367,12 @@ BivariateGaussianKernelElement::
 BivariateGaussianKernelElement(const BivariateGaussianKernelElement& element)
   : GaussianKernelElement(element)
 {
-  function_grid_ = gsl_matrix_alloc(1/element.get_dx() + 1, 
-				    1/element.get_dx() + 1);
-  deriv_function_grid_dx_ = gsl_matrix_alloc(1/element.get_dx() + 1, 
-					     1/element.get_dx() + 1);
-  deriv_function_grid_dy_ = gsl_matrix_alloc(1/element.get_dx() + 1, 
-					     1/element.get_dx() + 1);
+  function_grid_ = gsl_matrix_alloc(std::round(1/element.get_dx()) + 1, 
+				    std::round(1/element.get_dx()) + 1);
+  deriv_function_grid_dx_ = gsl_matrix_alloc(std::round(1/element.get_dx()) + 1, 
+					     std::round(1/element.get_dx()) + 1);
+  deriv_function_grid_dy_ = gsl_matrix_alloc(std::round(1/element.get_dx()) + 1, 
+					     std::round(1/element.get_dx()) + 1);
 
   gsl_matrix_memcpy(function_grid_, element.function_grid_);
   gsl_matrix_memcpy(deriv_function_grid_dx_, element.deriv_function_grid_dx_);
@@ -463,7 +462,7 @@ operator()(const gsl_vector* input) const
 
 double BivariateGaussianKernelElement::norm() const
 {
-  int N = 1.0/get_dx() + 1;
+  int N = std::round(1/get_dx()) + 1;
   double integral = 0;
   double row_sum = 0;
 
@@ -505,11 +504,11 @@ void BivariateGaussianKernelElement::set_function_grid()
   double x = 0;
   double y = 0;
 
-  for (int i=0; i<1/dx + 1; ++i) {
+  for (int i=0; i<std::round(1/dx) + 1; ++i) {
     x = i*dx;
     gsl_vector_set(input, 0, x);
 
-    for (int j=0; j<1/dx + 1; ++j) {
+    for (int j=0; j<std::round(1/dx) + 1; ++j) {
       y = j*dx;
       gsl_vector_set(input, 1, y);
 
@@ -528,11 +527,11 @@ void BivariateGaussianKernelElement::set_function_grid_dx()
   double x = 0;
   double y = 0;
 
-  for (int i=0; i<1/dx + 1; ++i) {
+  for (int i=0; i<std::round(1/dx) + 1; ++i) {
     x = i*dx;
     gsl_vector_set(input, 0, x);
 
-    for (int j=0; j<1/dx + 1; ++j) {
+    for (int j=0; j<std::round(1/dx) + 1; ++j) {
       y = j*dx;
       gsl_vector_set(input, 1, y);
 
@@ -553,11 +552,11 @@ void BivariateGaussianKernelElement::set_function_grid_dy()
   double x = 0;
   double y = 0;
 
-  for (int i=0; i<1/dx + 1; ++i) {
+  for (int i=0; i<std::round(1/dx) + 1; ++i) {
     x = i*dx;
     gsl_vector_set(input, 0, x);
 
-    for (int j=0; j<1/dx + 1; ++j) {
+    for (int j=0; j<std::round(1/dx) + 1; ++j) {
       y = j*dx;
       gsl_vector_set(input, 1, y);
 
@@ -570,7 +569,8 @@ void BivariateGaussianKernelElement::set_function_grid_dy()
 
 void BivariateGaussianKernelElement::set_function_grids()
 {
- 
+  // printf("In BivariateGaussianKernelElement::set_function_grids()\n");
+  // printf("function_grid_ is of size [%d x %d]\n", function_grid_->size1, function_grid_->size2);
   double dx = get_dx();
   double function_val = 0;
   double function_dx = 0;
@@ -594,12 +594,12 @@ void BivariateGaussianKernelElement::set_function_grids()
   double sigma2x = gsl_matrix_get(get_covariance_matrix(),0,0);
   double sigma2y = gsl_matrix_get(get_covariance_matrix(),1,1);
 
-  for (int i=0; i<1/dx+1; ++i) {
+  for (int i=0; i<std::round(1/dx)+1; ++i) {
     x = i*dx;
 
     mollifier_x = pow(x, alpha)*pow((1.0-x), alpha);
     
-    for (int j=0; j<1/dx+1; ++j) {
+    for (int j=0; j<std::round(1/dx)+1; ++j) {
       y = j*dx;
 
       gsl_vector_set(input, 0, x);

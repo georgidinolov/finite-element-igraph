@@ -105,3 +105,13 @@ cc_binary(
 	      	 "-Isrc/multivariate-normal",
 		 "-O"],
 )
+
+cc_binary(
+	name = "trig-interpolant-test",
+	srcs = ["trig-interpolant-test.cpp"],
+	includes = ["BasisElementsTypes.hpp"],
+	deps = [":basis-element-types"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/multivariate-normal",
+		 "-O"],
+)
