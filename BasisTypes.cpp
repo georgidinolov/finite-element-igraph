@@ -14,16 +14,16 @@ BivariateBasis::~BivariateBasis()
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
 BivariateGaussianKernelBasis::BivariateGaussianKernelBasis()
   : dx_(1.0/2),
-    system_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
-    system_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
-    system_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
-    system_matrix_dy_dy_(gsl_matrix_alloc(1,1)),
-    mass_matrix_(gsl_matrix_alloc(1,1)),
-    inner_product_matrix_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1,1))
+    system_matrix_dx_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    system_matrix_dx_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    system_matrix_dy_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    system_matrix_dy_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    mass_matrix_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    inner_product_matrix_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dx_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dx_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dy_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1))
 {
   // first create the list of basis elements
   set_basis_functions(0.0,1.0,1.0,0.5);
@@ -42,16 +42,16 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
 							   double power,
 							   double std_dev_factor)
   : dx_(dx),
-    system_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
-    system_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
-    system_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
-    system_matrix_dy_dy_(gsl_matrix_alloc(1,1)),
-    mass_matrix_(gsl_matrix_alloc(1,1)),
-    inner_product_matrix_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
-    deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1,1))
+    system_matrix_dx_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    system_matrix_dx_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    system_matrix_dy_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    system_matrix_dy_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    mass_matrix_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    inner_product_matrix_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dx_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dx_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dy_dx_(gsl_matrix_alloc(1/dx_+1,1/dx_+1)),
+    deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1/dx_+1,1/dx_+1))
 {
   // first create the list of basis elements
   set_basis_functions(rho,sigma,power,std_dev_factor);
@@ -812,6 +812,9 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 
   gsl_vector_free(mean_vector);
   gsl_matrix_free(covariance_matrix);
+
+
+
 }
 
 // Performing Gram-Schmidt Orthogonalization
@@ -842,10 +845,10 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
 			   orthonormal_functions_[j]);
       // SETTING FUNCTION_GRID_
       gsl_matrix_memcpy(workspace_right,
-      			orthonormal_functions_[j].get_FFT_grid());
+      			orthonormal_functions_[j].get_function_grid());
       gsl_matrix_scale(workspace_right, projection);
       gsl_matrix_memcpy(workspace_left, 
-      			current_orthonormal_element.get_FFT_grid());
+      			current_orthonormal_element.get_function_grid());
       // left workspace is current_orthonormal_element function
       // grid. Setting it as so.
       gsl_matrix_sub(workspace_left, workspace_right);
