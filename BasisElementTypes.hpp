@@ -61,9 +61,10 @@ public:
   // grid is of size 2n x n, where there are 2n rows in order to
   // accomodate the real and imaginary parts of the FFT coefs.
   virtual const gsl_matrix* get_FFT_grid() const =0;
-  virtual const gsl_matrix* get_deriv_FFT_grid_dx() const =0;
-  virtual const gsl_matrix* get_deriv_FFT_grid_dy() const =0;
+  // virtual const gsl_matrix* get_deriv_FFT_grid_dx() const =0;
+  // virtual const gsl_matrix* get_deriv_FFT_grid_dy() const =0;
 
+  void save_FFT_grid(std::string name) const;
   // Implemented with Fouriera interpolation. The interpolation
   // follows the GSL convention.
   virtual double operator()(const gsl_vector* input) const;
@@ -122,13 +123,13 @@ private:
 
 // ============== LINEAR COMBINATION ELEMENT FOURIER =====================
 class BivariateLinearCombinationElementFourier
-  : public BivariateLinearCombinationElement,
+  : public virtual BivariateLinearCombinationElement,
     public virtual BivariateFourierInterpolant
 {
 public:
   BivariateLinearCombinationElementFourier();
-  //BivariateLinearCombinationElementFourier(const std::vector<const BivariateElement*>& elements,
-  // 					   const std::vector<double>& coefficients);
+  BivariateLinearCombinationElementFourier(const std::vector<const BivariateElement*>& elements,
+   					   const std::vector<double>& coefficients);
   BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElementFourier& lin_comb_element);
   BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElement& element);
   
@@ -146,8 +147,6 @@ public:
   { return NULL; }
   inline const gsl_matrix* get_deriv_FFT_grid_dy() const
   { return NULL; }
-
-  void save_FFT_grid(std::string name) const;
 
 private:
   gsl_matrix * FFT_grid_;
@@ -251,7 +250,7 @@ private:
 
 // ============== BIVARIATE CLASSICAL SOLVER ====================
 class BivariateSolverClassical
-  : public virtual BivariateElement
+  : public BivariateFourierInterpolant
 {
 public:
   BivariateSolverClassical();
@@ -278,6 +277,9 @@ public:
   virtual const gsl_matrix* get_function_grid() const;
   virtual void set_function_grid(double dx);
 
+  virtual const gsl_matrix* get_FFT_grid() const;
+  virtual void set_FFT_grid();
+
   // TODO(georgid): THIS NEEDS TO BE IMPLEMETED
   inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
   { return NULL; }
@@ -300,4 +302,5 @@ private:
   gsl_vector * initial_condition_xi_eta_reflected_;
 
   gsl_matrix * function_grid_;
+  gsl_matrix * FFT_grid_;
 };

@@ -2,6 +2,9 @@
 #include "BasisElementTypes.hpp"
 #include <chrono>
 #include <gsl/gsl_blas.h>
+#include <gsl/gsl_fft_complex.h>
+#include <gsl/gsl_fft_halfcomplex.h>
+#include <gsl/gsl_fft_real.h>
 #include <gsl/gsl_randist.h>
 #include <iostream>
 
@@ -18,7 +21,8 @@ BivariateSolverClassical::BivariateSolverClassical()
     tt_(0),
     Variance_(gsl_matrix_alloc(2,2)),
     initial_condition_xi_eta_reflected_(gsl_vector_alloc(2)),
-    function_grid_(gsl_matrix_alloc(1,1))
+    function_grid_(gsl_matrix_alloc(2,2)),
+    FFT_grid_(gsl_matrix_alloc(1,1))
 {}
 
 BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
@@ -38,7 +42,8 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
     tt_(0),
     Variance_(gsl_matrix_alloc(2,2)),
     initial_condition_xi_eta_reflected_(gsl_vector_alloc(2)),
-    function_grid_(gsl_matrix_alloc(1,1))
+    function_grid_(gsl_matrix_alloc(2,2)),
+    FFT_grid_(gsl_matrix_alloc(1,1))
 {
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
@@ -159,7 +164,9 @@ BivariateSolverClassical::BivariateSolverClassical(const BivariateSolverClassica
     initial_condition_xi_eta_reflected_(gsl_vector_alloc(solver.
 							 initial_condition_xi_eta_reflected_->size)),
     function_grid_(gsl_matrix_alloc(solver.function_grid_->size1,
-				    solver.function_grid_->size2))
+				    solver.function_grid_->size2)),
+    FFT_grid_(gsl_matrix_alloc(solver.FFT_grid_->size1,
+			       solver.FFT_grid_->size2))
 {
   gsl_vector_memcpy(xi_eta_input_,
 		    solver.xi_eta_input_);
@@ -178,6 +185,9 @@ BivariateSolverClassical::BivariateSolverClassical(const BivariateSolverClassica
 
   gsl_matrix_memcpy(function_grid_,
 		    solver.function_grid_);
+
+  gsl_matrix_memcpy(FFT_grid_,
+		    solver.FFT_grid_);
 }
 
 BivariateSolverClassical& BivariateSolverClassical::
@@ -222,6 +232,11 @@ operator=(const BivariateSolverClassical& rhs)
 				    rhs.function_grid_->size2);
   gsl_matrix_memcpy(function_grid_, rhs.function_grid_);
 
+  gsl_matrix_free(FFT_grid_);
+  FFT_grid_ = gsl_matrix_alloc(rhs.FFT_grid_->size1,
+				    rhs.FFT_grid_->size2);
+  gsl_matrix_memcpy(FFT_grid_, rhs.FFT_grid_);
+
   return *this;
 }
 
@@ -236,6 +251,7 @@ BivariateSolverClassical::~BivariateSolverClassical()
   gsl_matrix_free(Rotation_matrix_);
   gsl_matrix_free(Variance_);
   gsl_matrix_free(function_grid_);
+  gsl_matrix_free(FFT_grid_);
 }
 
 double BivariateSolverClassical::
@@ -315,6 +331,11 @@ const gsl_matrix* BivariateSolverClassical::get_function_grid() const
   return function_grid_;
 }
 
+const gsl_matrix* BivariateSolverClassical::get_FFT_grid() const
+{
+  return FFT_grid_;
+}
+
 void BivariateSolverClassical::set_function_grid(double dx)
 {
   gsl_matrix_free(function_grid_);
@@ -342,5 +363,45 @@ void BivariateSolverClassical::set_function_grid(double dx)
   // std::cout << "duration in Bivariate Classical Solver = "
   // 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
   //   	    << " milliseconds\n";
+  set_FFT_grid();
+
   gsl_vector_free(input);
+}
+
+
+void BivariateSolverClassical::set_FFT_grid()
+{
+  int n = function_grid_->size1 - 1;
+  gsl_matrix_free(FFT_grid_);
+  FFT_grid_ = gsl_matrix_alloc(2*n, n);
+
+  // FFT FIRST PASS (ROWS) START
+  for (unsigned i=0; i<n; ++i) {
+    double fft_row [2 * n];
+    for (unsigned j=0; j<n; ++j) {
+      fft_row[2*j] = gsl_matrix_get(get_function_grid(), i, j);
+      fft_row[2*j + 1] = 0.0;
+    }
+
+    gsl_fft_complex_radix2_forward(fft_row, 1, n);
+
+    for (unsigned j=0; j<n; ++j) {
+      gsl_matrix_set(FFT_grid_, 2*i, j, fft_row[2*j]);
+      gsl_matrix_set(FFT_grid_, 2*i + 1, j, fft_row[2*j + 1]);
+    }
+  }
+  // FFT FIRST PASS END
+
+  // FFT SECOND PASS (COLUMNS) START
+  for (unsigned j=0; j<n; ++j) {
+    double fft_col [2 * n];
+    gsl_vector_view fft_col_view = gsl_vector_view_array(fft_col, 2*n);
+    gsl_vector_view fft_col_rhs = gsl_matrix_column(FFT_grid_,j);
+    gsl_vector_memcpy(&fft_col_view.vector, &fft_col_rhs.vector);
+
+    gsl_fft_complex_radix2_forward(fft_col, 1, n);
+
+    gsl_vector_memcpy(&fft_col_rhs.vector, &fft_col_view.vector);
+  }
+  // FFT SECOND PASS END  
 }

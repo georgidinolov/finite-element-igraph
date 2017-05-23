@@ -30,15 +30,8 @@ public:
 
   virtual ~BivariateSolver();
   
-  inline double get_t() const
-  {
-    return t_;
-  }
-
-  inline const BivariateBasis* get_basis() const
-  {
-    return basis_;
-  }
+  inline double get_t() const { return t_; }
+  inline const BivariateBasis* get_basis() const { return basis_; }
     
   // need to reset t_ AND solution_coefs_!
   void set_t(double t);

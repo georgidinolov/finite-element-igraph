@@ -230,6 +230,16 @@ BivariateLinearCombinationElementFourier()
     FFT_grid_(gsl_matrix_alloc(2*2,2))   
 {}
 
+BivariateLinearCombinationElementFourier::
+BivariateLinearCombinationElementFourier(const std::vector<const BivariateElement*>& elements,
+					 const std::vector<double>& coefficients)
+  : BivariateLinearCombinationElement(elements, coefficients),
+    FFT_grid_(gsl_matrix_alloc(1/get_dx(),
+			       1/get_dx()))
+{
+  set_FFT_grid();
+}
+
 BivariateLinearCombinationElementFourier::BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElementFourier& element)
   : BivariateLinearCombinationElement(element),
     FFT_grid_(gsl_matrix_alloc(element.FFT_grid_->size1,
@@ -307,24 +317,3 @@ void BivariateLinearCombinationElementFourier::set_FFT_grid()
 }
 
 
-void BivariateLinearCombinationElementFourier::
-save_FFT_grid(std::string file_name) const
-{
-
-  std::ofstream output_file;
-  output_file.open(file_name);
-  output_file << std::fixed << std::setprecision(32);
-
-  for (unsigned i=0; i<FFT_grid_->size1; ++i) {
-    for (unsigned j=0; j<FFT_grid_->size2; ++j) {
-      if (j==FFT_grid_->size2-1) 
-	{
-	  output_file << gsl_matrix_get(FFT_grid_, i,j) 
-		      << "\n";
-	} else {
-	output_file << gsl_matrix_get(FFT_grid_, i,j) << ",";
-      }
-    }
-  }
-  output_file.close();
-}

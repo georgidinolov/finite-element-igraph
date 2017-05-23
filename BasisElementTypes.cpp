@@ -104,6 +104,30 @@ double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
   return out / (n*n);
 }
 
+void BivariateFourierInterpolant::
+save_FFT_grid(std::string file_name) const
+{
+
+  std::ofstream output_file;
+  output_file.open(file_name);
+  output_file << std::fixed << std::setprecision(32);
+  const gsl_matrix* FFT_grid_ = get_FFT_grid();
+
+  for (unsigned i=0; i<FFT_grid_->size1; ++i) {
+    for (unsigned j=0; j<FFT_grid_->size2; ++j) {
+      if (j==FFT_grid_->size2-1) 
+	{
+	  output_file << gsl_matrix_get(FFT_grid_, i,j) 
+		      << "\n";
+	} else {
+	output_file << gsl_matrix_get(FFT_grid_, i,j) << ",";
+      }
+    }
+  }
+  output_file.close();
+}
+
+
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 GaussianKernelElement::GaussianKernelElement()
   : dx_(1.0),
