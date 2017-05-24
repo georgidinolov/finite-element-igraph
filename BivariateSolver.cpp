@@ -588,6 +588,9 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
   //     gsl_matrix_set(stiffness_matrix_, i, j, in);
   //   }
   // }
+
+  basis_->save_matrix(stiffness_matrix_, "stiffness-matrix.csv");
+  basis_->save_matrix(mass_matrix_, "mass-matrix.csv");
   
   gsl_matrix_free(left);
   gsl_matrix_free(right);
@@ -641,16 +644,23 @@ void BivariateSolver::set_solution_coefs()
   gsl_matrix* evec =gsl_matrix_alloc(K,K);
   gsl_matrix* evec_tr =gsl_matrix_alloc(K,K);
   gsl_matrix* exp_system_matrix =gsl_matrix_alloc(K,K);
+
+  basis_->save_matrix(evec_, "evec-matrix.csv");
+  basis_->save_vector(eval_, "eval-matrix.csv");
+  basis_->save_vector(IC_coefs_, "IC-matrix.csv");
   
   gsl_matrix_memcpy(evec, evec_);
   gsl_matrix_transpose_memcpy(evec_tr, evec_);
 
-  // evec %*% diag(eval)
+  // evec %*% diag(exp(eval*(t-t_small)))
   for (unsigned i=0; i<K; ++i) {
     gsl_vector_view col_i = gsl_matrix_column(evec, i);
     gsl_vector_scale(&col_i.vector, std::exp(gsl_vector_get(eval_, i)*
 					     (t_-small_t_solution_->get_t())));
   }
+  basis_->save_matrix(evec, "evec-matrix-1.csv");
+  printf("t_-small_t_solution_->get_t() = %f\n", t_-small_t_solution_->get_t());
+
   // exp_system_matrix = [evec %*% diag(exp(eval*(t-t_small)))] %*% t(evec)
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,
 		 evec, evec_tr,
@@ -659,6 +669,8 @@ void BivariateSolver::set_solution_coefs()
   // exp_system_matrix %*% ic_coefs_
   gsl_blas_dsymv(CblasUpper, 1.0, exp_system_matrix, IC_coefs_,
 		 0.0, solution_coefs_);
+
+
   
   gsl_matrix_free(evec);
   gsl_matrix_free(evec_tr);

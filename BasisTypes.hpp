@@ -27,6 +27,8 @@ public:
 			 const BivariateFourierInterpolant& elem_2) const =0;
   virtual void save_matrix(const gsl_matrix* mat,
 			   std::string file_name) const =0;
+  void save_vector(const gsl_vector* vector,
+		    std::string file_name) const;
   virtual double get_dx() const=0;
 };
 

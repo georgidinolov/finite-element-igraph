@@ -1,4 +1,4 @@
-#include "BasisTypes.hpp"
+#include "BivariateSolver.hpp"
 #include <fstream>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_fft_complex.h>
@@ -172,11 +172,26 @@ int main() {
   classical_solver.set_function_grid(dx);
   classical_solver.save_FFT_grid("ic.csv");
 
-  BivariateLinearCombinationElement kernel_element = 
-    basis.get_orthonormal_element(basis.get_orthonormal_elements().size()-3);
+  BivariateLinearCombinationElementFourier kernel_element = 
+    basis.get_orthonormal_element(1);
+  kernel_element.save_FFT_grid("trig-test.csv");
 
-    
-  //  kernel_element.save_function_grid("trig-test.csv");
+  BivariateSolver solver = BivariateSolver(&basis,
+					   sigma_x,
+					   sigma_y,
+					   rho, 
+					   0.0, x_0, 1.0,
+					   0.0, y_0, 1.0,
+					   1,
+					   dx);
+  gsl_vector * input = gsl_vector_alloc(2);
+  gsl_vector_set(input, 0, x_T);
+  gsl_vector_set(input, 0, y_T);
+  printf("solver(input) = %.16f\n", solver(input));
+  printf("dxdx for kernel elem = %.16f\n", basis.project_deriv(kernel_element,
+							       0,
+							       kernel_element,
+							       0));
 
   double f [(n+1)*(n+1)];
   gsl_matrix_view fun_grid_odd_extension = gsl_matrix_view_array(f, n+1, n+1);
