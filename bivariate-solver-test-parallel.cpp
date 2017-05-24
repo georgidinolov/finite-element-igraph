@@ -143,8 +143,8 @@ std::vector<double> likelihood(const std::vector<BrownianMotion>& BMs,
       gsl_vector_set(input, 0, BMs[i].get_x_T());
       gsl_vector_set(input, 1, BMs[i].get_y_T());
       double likelihood = 0.0;
-      likelihood = solver.numerical_likelihood_first_order(input, 
-							   dx_likelihood);
+      likelihood = solver.numerical_likelihood(input, 
+					       dx_likelihood);
       if (likelihood > 0) {
 	likelihoods[i] = log(likelihood);
       } else {
@@ -177,12 +177,12 @@ int main() {
   unsigned order = 1e6;
   double sigma_x_data_gen = 1.0;
   double sigma_y_data_gen = 1.0;
-  double rho_data_gen = 0.6;
+  double rho_data_gen = 0.9;
   double x_0 = 0.0;
   double y_0 = 0.0;
   double t = 1;
   long unsigned seed_init = 4000;
-  double dx = 1.0/128.0;
+  double dx = 1.0/64.0;
   double rho_min = 0.6;
   double rho_max = 0.6;
   unsigned n_rhos = 1;
@@ -278,9 +278,9 @@ int main() {
   std::cout << std::endl;
   // BASES COPY THREADS END
 
-  double rho_init = 0.6;
+  double rho_init = -0.8;
   double dr = 0.1;
-  unsigned R = 2;
+  unsigned R = 18;
   for (unsigned r=0; r<R; ++r) {
     double rho = rho_init + dr*r;
 
@@ -290,33 +290,33 @@ int main() {
 						     sigma_y_data_gen,
 						     rho,
 						     t,dx, 1.0/16);
-    // for (unsigned i=0; i<log_likelihoods.size(); ++i) {
-    //   output_file << log_likelihoods[i] << ", ";
-    // }
+    for (unsigned i=0; i<log_likelihoods.size(); ++i) {
+      output_file << log_likelihoods[i] << ", ";
+    }
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/32);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/32);
+    output_file << log_likelihoods[0] << ", ";
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/64);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/64);
+    output_file << log_likelihoods[0] << ", ";
     
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/128);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/128);
+    output_file << log_likelihoods[0] << ", ";
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/256);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/256);
+    output_file << log_likelihoods[0] << ", ";
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/512);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/512);
+    output_file << log_likelihoods[0] << ", ";
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/1024);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/1024);
+    output_file << log_likelihoods[0] << ", ";
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/2048);
-    // output_file << log_likelihoods[0] << ", ";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/2048);
+    output_file << log_likelihoods[0] << ", ";
 
-    // log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/4096);
-    // output_file << log_likelihoods[0] << "\n";
+    log_likelihoods = likelihood(BMs,basis_rhos,sigma_x_data_gen,sigma_y_data_gen, rho,t,dx, 1.0/4096);
+    output_file << log_likelihoods[0] << "\n";
 
     t2 = std::chrono::high_resolution_clock::now();    
     std::cout << "duration = "
