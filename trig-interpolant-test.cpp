@@ -148,7 +148,7 @@ int main() {
   // }
   // fileo.close();
 
-  double dx = 1.0/64.0;
+  double dx = 1.0/256.0;
   unsigned dxinv = std::round(1.0/dx);
   unsigned n = dxinv;
 
@@ -192,6 +192,10 @@ int main() {
     get_orthonormal_element(basis.
 			    get_orthonormal_elements().size()-1).
     save_function_grid("last-element-fourier-interpolant.csv");
+    basis.
+    get_orthonormal_element(basis.
+			    get_orthonormal_elements().size()-1).
+    save_FFT_grid("last-element-fourier-interpolant-FFT.csv");
   
   // printf("dxdx for kernel elem = %.16f\n", basis.project_deriv(kernel_element,
   // 							       0,
