@@ -34,7 +34,6 @@ void save_function_grid(std::string file_name,
 }
 
 int main() {
-
   // double N = std::pow(2,3); //power of 2 for Cooley-Tukey algorithm
   // int n = (int) N;
   // printf("n = %d\n", n);
