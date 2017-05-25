@@ -118,6 +118,8 @@ BivariateSolver::BivariateSolver(BivariateBasis* basis,
 						   x_0_2_,
 						   y_0_2_),
   small_t_solution_->set_function_grid(dx_);
+  small_t_solution_->save_function_grid("ic-function.csv");
+  small_t_solution_->save_FFT_grid("ic-fft.csv");
 
   set_mass_and_stiffness_matrices();
   set_eval_and_evec();
