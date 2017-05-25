@@ -109,8 +109,8 @@ cc_binary(
 cc_binary(
 	name = "trig-interpolant-test",
 	srcs = ["trig-interpolant-test.cpp"],
-	includes = ["BasisTypes.hpp"],
-	deps = [":basis-types"],
+	includes = ["BivariateSolver.hpp"],
+	deps = [":bivariate-solver"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal"],
 )
