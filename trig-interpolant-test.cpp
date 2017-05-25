@@ -148,7 +148,7 @@ int main() {
   // }
   // fileo.close();
 
-  double dx = 1.0/64.0;
+  double dx = 1.0/128.0;
   unsigned dxinv = std::round(1.0/dx);
   unsigned n = dxinv;
 
