@@ -184,6 +184,9 @@ int main() {
   gsl_vector_set(input, 0, y_T);
   printf("solver(input) = %.16f\n", solver(input));
 
+  basis.get_orthonormal_element(basis.get_orthonormal_elements().size()-1).
+    save_function_grid("last-element-linear-interpolant.csv");
+
   // printf("dxdx for kernel elem = %.16f\n", basis.project_deriv(kernel_element,
   // 							       0,
   // 							       kernel_element,
