@@ -935,6 +935,8 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
 				   orthonormal_functions_[j], 0);
       if (i==42 && j==71) {
 	printf("entry = %f\n", entry);
+	orthonormal_functions_[i].save_function_grid("element-i-linear.csv");
+	orthonormal_functions_[j].save_function_grid("element-j-linear.csv");
       }
       gsl_matrix_set(system_matrix_dx_dx_,
 		     i, j,
