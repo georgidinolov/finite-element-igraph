@@ -76,10 +76,8 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
 {
   // first create the list of basis elements
   set_basis_functions(rho,sigma,power,std_dev_factor);
-
-    //
+  //
   set_mass_matrix();
-
   //
   set_system_matrices_stable();
     
@@ -1070,11 +1068,11 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
   }
 
   save_matrix(system_matrix_dx_dx_,
-	      "system_matrix_dx_dx.csv");
+	      "system-matrix-dx-dx-fft.csv");
   save_matrix(system_matrix_dx_dy_,
-	      "system_matrix_dx_dy.csv");
+	      "system-matrix-dx-dy-fft.csv");
   save_matrix(system_matrix_dy_dx_,
-	      "system_matrix_dy_dx.csv");
+	      "system-matrix-dy-dx-fft.csv");
   save_matrix(system_matrix_dy_dy_,
-	      "system_matixr_dy_dy.csv");
+	      "system-matrix-dy-dy-fft.csv");
 }

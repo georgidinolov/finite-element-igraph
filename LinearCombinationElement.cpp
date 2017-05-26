@@ -272,7 +272,7 @@ BivariateLinearCombinationElementFourier::~BivariateLinearCombinationElementFour
 
 void BivariateLinearCombinationElementFourier::
 set_function_grid(const gsl_matrix* new_function_grid)
-{
+{  
   BivariateLinearCombinationElement::set_function_grid(new_function_grid);
   set_FFT_grid();
 }

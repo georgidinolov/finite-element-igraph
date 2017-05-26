@@ -123,8 +123,8 @@ private:
 
 // ============== LINEAR COMBINATION ELEMENT FOURIER =====================
 class BivariateLinearCombinationElementFourier
-  : public virtual BivariateLinearCombinationElement,
-    public virtual BivariateFourierInterpolant
+  : public BivariateLinearCombinationElement,
+    public BivariateFourierInterpolant
 {
 public:
   BivariateLinearCombinationElementFourier();
