@@ -362,14 +362,6 @@ operator()(const gsl_vector* input) const
 
       out = out + current_f;
     }
-
-    // for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
-    //   current_f = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-    // 			    x_int,
-    // 			    y_int);
-    //   current_f = current_f * gsl_vector_get(solution_coefs_, i);
-    //   out = out + current_f;
-    // }
   }
 
 
@@ -649,7 +641,7 @@ void BivariateSolver::set_solution_coefs()
 
   basis_->save_matrix(evec_, "evec-matrix.csv");
   basis_->save_vector(eval_, "eval-matrix.csv");
-  basis_->save_vector(IC_coefs_, "IC-matrix.csv");
+  basis_->save_vector(IC_coefs_, "IC-matrix-fft.csv");
   
   gsl_matrix_memcpy(evec, evec_);
   gsl_matrix_transpose_memcpy(evec_tr, evec_);
