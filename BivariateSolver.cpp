@@ -589,8 +589,8 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
   //   }
   // }
 
-  basis_->save_matrix(stiffness_matrix_, "stiffness-matrix.csv");
-  basis_->save_matrix(mass_matrix_, "mass-matrix.csv");
+  basis_->save_matrix(stiffness_matrix_, "stiffness-matrix-linear.csv");
+  basis_->save_matrix(mass_matrix_, "mass-matrix-linear.csv");
   
   gsl_matrix_free(left);
   gsl_matrix_free(right);
