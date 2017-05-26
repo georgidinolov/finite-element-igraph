@@ -268,7 +268,7 @@ double BivariateGaussianKernelBasis::
 project(const BivariateFourierInterpolant& elem_1,
 	const BivariateFourierInterpolant& elem_2) const
 {
-  return project_omp(elem_1, elem_2);
+  return project_fft(elem_1, elem_2);
 }
 
 double BivariateGaussianKernelBasis::
@@ -549,10 +549,10 @@ project_deriv(const BivariateFourierInterpolant& elem_1,
 	      const BivariateFourierInterpolant& elem_2,
 	      int coord_indeex_2) const
 {
-  double out = project_deriv_linear(elem_1,
-  				    coord_indeex_1,
-  				    elem_2,
-  				    coord_indeex_2);
+  double out = project_deriv_fft(elem_1,
+				 coord_indeex_1,
+				 elem_2,
+				 coord_indeex_2);
   return out;
 }
 

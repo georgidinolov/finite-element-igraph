@@ -342,25 +342,24 @@ operator()(const gsl_vector* input) const
     double current_f = 0;
 
     for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
-      f_11 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-      			    x_int,
-      			    y_int);
-      f_12 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-      			    x_int,
-      			    y_int+1);
-      f_21 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-      			    x_int+1,
-      			    y_int);
-      f_22 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-      			    x_int+1,
-      			    y_int+1);
-      current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
-      	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
-      	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
-      // current_f = (basis_->get_orthonormal_element(i))(input);
-      // current_f = current_f * gsl_vector_get(solution_coefs_, i);
+      // f_11 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      // 			    x_int,
+      // 			    y_int);
+      // f_12 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      // 			    x_int,
+      // 			    y_int+1);
+      // f_21 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      // 			    x_int+1,
+      // 			    y_int);
+      // f_22 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      // 			    x_int+1,
+      // 			    y_int+1);
+      // current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
+      // 	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
+      // 	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
+      current_f = (basis_->get_orthonormal_element(i))(scaled_input);
 
-      out = out + current_f;
+      out = out + current_f * gsl_vector_get(solution_coefs_, i);
     }
   }
 

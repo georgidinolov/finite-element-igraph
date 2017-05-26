@@ -78,6 +78,7 @@ double BivariateElement::operator()(const gsl_vector* input) const
 // ============== FOURIER INTERPOLANT INTERFACE CLASS =============
 double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
 {
+
   double x = gsl_vector_get(input, 0);
   double y = gsl_vector_get(input, 1);
 
@@ -85,20 +86,24 @@ double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
   // Imaginary part is ignored.
   double out = 0;
   for (int i=0; i<n; ++i) {
-    
-    int k=i;
+    double k=i;
     if (i > n/2) { k = i-n; } // if we are above the Nyquist
 			      // frequency, we envelope back.
 
     for (int j=0; j<n; ++j) {
-      int l=j;
+      double l=j;
       if (j > n/2) { l = j-n; } // see above
 
       double real = gsl_matrix_get(get_FFT_grid(), 2*i, j);
       double imag = gsl_matrix_get(get_FFT_grid(), 2*i+1, j);
-
-      out += real*std::cos(2*M_PI*(k*x + l*y)) - 
-	imag*std::sin(2*M_PI*(k*x + l*y));
+      // double current =
+      // 	real*(std::cos(2*M_PI*k*x)*std::cos(2*M_PI*l*y) -
+      // 	      std::sin(2*M_PI*k*x)*std::sin(2*M_PI*l*y)) -
+      // 	imag*(std::cos(2*M_PI*k*x)*std::sin(2*M_PI*l*y) +
+      // 	      std::sin(2*M_PI*k*x)*std::sin(2*M_PI*l*y));
+      // out = out + current;
+      out += real*std::cos(2*M_PI*(k*x + l*y)) -
+      	imag*std::sin(2*M_PI*(k*x + l*y));
     }
   }
   return out / (n*n);
