@@ -936,6 +936,9 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
     current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
 
     orthonormal_functions_.push_back(current_orthonormal_element);
+
+    std::string element_name = "orthonormal_element_" + i + "-fft.csv"
+    current_orthonormal_element.save_function_grid(element_name);
   }
 
   gsl_matrix_free(workspace_left);
