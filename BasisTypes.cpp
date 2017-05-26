@@ -11,6 +11,18 @@
 BivariateBasis::~BivariateBasis()
 {}
 
+void BivariateBasis::save_vector(const gsl_vector* vec,
+				 std::string file_name) const
+{
+  std::ofstream output_file;
+  output_file.open(file_name);
+  output_file << std::fixed << std::setprecision(32);
+  for (int i=0; i<vec->size; ++i) {
+    output_file << gsl_vector_get(vec, i) 
+		<< "\n";
+  }
+  output_file.close();
+}
 // ============== GAUSSIAN KERNEL BASIS CLASS ==============
 BivariateGaussianKernelBasis::BivariateGaussianKernelBasis()
   : dx_(0.1),
