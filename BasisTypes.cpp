@@ -985,5 +985,5 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
   save_matrix(system_matrix_dy_dx_,
 	      "system-matrix-dy-dx-linear.csv");
   save_matrix(system_matrix_dy_dy_,
-	      "system-matixr-dy-dy-linear.csv");
+	      "system-matrix-dy-dy-linear.csv");
 }
