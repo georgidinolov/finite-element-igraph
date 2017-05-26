@@ -937,7 +937,8 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
 
     orthonormal_functions_.push_back(current_orthonormal_element);
 
-    std::string element_name = "orthonormal_element_" + std::to_string(i) + "-fft.csv"
+    std::string element_name = "orthonormal_element_" +
+      std::to_string(i) + "-fft.csv";
     current_orthonormal_element.save_function_grid(element_name);
   }
 
