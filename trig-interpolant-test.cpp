@@ -183,6 +183,8 @@ int main() {
   gsl_vector_set(input, 0, x_T);
   gsl_vector_set(input, 0, y_T);
   printf("solver(input) = %.16f\n", solver(input));
+  printf("solver.numerical_likelihood(input,dx) = %.16f\n",
+	 solver.numerical_likelihood(input,dx));
 
   basis.get_orthonormal_element(basis.get_orthonormal_elements().size()-1).
     save_function_grid("last-element-linear-interpolant.csv");
