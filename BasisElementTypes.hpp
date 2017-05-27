@@ -142,6 +142,7 @@ public:
   inline const gsl_matrix* get_FFT_grid() const
   { return FFT_grid_; }
   void set_FFT_grid();
+  void set_FFT_grid(const gsl_matrix* new_FFT_grid);
 
   inline const gsl_matrix* get_deriv_FFT_grid_dx() const
   { return NULL; }

@@ -18,15 +18,6 @@ void BivariateBasis::save_vector(const gsl_vector* vec,
   output_file.open(file_name);
   output_file << std::fixed << std::setprecision(32);
   for (int i=0; i<vec->size; ++i) {
-
-      // if (i==vec->size-1) 
-      // 	{
-      // 	  output_file << gsl_vector_get(vec, i) 
-      // 		      << "\n";
-      // 	} else {
-      // 	output_file << gsl_vector_get(vec, i) << ",";
-      // }
-    
     output_file << gsl_vector_get(vec, i) << "\n";
   }
   output_file.close();
@@ -737,8 +728,8 @@ void BivariateGaussianKernelBasis::
 set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElement>& basis_functions)
 {
   // HAVE A MATRIX VIEW HERE ON THE STACK!
-  gsl_matrix* workspace_left = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
-  gsl_matrix* workspace_right = gsl_matrix_alloc(1/dx_ + 1, 1/dx_ + 1);
+  gsl_matrix* workspace_left = gsl_matrix_alloc(2*1.0/dx_, 1.0/dx_);
+  gsl_matrix* workspace_right = gsl_matrix_alloc(2*1.0/dx_, 1.0/dx_);
 
   for (unsigned i=0; i<basis_functions.size(); ++i) {
     std::vector<double> coefficients(i+1, 0.0);
@@ -750,7 +741,7 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
     }
     coefficients[i] = 1.0;
     double projection = 0.0;
-    
+
     BivariateLinearCombinationElementFourier current_orthonormal_element =
       BivariateLinearCombinationElementFourier(elements,
 					       coefficients);
@@ -758,80 +749,69 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
     for (unsigned j=0; j<i; ++j) {
       projection = project(current_orthonormal_element,
 			   orthonormal_functions_[j]);
-      // SETTING FUNCTION_GRID_
+      // SETTING FFT_GRID_
       gsl_matrix_memcpy(workspace_right,
-      			orthonormal_functions_[j].get_function_grid());
+      			orthonormal_functions_[j].get_FFT_grid());
       gsl_matrix_scale(workspace_right, projection);
       gsl_matrix_memcpy(workspace_left, 
-      			current_orthonormal_element.get_function_grid());
+      			current_orthonormal_element.get_FFT_grid());
       // left workspace is current_orthonormal_element function
       // grid. Setting it as so.
       gsl_matrix_sub(workspace_left, workspace_right);
-      current_orthonormal_element.set_function_grid(workspace_left);
+      current_orthonormal_element.set_FFT_grid(workspace_left);
 
       // double current_norm = current_orthonormal_element.norm();
       double current_norm = std::sqrt(project(current_orthonormal_element,
 					      current_orthonormal_element));
       
       gsl_matrix_scale(workspace_left, 1.0/current_norm);
-      current_orthonormal_element.set_function_grid(workspace_left);
+      current_orthonormal_element.set_FFT_grid(workspace_left);
 
-      // SETTING DERIV_FUNCTION_GRID_DX_ START
-      gsl_matrix_memcpy(workspace_right, 
-      			orthonormal_functions_[j].get_deriv_function_grid_dx());
-      gsl_matrix_scale(workspace_right, projection / current_norm);
-      gsl_matrix_memcpy(workspace_left, 
-      			current_orthonormal_element.get_deriv_function_grid_dx());
-      gsl_matrix_scale(workspace_left, 1.0/current_norm);
-      // left workspace is current_orthonormal_element function
-      // grid. Setting it as so.
-      gsl_matrix_sub(workspace_left, workspace_right);
-      current_orthonormal_element.set_deriv_function_grid_dx(workspace_left);
-      // SETTING DERIV_FUNCTION_GRID_DX_ END
+      // // SETTING DERIV_FUNCTION_GRID_DX_ START
+      // gsl_matrix_memcpy(workspace_right, 
+      // 			orthonormal_functions_[j].get_deriv_function_grid_dx());
+      // gsl_matrix_scale(workspace_right, projection / current_norm);
+      // gsl_matrix_memcpy(workspace_left, 
+      // 			current_orthonormal_element.get_deriv_function_grid_dx());
+      // gsl_matrix_scale(workspace_left, 1.0/current_norm);
+      // // left workspace is current_orthonormal_element function
+      // // grid. Setting it as so.
+      // gsl_matrix_sub(workspace_left, workspace_right);
+      // current_orthonormal_element.set_deriv_function_grid_dx(workspace_left);
+      // // SETTING DERIV_FUNCTION_GRID_DX_ END
 
-      // SETTING DERIV_FUNCTION_GRID_DY_ START
-      gsl_matrix_memcpy(workspace_right, 
-      			orthonormal_functions_[j].get_deriv_function_grid_dy());
-      gsl_matrix_scale(workspace_right, -1.0*projection / current_norm);
-      gsl_matrix_memcpy(workspace_left, 
-      			current_orthonormal_element.get_deriv_function_grid_dy());
-      gsl_matrix_scale(workspace_left, 1.0 / current_norm);
-      // left workspace is current_orthonormal_element function
-      // grid. Setting it as so.
-      gsl_matrix_add(workspace_left, workspace_right);
-      current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
-      // SETTING DERIV_FUNCTION_GRID_DY_ END
+      // // SETTING DERIV_FUNCTION_GRID_DY_ START
+      // gsl_matrix_memcpy(workspace_right, 
+      // 			orthonormal_functions_[j].get_deriv_function_grid_dy());
+      // gsl_matrix_scale(workspace_right, -1.0*projection / current_norm);
+      // gsl_matrix_memcpy(workspace_left, 
+      // 			current_orthonormal_element.get_deriv_function_grid_dy());
+      // gsl_matrix_scale(workspace_left, 1.0 / current_norm);
+      // // left workspace is current_orthonormal_element function
+      // // grid. Setting it as so.
+      // gsl_matrix_add(workspace_left, workspace_right);
+      // current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
+      // // SETTING DERIV_FUNCTION_GRID_DY_ END
     }
 
     double current_norm = std::sqrt(project(current_orthonormal_element,
 					    current_orthonormal_element));
 
     gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
-		      get_function_grid());
-    for (int i=0; i<1/dx_+1; ++i) {
-      for (int j=0; j<1/dx_+1; ++j) {
-    	double entry = gsl_matrix_get(workspace_left,i,j);
-
-    	if (std::signbit(entry)) {
-    	  entry = -1.0*exp( log(std::abs(entry)) - log(current_norm) );
-    	} else {
-    	  entry = exp( log(entry) - log(current_norm) );
-    	}
-	gsl_matrix_set(workspace_left, i,j, entry);
-      }
-    }
-
-    current_orthonormal_element.set_function_grid(workspace_left);
-
-    gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
-    		      get_deriv_function_grid_dx());
+		      get_FFT_grid());
     gsl_matrix_scale(workspace_left, 1.0/current_norm);
-    current_orthonormal_element.set_deriv_function_grid_dx(workspace_left);
 
-    gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
-    		      get_deriv_function_grid_dy());
-    gsl_matrix_scale(workspace_left, 1.0/current_norm);
-    current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
+    current_orthonormal_element.set_FFT_grid(workspace_left);
+
+    // gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
+    // 		      get_deriv_function_grid_dx());
+    // gsl_matrix_scale(workspace_left, 1.0/current_norm);
+    // current_orthonormal_element.set_deriv_function_grid_dx(workspace_left);
+
+    // gsl_matrix_memcpy(workspace_left, current_orthonormal_element.
+    // 		      get_deriv_function_grid_dy());
+    // gsl_matrix_scale(workspace_left, 1.0/current_norm);
+    // current_orthonormal_element.set_deriv_function_grid_dy(workspace_left);
 
     orthonormal_functions_.push_back(current_orthonormal_element);
 

@@ -317,3 +317,8 @@ void BivariateLinearCombinationElementFourier::set_FFT_grid()
 }
 
 
+void BivariateLinearCombinationElementFourier::
+set_FFT_grid(const gsl_matrix* new_FFT_grid)
+{
+  gsl_matrix_memcpy(FFT_grid_, new_FFT_grid);
+}
