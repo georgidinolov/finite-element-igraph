@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "BivariateSolver.hpp"
+#include <chrono>
 #include <cmath>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
@@ -428,18 +429,28 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 	for (unsigned l=0; l<d_indeces.size(); ++l) {
 	  if (l==0) { d_power=1; } else { d_power=0; };
 
+	  auto t1 = std::chrono::high_resolution_clock::now();    
 	  set_data(current_a + a_indeces[i]*h,
 		   x_0_,
 		   current_b + b_indeces[j]*h,
 		   current_c + c_indeces[k]*h,
 		   y_0_,
 		   current_d + d_indeces[l]*h);
-	  
+	  auto t2 = std::chrono::high_resolution_clock::now();    
+	  std::cout << "set_data duration = "
+		    << std::chrono::duration_cast<std::chrono::milliseconds>
+	    (t2 - t1).count() << " milliseconds\n";
+
+	  t1 = std::chrono::high_resolution_clock::now();    
 	  derivative = derivative + 
 	    a_indeces[i]*
 	    b_indeces[j]*
 	    c_indeces[k]*
 	    d_indeces[l]*(*this)(input);
+	  t2 = std::chrono::high_resolution_clock::now();    
+	  std::cout << "eval duration = "
+		    << std::chrono::duration_cast<std::chrono::milliseconds>
+	    (t2 - t1).count() << " milliseconds\n";
 	}
       }
     }

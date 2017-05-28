@@ -85,6 +85,9 @@ double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
   int n = get_FFT_grid()->size2;
   // Imaginary part is ignored.
   double out = 0;
+  double real = 0.0;
+  double imag = 0.0;
+    
   for (int i=0; i<n; ++i) {
     double k=i;
     if (i > n/2) { k = i-n; } // if we are above the Nyquist
@@ -94,8 +97,8 @@ double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
       double l=j;
       if (j > n/2) { l = j-n; } // see above
 
-      double real = gsl_matrix_get(get_FFT_grid(), 2*i, j);
-      double imag = gsl_matrix_get(get_FFT_grid(), 2*i+1, j);
+      real = gsl_matrix_get(get_FFT_grid(), 2*i, j);
+      imag = gsl_matrix_get(get_FFT_grid(), 2*i+1, j);
       // double current =
       // 	real*(std::cos(2*M_PI*k*x)*std::cos(2*M_PI*l*y) -
       // 	      std::sin(2*M_PI*k*x)*std::sin(2*M_PI*l*y)) -

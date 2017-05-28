@@ -297,19 +297,32 @@ project_fft(const BivariateFourierInterpolant& elem_1,
   const gsl_matrix* fft_mat_1 = elem_1.get_FFT_grid();
   const gsl_matrix* fft_mat_2 = elem_2.get_FFT_grid();
   double integral = 0.0;
+  double dreal = 0.0;
+  double dimag = 0.0;
 
   for (int i=0; i<N; ++i) {
-    for (int j=0; j<N; ++j) {
-      
-      double dintegral = 
-	gsl_matrix_get(fft_mat_1, 2*i, j)*
-	gsl_matrix_get(fft_mat_2, 2*i, j) +
-	//
-	gsl_matrix_get(fft_mat_1, 2*i+1, j)*
-	gsl_matrix_get(fft_mat_2, 2*i+1, j);
+    gsl_vector_const_view real_row_1 = gsl_matrix_const_row(fft_mat_1, 2*i);
+    gsl_vector_const_view real_row_2 = gsl_matrix_const_row(fft_mat_2, 2*i);
 
-      integral = integral + dintegral;
-    }
+    gsl_vector_const_view imag_row_1 = gsl_matrix_const_row(fft_mat_1, 2*i+1);
+    gsl_vector_const_view imag_row_2 = gsl_matrix_const_row(fft_mat_2, 2*i+1);
+
+    gsl_blas_ddot(&real_row_1.vector, &real_row_2.vector, &dreal);
+    gsl_blas_ddot(&imag_row_1.vector, &imag_row_2.vector, &dimag);
+
+    integral += (dreal + dimag);
+    
+    // for (int j=0; j<N; ++j) {
+      
+    //   double dintegral = 
+    // 	gsl_matrix_get(fft_mat_1, 2*i, j)*
+    // 	gsl_matrix_get(fft_mat_2, 2*i, j) +
+    // 	//
+    // 	gsl_matrix_get(fft_mat_1, 2*i+1, j)*
+    // 	gsl_matrix_get(fft_mat_2, 2*i+1, j);
+
+    //   integral = integral + dintegral;
+    // }
   }
 
   integral = integral / std::pow(N,4);
