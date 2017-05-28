@@ -1,4 +1,5 @@
 #include "BivariateSolver.hpp"
+#include <chrono>
 #include <fstream>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_fft_complex.h>
@@ -187,9 +188,12 @@ int main() {
   gsl_vector_set(input, 0, x_T);
   gsl_vector_set(input, 0, y_T);
   printf("solver(input) = %.16f\n", solver(input));
+  auto t1 = std::chrono::high_resolution_clock::now();    
   printf("solver.numerical_likelihood(input, dx) = %.16f\n",
 	 solver.numerical_likelihood(input, dx));
-
+  auto t2 = std::chrono::high_resolution_clock::now();    
+  std::cout << "likelihood duration = " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds\n";
+  
   basis.
     get_orthonormal_element(basis.
 			    get_orthonormal_elements().size()-1).
