@@ -828,9 +828,9 @@ set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElemen
 
     orthonormal_functions_.push_back(current_orthonormal_element);
 
-    std::string element_name = "orthonormal_element_" +
-      std::to_string(i) + "-fft.csv";
-    current_orthonormal_element.save_function_grid(element_name);
+    // std::string element_name = "orthonormal_element_" +
+    //   std::to_string(i) + "-fft.csv";
+    // current_orthonormal_element.save_function_grid(element_name);
   }
 
   gsl_matrix_free(workspace_left);
@@ -922,12 +922,6 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       // system_matrix_dx_dx_
       double entry = project_deriv(orthonormal_functions_[i], 0,
 				   orthonormal_functions_[j], 0);
-      if (i==42 && j==71) {
-	printf("entry = %f\n", entry);
-	orthonormal_functions_[i].save_function_grid("element-i-fft.csv");
-	orthonormal_functions_[j].save_function_grid("element-j-fft.csv");
-      }
-
       gsl_matrix_set(system_matrix_dx_dx_,
 		     i, j,
 		     entry);

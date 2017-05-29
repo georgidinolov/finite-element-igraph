@@ -119,8 +119,6 @@ BivariateSolver::BivariateSolver(BivariateBasis* basis,
 						   x_0_2_,
 						   y_0_2_),
   small_t_solution_->set_function_grid(dx_);
-  small_t_solution_->save_function_grid("ic-function.csv");
-  small_t_solution_->save_FFT_grid("ic-fft.csv");
 
   set_mass_and_stiffness_matrices();
   set_eval_and_evec();
@@ -444,28 +442,28 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 	for (unsigned l=0; l<d_indeces.size(); ++l) {
 	  if (l==0) { d_power=1; } else { d_power=0; };
 
-	  auto t1 = std::chrono::high_resolution_clock::now();    
+	  // auto t1 = std::chrono::high_resolution_clock::now();    
 	  set_data(current_a + a_indeces[i]*h,
 		   x_0_,
 		   current_b + b_indeces[j]*h,
 		   current_c + c_indeces[k]*h,
 		   y_0_,
 		   current_d + d_indeces[l]*h);
-	  auto t2 = std::chrono::high_resolution_clock::now();    
-	  std::cout << "set_data duration = "
-		    << std::chrono::duration_cast<std::chrono::milliseconds>
-	    (t2 - t1).count() << " milliseconds\n";
+	  // auto t2 = std::chrono::high_resolution_clock::now();    
+	  // std::cout << "set_data duration = "
+	  // 	    << std::chrono::duration_cast<std::chrono::milliseconds>
+	  //   (t2 - t1).count() << " milliseconds\n";
 
-	  t1 = std::chrono::high_resolution_clock::now();    
+	  // t1 = std::chrono::high_resolution_clock::now();    
 	  derivative = derivative + 
 	    a_indeces[i]*
 	    b_indeces[j]*
 	    c_indeces[k]*
 	    d_indeces[l]*(*this)(input);
-	  t2 = std::chrono::high_resolution_clock::now();    
-	  std::cout << "eval duration = "
-		    << std::chrono::duration_cast<std::chrono::milliseconds>
-	    (t2 - t1).count() << " milliseconds\n";
+	  // t2 = std::chrono::high_resolution_clock::now();    
+	  // std::cout << "eval duration = "
+	  // 	    << std::chrono::duration_cast<std::chrono::milliseconds>
+	  //   (t2 - t1).count() << " milliseconds\n";
 	}
       }
     }
@@ -608,9 +606,6 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
   //   }
   // }
 
-  basis_->save_matrix(stiffness_matrix_, "stiffness-matrix-fft.csv");
-  basis_->save_matrix(mass_matrix_, "mass-matrix-fft.csv");
-  
   gsl_matrix_free(left);
   gsl_matrix_free(right);
 }
@@ -664,10 +659,6 @@ void BivariateSolver::set_solution_coefs()
   gsl_matrix* evec_tr =gsl_matrix_alloc(K,K);
   gsl_matrix* exp_system_matrix =gsl_matrix_alloc(K,K);
 
-  basis_->save_matrix(evec_, "evec-matrix.csv");
-  basis_->save_vector(eval_, "eval-matrix.csv");
-  basis_->save_vector(IC_coefs_, "IC-matrix-fft.csv");
-  
   gsl_matrix_memcpy(evec, evec_);
   gsl_matrix_transpose_memcpy(evec_tr, evec_);
 
@@ -677,8 +668,6 @@ void BivariateSolver::set_solution_coefs()
     gsl_vector_scale(&col_i.vector, std::exp(gsl_vector_get(eval_, i)*
 					     (t_-small_t_solution_->get_t())));
   }
-  basis_->save_matrix(evec, "evec-matrix-1.csv");
-  printf("t_-small_t_solution_->get_t() = %f\n", t_-small_t_solution_->get_t());
 
   // exp_system_matrix = [evec %*% diag(exp(eval*(t-t_small)))] %*% t(evec)
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,
