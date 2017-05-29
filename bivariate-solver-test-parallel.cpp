@@ -177,12 +177,12 @@ int main() {
   unsigned order = 1e6;
   double sigma_x_data_gen = 1.0;
   double sigma_y_data_gen = 1.0;
-  double rho_data_gen = 0.9;
+  double rho_data_gen = 0.6;
   double x_0 = 0.0;
   double y_0 = 0.0;
   double t = 1;
   long unsigned seed_init = 4000;
-  double dx = 1.0/64.0;
+  double dx = 1.0/256.0;
   double rho_min = 0.6;
   double rho_max = 0.6;
   unsigned n_rhos = 1;
