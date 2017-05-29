@@ -589,9 +589,6 @@ void BivariateSolver::set_mass_and_stiffness_matrices()
   //   }
   // }
 
-  basis_->save_matrix(stiffness_matrix_, "stiffness-matrix-linear.csv");
-  basis_->save_matrix(mass_matrix_, "mass-matrix-linear.csv");
-  
   gsl_matrix_free(left);
   gsl_matrix_free(right);
 }
@@ -648,8 +645,6 @@ void BivariateSolver::set_solution_coefs()
   gsl_matrix_memcpy(evec, evec_);
   gsl_matrix_transpose_memcpy(evec_tr, evec_);
 
-  basis_->save_vector(IC_coefs_, "IC-matrix-linear.csv");
-  
   // evec %*% diag(eval)
   for (unsigned i=0; i<K; ++i) {
     gsl_vector_view col_i = gsl_matrix_column(evec, i);
