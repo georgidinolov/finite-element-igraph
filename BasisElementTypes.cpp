@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include "BasisElementTypes.hpp"
 #include <fstream>
 #include <gsl/gsl_blas.h>
@@ -83,30 +84,33 @@ double BivariateFourierInterpolant::operator()(const gsl_vector* input) const
   double y = gsl_vector_get(input, 1);
 
   int n = get_FFT_grid()->size2;
+  const gsl_matrix * fft_grid = get_FFT_grid();
+
   // Imaginary part is ignored.
   double out = 0;
   double real = 0.0;
   double imag = 0.0;
+
+  std::vector<double> frequencies = std::vector<double> (n);
+  for (int i=0; i<n; ++i) {
+    if (i > n/2) {
+      frequencies[i] = i-n; // if we are above the Nyquist
+                            // frequency, we envelope back.
+    } else {
+      frequencies[i] = i;
+    }
+  }
     
   for (int i=0; i<n; ++i) {
-    double k=i;
-    if (i > n/2) { k = i-n; } // if we are above the Nyquist
-			      // frequency, we envelope back.
+    double k = frequencies[i];
 
     for (int j=0; j<n; ++j) {
-      double l=j;
-      if (j > n/2) { l = j-n; } // see above
+      double l = frequencies[j];
 
-      real = gsl_matrix_get(get_FFT_grid(), 2*i, j);
-      imag = gsl_matrix_get(get_FFT_grid(), 2*i+1, j);
-      // double current =
-      // 	real*(std::cos(2*M_PI*k*x)*std::cos(2*M_PI*l*y) -
-      // 	      std::sin(2*M_PI*k*x)*std::sin(2*M_PI*l*y)) -
-      // 	imag*(std::cos(2*M_PI*k*x)*std::sin(2*M_PI*l*y) +
-      // 	      std::sin(2*M_PI*k*x)*std::sin(2*M_PI*l*y));
-      // out = out + current;
-      out += real*std::cos(2*M_PI*(k*x + l*y)) -
-      	imag*std::sin(2*M_PI*(k*x + l*y));
+      real = gsl_matrix_get(fft_grid, 2*i, j);
+      imag = gsl_matrix_get(fft_grid, 2*i+1, j);
+      
+      out += real*std::cos(2*M_PI*(k*x + l*y)) - imag*std::sin(2*M_PI*(k*x + l*y));
     }
   }
   return out / (n*n);

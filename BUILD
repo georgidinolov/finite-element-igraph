@@ -6,7 +6,7 @@ cc_library(
 		":basis-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal",
-		 "-fopenmp"],
+		 "-fopenmp", "-O2"],
 	linkopts = ["-lm", "-lgsl", "-lgslcblas",
 		    "-fopenmp"],	
 	visibility = ["//visibility:public"],
@@ -37,7 +37,7 @@ cc_library(
 		 "-lm",
 		 "-lgsl",
 		 "-lgslcblas",
-		 "-O3"],
+		 "-O2"],
 	visibility = ["//visibility:public"],
 )
 
