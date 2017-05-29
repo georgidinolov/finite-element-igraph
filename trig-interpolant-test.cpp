@@ -170,7 +170,10 @@ int main() {
   //   BivariateSolverClassical(sigma_x, sigma_y, rho,
   // 			     x_0, y_0);
   // classical_solver.set_function_grid(dx);
-  // // classical_solver.save_FFT_grid("ic.csv");
+  // classical_solver.save_FFT_grid("ic.csv");
+  // BivariateLinearCombinationElementFourier kernel_element = 
+  //   basis.get_orthonormal_element(1);
+  // kernel_element.save_FFT_grid("trig-test.csv");
 
   BivariateSolver solver = BivariateSolver(&basis,
 					   sigma_x,
@@ -189,10 +192,23 @@ int main() {
 	 solver.numerical_likelihood(input, dx));
   auto t2 = std::chrono::high_resolution_clock::now();    
   std::cout << "likelihood duration = " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " milliseconds\n";
+<<<<<<< HEAD
 
   basis.get_orthonormal_element(basis.get_orthonormal_elements().size()-1).
     save_function_grid("last-element-linear-interpolant.csv");
 
+=======
+  
+  basis.
+    get_orthonormal_element(basis.
+			    get_orthonormal_elements().size()-1).
+    save_function_grid("last-element-fourier-interpolant.csv");
+    basis.
+    get_orthonormal_element(basis.
+			    get_orthonormal_elements().size()-1).
+    save_FFT_grid("last-element-fourier-interpolant-FFT.csv");
+  
+>>>>>>> fft-interpolation
   // printf("dxdx for kernel elem = %.16f\n", basis.project_deriv(kernel_element,
   // 							       0,
   // 							       kernel_element,

@@ -29,7 +29,6 @@ public:
 };
 
 // ============== BIVARIATE ELEMENT INTERFACE CLASS =============
-
 // Abstract class implementation of function calls appropriate for a
 // bivariate basis element, such as:
 // a matrix containing the function values at node points. 
@@ -48,6 +47,29 @@ public:
   virtual double operator()(const gsl_vector* input) const;
 };
 
+// ============== FOURIER INTERPOLANT INTERFACE CLASS =============
+// Abstract class implementation of function calls appropriate for a
+// fourier interpolant element, such as: a matrix containing FFT of
+// the function values of the bivariate function
+class BivariateFourierInterpolant
+  : virtual public BivariateElement
+{
+public:
+  BivariateFourierInterpolant() {};
+
+  // If the size of the grid of function values is n x n, then the FFT
+  // grid is of size 2n x n, where there are 2n rows in order to
+  // accomodate the real and imaginary parts of the FFT coefs.
+  virtual const gsl_matrix* get_FFT_grid() const =0;
+  // virtual const gsl_matrix* get_deriv_FFT_grid_dx() const =0;
+  // virtual const gsl_matrix* get_deriv_FFT_grid_dy() const =0;
+
+  void save_FFT_grid(std::string name) const;
+  // Implemented with Fouriera interpolation. The interpolation
+  // follows the GSL convention.
+  virtual double operator()(const gsl_vector* input) const;
+};
+
 // ============== LINEAR COMBINATION ELEMENT =====================
 class BivariateLinearCombinationElement
   : public virtual BivariateElement
@@ -57,7 +79,7 @@ public:
   BivariateLinearCombinationElement(const std::vector<const BivariateElement*>& elements,
 				    const std::vector<double>& coefficients);
   BivariateLinearCombinationElement(const BivariateLinearCombinationElement& lin_comb_element);
-  virtual BivariateLinearCombinationElement& operator=(const BivariateLinearCombinationElement& rhs);
+  BivariateLinearCombinationElement& operator=(const BivariateLinearCombinationElement& rhs);
 
   virtual ~BivariateLinearCombinationElement();
 
@@ -87,7 +109,7 @@ public:
   // deriv_function_grid_dy_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_deriv_function_grid_dy(const gsl_matrix* new_deriv_function_grid_dy);
-  
+
 private:
   void set_function_grids(const std::vector<const BivariateElement*>& elements,
 			  const std::vector<double>& coefficients);
@@ -98,6 +120,39 @@ private:
   gsl_matrix * deriv_function_grid_dy_;
 };
 
+
+// ============== LINEAR COMBINATION ELEMENT FOURIER =====================
+class BivariateLinearCombinationElementFourier
+  : public BivariateLinearCombinationElement,
+    public BivariateFourierInterpolant
+{
+public:
+  BivariateLinearCombinationElementFourier();
+  BivariateLinearCombinationElementFourier(const std::vector<const BivariateElement*>& elements,
+   					   const std::vector<double>& coefficients);
+  BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElementFourier& lin_comb_element);
+  BivariateLinearCombinationElementFourier(const BivariateLinearCombinationElement& element);
+  
+  BivariateLinearCombinationElementFourier& operator=(const BivariateLinearCombinationElementFourier& rhs);
+
+  ~BivariateLinearCombinationElementFourier();
+
+  void set_function_grid(const gsl_matrix* new_function_grid);
+
+  inline const gsl_matrix* get_FFT_grid() const
+  { return FFT_grid_; }
+  void set_FFT_grid();
+  void set_FFT_grid(const gsl_matrix* new_FFT_grid);
+
+  inline const gsl_matrix* get_deriv_FFT_grid_dx() const
+  { return NULL; }
+  inline const gsl_matrix* get_deriv_FFT_grid_dy() const
+  { return NULL; }
+
+private:
+  gsl_matrix * FFT_grid_;
+
+};
 
 // ============== GAUSSIAN KERNEL ELEMENT =====================
 class GaussianKernelElement
@@ -153,6 +208,8 @@ private:
   gsl_permutation *p_; // = gsl_permutation_alloc(2);
 };
 
+
+// ===================== BIVARIATE GAUSSIAN KERNEL ELEMENT ===================== 
 class BivariateGaussianKernelElement
   : public virtual GaussianKernelElement,
     public virtual BivariateElement
@@ -194,7 +251,7 @@ private:
 
 // ============== BIVARIATE CLASSICAL SOLVER ====================
 class BivariateSolverClassical
-  : public virtual BivariateElement
+  : public BivariateFourierInterpolant
 {
 public:
   BivariateSolverClassical();
@@ -221,6 +278,9 @@ public:
   virtual const gsl_matrix* get_function_grid() const;
   virtual void set_function_grid(double dx);
 
+  virtual const gsl_matrix* get_FFT_grid() const;
+  virtual void set_FFT_grid();
+
   // TODO(georgid): THIS NEEDS TO BE IMPLEMETED
   inline virtual const gsl_matrix* get_deriv_function_grid_dx() const
   { return NULL; }
@@ -243,4 +303,5 @@ private:
   gsl_vector * initial_condition_xi_eta_reflected_;
 
   gsl_matrix * function_grid_;
+  gsl_matrix * FFT_grid_;
 };

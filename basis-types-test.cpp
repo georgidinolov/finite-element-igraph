@@ -4,6 +4,32 @@
 #include <iostream>
 #include <vector>
 
+double project_fft(const BivariateFourierInterpolant& elem_1,
+		   const BivariateFourierInterpolant& elem_2)
+{
+  int N = 1/elem_1.get_dx();
+  const gsl_matrix* fft_mat_1 = elem_1.get_FFT_grid();
+  const gsl_matrix* fft_mat_2 = elem_2.get_FFT_grid();
+  double integral = 0.0;
+
+  for (int i=0; i<N; ++i) {
+    for (int j=0; j<N; ++j) {
+      
+      double dintegral = 
+	gsl_matrix_get(fft_mat_1, 2*i, j)*
+	gsl_matrix_get(fft_mat_2, 2*i, j) +
+	//
+	gsl_matrix_get(fft_mat_1, 2*i+1, j)*
+	gsl_matrix_get(fft_mat_2, 2*i+1, j);
+      
+      integral = integral + dintegral;
+    }
+  }
+
+  integral = integral / std::pow(N,4);
+  return integral;
+}
+
 double project_simple(const BivariateElement& elem_1,
 		      const BivariateElement& elem_2)
 {
@@ -153,7 +179,7 @@ double project_omp(const BivariateElement& elem_1,
 }
 
 int main() {
-  double dx = 5e-4;
+  double dx = 1.0/64;
   double exponent_power = 1;
   long unsigned dimension = 2;
   gsl_vector* mean = gsl_vector_alloc(dimension);
@@ -175,36 +201,51 @@ int main() {
 				   cov);
   kernel_element.save_function_grid("test-basis.csv");
 
-  printf("norm1 = %.32f\n", (project_simple(kernel_element,
-  						  kernel_element)));
-  printf("norm2 = %.32f\n", (project_omp(kernel_element,
-  					    kernel_element)));
+  gsl_vector_set(mean, 0, 0.25);
+  gsl_vector_set(mean, 1, 0.25);
+  BivariateGaussianKernelElement kernel_element_1 =
+    BivariateGaussianKernelElement(dx,
+				   exponent_power,
+				   mean,
+				   cov);
+
+  BivariateLinearCombinationElementFourier fourier_interpolant =
+    BivariateLinearCombinationElementFourier(std::vector<const BivariateElement*> {&kernel_element}, std::vector<double> {1.0});
+
+  BivariateLinearCombinationElementFourier fourier_interpolant_1 =
+    BivariateLinearCombinationElementFourier(std::vector<const BivariateElement*> {&kernel_element_1}, std::vector<double> {1.0});
+
+  fourier_interpolant.set_function_grid(kernel_element.get_function_grid());
+  fourier_interpolant.set_FFT_grid();
+
   
-  // BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
-  // 								    0.9,
-  // 								    0.3,
-  // 								    1,
-  // 								    0.5);
+  BivariateGaussianKernelBasis basis = BivariateGaussianKernelBasis(dx,
+  								    0.6,
+  								    0.3,
+  								    1,
+  								    0.5);
+
+  // printf("norm1_sim = %.16f\n", (basis.project_simple(kernel_element,
+  // 						      kernel_element_1)));
+  // printf("norm2_omp = %.16f\n", (basis.project_omp(fourier_interpolant,
+  // 						   fourier_interpolant_1)));
+  // printf("norm3_fft = %.16f\n", (basis.project_fft(fourier_interpolant,
+  // 						   fourier_interpolant_1)));
   
-  // const BivariateLinearCombinationElement& ortho_e_1 =
-  //   basis.get_orthonormal_element(0);
-  // const BivariateLinearCombinationElement& ortho_e_2 =
-  //   basis.get_orthonormal_element(1);
-  // const BivariateLinearCombinationElement& ortho_e_3 =
-  //   basis.get_orthonormal_element(2);
+  const BivariateLinearCombinationElementFourier& ortho_e_1 =
+    basis.get_orthonormal_element(0);
+  const BivariateLinearCombinationElementFourier& ortho_e_2 =
+    basis.get_orthonormal_element(1);
+  const BivariateLinearCombinationElementFourier& ortho_e_3 =
+    basis.get_orthonormal_element(2);
 
-  // const BivariateLinearCombinationElement& ortho_e_100 =
-  //   basis.get_orthonormal_element(99);
-  // const BivariateLinearCombinationElement& ortho_e_99 =
-  //   basis.get_orthonormal_element(98);
+  const BivariateLinearCombinationElementFourier& last_ortho_elem =
+    basis.get_orthonormal_element(basis.
+  				  get_orthonormal_elements().
+  				  size()-1);
 
-  // const BivariateLinearCombinationElement& last_ortho_elem =
-  //   basis.get_orthonormal_element(basis.
-  // 				  get_orthonormal_elements().
-  // 				  size()-1);
-
-  // std::cout << "<ortho_e_1 | ortho_e_1> = "
-  // 	    << basis.project(ortho_e_1, ortho_e_1) << std::endl;
+  printf("<ortho_e_1 | ortho_e_1> = %.16f\n", basis.project(ortho_e_1, ortho_e_1));
+  printf("<ortho_e_1 | ortho_e_3> = %.16f\n", basis.project(ortho_e_1, ortho_e_3));
   
   // std::cout << "<ortho_e_1 | ortho_e_2> = "
   // 	    << basis.project(ortho_e_1, ortho_e_2) << std::endl;

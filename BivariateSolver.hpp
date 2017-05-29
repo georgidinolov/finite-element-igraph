@@ -30,15 +30,8 @@ public:
 
   virtual ~BivariateSolver();
   
-  inline double get_t() const
-  {
-    return t_;
-  }
-
-  inline const BivariateBasis* get_basis() const
-  {
-    return basis_;
-  }
+  inline double get_t() const { return t_; }
+  inline const BivariateBasis* get_basis() const { return basis_; }
     
   // need to reset t_ AND solution_coefs_!
   void set_t(double t);
@@ -60,7 +53,6 @@ public:
   const gsl_vector* get_solution_coefs() const;
   const gsl_vector* get_ic_coefs() const;
   const gsl_vector* get_evals() const;
-  
   
   virtual double operator()(const gsl_vector* input) const;
   virtual double numerical_likelihood_second_order(const gsl_vector* input, double h);

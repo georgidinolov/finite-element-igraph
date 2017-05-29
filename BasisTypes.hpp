@@ -20,17 +20,15 @@ public:
   virtual const gsl_matrix* get_system_matrix_dx_dy() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dx() const =0;
   virtual const gsl_matrix* get_system_matrix_dy_dy() const =0;
-  virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const=0;
-  virtual const std::vector<BivariateLinearCombinationElement>& get_orthonormal_elements() const=0;
+  virtual const BivariateLinearCombinationElementFourier& get_orthonormal_element(unsigned i) const=0;
+  virtual const std::vector<BivariateLinearCombinationElementFourier>& get_orthonormal_elements() const=0;
 
-  virtual double project(const BivariateElement& elem_1,
-			 const BivariateElement& elem_2) const =0;
+  virtual double project(const BivariateFourierInterpolant& elem_1,
+			 const BivariateFourierInterpolant& elem_2) const =0;
   virtual void save_matrix(const gsl_matrix* mat,
 			   std::string file_name) const =0;
-
-  void save_vector(const gsl_vector* vec,
-		   std::string file_name) const;
-
+  void save_vector(const gsl_vector* vector,
+		    std::string file_name) const;
   virtual double get_dx() const=0;
 };
 
@@ -50,8 +48,8 @@ public:
   BivariateGaussianKernelBasis& operator=(const BivariateGaussianKernelBasis& rhs);
   virtual ~BivariateGaussianKernelBasis();
 
-  virtual const BivariateLinearCombinationElement& get_orthonormal_element(unsigned i) const;
-  virtual const std::vector<BivariateLinearCombinationElement>& get_orthonormal_elements() const;
+  virtual const BivariateLinearCombinationElementFourier& get_orthonormal_element(unsigned i) const;
+  virtual const std::vector<BivariateLinearCombinationElementFourier>& get_orthonormal_elements() const;
   
   virtual const gsl_matrix* get_mass_matrix() const;
   virtual const gsl_matrix* get_system_matrix_dx_dx() const;
@@ -59,19 +57,31 @@ public:
   virtual const gsl_matrix* get_system_matrix_dy_dx() const;
   virtual const gsl_matrix* get_system_matrix_dy_dy() const;
   
-  virtual double project(const BivariateElement& elem_1,
-			 const BivariateElement& elem_2) const;
+  virtual double project(const BivariateFourierInterpolant& elem_1,
+			 const BivariateFourierInterpolant& elem_2) const;
   virtual double project_simple(const BivariateElement& elem_1,
 				const BivariateElement& elem_2) const;
-  virtual double project_omp(const BivariateElement& elem_1,
-			     const BivariateElement& elem_2) const;
+  virtual double project_omp(const BivariateFourierInterpolant& elem_1,
+			     const BivariateFourierInterpolant& elem_2) const;
+
+  virtual double project_fft(const BivariateFourierInterpolant& elem_1,
+			     const BivariateFourierInterpolant& elem_2) const;
 
   // coord_indeex_{1,2} = {0,1}, where 0 = dx, 1 = dy TODO(georgi) :
   // this needs to be done with enumerable elements instead of ints
   // Differentiation is numeric according to grid.
-  virtual double project_deriv(const BivariateElement& elem_1,
+  virtual double project_deriv(const BivariateFourierInterpolant& elem_1,
 			       int coord_indeex_1, 
-			       const BivariateElement& elem_2,
+			       const BivariateFourierInterpolant& elem_2,
+			       int coord_indeex_2) const;
+
+  virtual double project_deriv_linear(const BivariateFourierInterpolant& elem_1,
+				      int coord_indeex_1, 
+				      const BivariateFourierInterpolant& elem_2,
+				      int coord_indeex_2) const;
+  virtual double project_deriv_fft(const BivariateFourierInterpolant& elem_1,
+				   int coord_indeex_1, 
+				   const BivariateFourierInterpolant& elem_2,
 			       int coord_indeex_2) const;
   virtual void save_matrix(const gsl_matrix* mat,
 			   std::string file_name) const;
@@ -92,7 +102,7 @@ private:
   void set_mass_matrix();
   void set_system_matrices_stable();
   
-  std::vector<BivariateLinearCombinationElement> orthonormal_functions_;
+  std::vector<BivariateLinearCombinationElementFourier> orthonormal_functions_;
   gsl_matrix* system_matrix_dx_dx_;
   gsl_matrix* system_matrix_dx_dy_;
   gsl_matrix* system_matrix_dy_dx_;

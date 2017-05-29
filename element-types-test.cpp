@@ -3,7 +3,7 @@
 #include <vector>
 
 int main() {
-  double dx = 1e-3;
+  double dx = 1.0/128;
   long unsigned dimension = 2;
   double exponent_power = 1;
   
@@ -77,5 +77,27 @@ int main() {
   								       0.5,0.5);
 
   small_t_solution.set_function_grid(dx);
+
+
+  BivariateLinearCombinationElementFourier fft1 = 
+    BivariateLinearCombinationElementFourier();
+
+  std::cout << "fft1.get_FFT_grid()->size1 = " 
+	    << fft1.get_FFT_grid()->size1 << std::endl;
+  
+  std::cout << "fft1.get_FFT_grid()->size2 = " 
+	    << fft1.get_FFT_grid()->size2 << std::endl;
+  std::cout << "1/fft1.get_dx() = " << 1/fft1.get_dx() << std::endl;
+
+  BivariateLinearCombinationElementFourier fft2 = 
+    BivariateLinearCombinationElementFourier(new_add);
+  fft2.save_FFT_grid("odd-extension-fft.csv");
+  
+  BivariateLinearCombinationElementFourier fft3 = fft2;
+
+  std::cout << "fft3.get_FFT_grid()->size1 = " << fft3.get_FFT_grid()->size1
+	    << std::endl;
+  std::cout << "fft3.get_FFT_grid()->size2 = " << fft3.get_FFT_grid()->size2
+	    << std::endl;
   return 0;
 }
