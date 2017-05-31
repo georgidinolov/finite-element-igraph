@@ -323,37 +323,56 @@ operator()(const gsl_vector* input) const
     
     int N = basis_->get_orthonormal_element(0).get_FFT_grid()->size2;
     
-    // double big_coef_matrix_ptr [(2*N) * N];
-    // double current_coef_matrix_ptr [(2*N) * N];
-    // gsl_matrix_view big_coef_matrix_view =
-    //   gsl_matrix_view_array(big_coef_matrix_ptr, 2*N, N);
-    // gsl_matrix_view current_coef_matrix_view =
-    //   gsl_matrix_view_array(current_coef_matrix_ptr, 2*N, N);
+    double big_coef_matrix_ptr [(2*N) * N];
+    double current_coef_matrix_ptr [(2*N) * N];
+    gsl_matrix_view big_coef_matrix_view =
+      gsl_matrix_view_array(big_coef_matrix_ptr, 2*N, N);
+    gsl_matrix_view current_coef_matrix_view =
+      gsl_matrix_view_array(current_coef_matrix_ptr, 2*N, N);
 
-    gsl_matrix * big_coef_matrix = gsl_matrix_alloc(2*N, N);
-    gsl_matrix * current_coef_matrix = gsl_matrix_alloc(2*N, N);
-    
-    gsl_matrix_memcpy(big_coef_matrix,
+    gsl_matrix_memcpy(&big_coef_matrix_view.matrix,
 		      basis_->get_orthonormal_element(0).get_FFT_grid());
-    gsl_matrix_scale(big_coef_matrix,
+    gsl_matrix_scale(&big_coef_matrix_view.matrix,
 		     gsl_vector_get(solution_coefs_, 0));
 
     for (unsigned i=1; i<basis_->get_orthonormal_elements().size(); ++i) {
-      gsl_matrix_memcpy(current_coef_matrix,
+      gsl_matrix_memcpy(&current_coef_matrix_view.matrix,
 			basis_->get_orthonormal_element(i).get_FFT_grid());
-      gsl_matrix_scale(current_coef_matrix,
+      gsl_matrix_scale(&current_coef_matrix_view.matrix,
 		       gsl_vector_get(solution_coefs_, i));
 
-      gsl_matrix_add(big_coef_matrix, current_coef_matrix);
+      gsl_matrix_add(&big_coef_matrix_view.matrix, &current_coef_matrix_view.matrix);
     }
 
     std::vector<double> frequencies = std::vector<double> (N);
+    std::vector<double> sinkx = std::vector<double> (N);
+    std::vector<double> sinly = std::vector<double> (N);
+    std::vector<double> coskx = std::vector<double> (N);
+    std::vector<double> cosly = std::vector<double> (N);
     for (int i=0; i<N; ++i) {
+
       if (i > N/2) {
 	frequencies[i] = i-N; // if we are above the Nyquist
 	// frequency, we envelope back.
+
+	sinkx[i] = -sinkx[-(i-N)];
+	sinly[i] = -sinly[-(i-N)];
+	coskx[i] = coskx[-(i-N)];
+	cosly[i] = cosly[-(i-N)];
+
       } else {
 	frequencies[i] = i;
+
+	double argument_x = std::floor( (2*M_PI*frequencies[i]*x) / (2*M_PI) );
+	argument_x = (2*M_PI*frequencies[i]*x) - 2*M_PI*argument_x;
+
+	double argument_y = std::floor( (2*M_PI*frequencies[i]*y) / (2*M_PI) );
+	argument_y = (2*M_PI*frequencies[i]*x) - 2*M_PI*argument_y;
+
+	sinkx[i] = std::sin(argument_x);
+	sinly[i] = std::sin(argument_y);
+	coskx[i] = std::cos(argument_x);
+	cosly[i] = std::cos(argument_y);
       }
     }
 
@@ -364,17 +383,14 @@ operator()(const gsl_vector* input) const
       for (int j=0; j<N; ++j) {
     	double l = frequencies[j];
    
-	double real = gsl_matrix_get(big_coef_matrix, 2*i, j);
-	double imag = gsl_matrix_get(big_coef_matrix, 2*i+1, j);
-	
-	out += real*std::cos(2*M_PI*(k*x + l*y)) -
-	  imag*std::sin(2*M_PI*(k*x + l*y));	  
+	double real = gsl_matrix_get(&big_coef_matrix_view.matrix, 2*i, j);
+	double imag = gsl_matrix_get(&big_coef_matrix_view.matrix, 2*i+1, j);
+
+	out += real*(coskx[i]*cosly[j] - sinkx[i]*sinly[j]) -
+	  imag*(sinkx[i]*cosly[j] + coskx[i]*sinly[j]);
       }
     }
     out = out / (N*N);
-    
-    gsl_matrix_free(big_coef_matrix);
-    gsl_matrix_free(current_coef_matrix);
   }
 
 
