@@ -317,10 +317,10 @@ operator()(const gsl_vector* input) const
   if ((t_ - small_t_solution_->get_t()) <= 1e-32) {
     out = (*small_t_solution_)(scaled_input, t_);
   } else {
-    // TRAP BEGIN
+    // LINEAR INTERPOLATION START
     int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
     int y_int = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
-
+    
     if (x_int == 1/dx_) {
       x_int = 1/dx_ - 1;
     }
@@ -363,7 +363,7 @@ operator()(const gsl_vector* input) const
 
       out = out + current_f;
     }
-    // TRAP END
+    // LINEAR INTERPOLATION END
 
     // // FFT START
     // // manually evaluating function because sin and cos are costly

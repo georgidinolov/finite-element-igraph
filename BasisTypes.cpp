@@ -329,9 +329,10 @@ project_fft(const BivariateFourierInterpolant& elem_1,
   return integral;
 }
 
+
 double BivariateGaussianKernelBasis::
-project_omp(const BivariateFourierInterpolant& elem_1,
-	    const BivariateFourierInterpolant& elem_2) const
+project_omp(const BivariateElement& elem_1,
+	    const BivariateElement& elem_2) const
 {
   int N = 1.0/dx_;
   double integral = 0;
@@ -442,10 +443,11 @@ project_omp(const BivariateFourierInterpolant& elem_1,
   return integral;
 }
 
+
 double BivariateGaussianKernelBasis::
-project_deriv_linear(const BivariateFourierInterpolant& elem_1,
+project_deriv_linear(const BivariateElement& elem_1,
 		     int coord_indeex_1, 
-		     const BivariateFourierInterpolant& elem_2,
+		     const BivariateElement& elem_2,
 		     int coord_indeex_2) const
 {
   int N = 1.0/dx_ + 1;
@@ -477,6 +479,112 @@ project_deriv_linear(const BivariateFourierInterpolant& elem_1,
   gsl_vector* left_1 = gsl_vector_alloc(N-1);
   gsl_vector* left_2 = gsl_vector_alloc(N-1);
   gsl_vector* right = gsl_vector_alloc(N-1);
+
+  // // Both derivatives wrt x, so that we take differences of *ROWS*,
+  // // since each row corresponds to constant x
+  // if (coord_indeex_1 == 0 && coord_indeex_2 == 0) {
+  //   for (int i=0; i<N-1; ++i) {
+  //     gsl_vector_const_view row_i_1 =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i);
+  //     gsl_vector_const_view row_i_1_plus_dx =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i+1);
+  //     gsl_vector_memcpy(left_1, &row_i_1_plus_dx.vector);
+  //     gsl_vector_sub(left_1, &row_i_1.vector);
+
+  //     gsl_vector_const_view row_i_2 =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view row_i_2_plus_dx =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &row_i_2_plus_dx.vector);
+  //     gsl_vector_sub(left_2, &row_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   }
+  //   // Both derivatives wrt x and y, so that we take differences of
+  //   // *ROWS* and *COLUMNS*
+  // } else if (coord_indeex_1 == 0 && coord_indeex_2 == 1) {
+  //   for (int i=0; i<N-1; ++i) {
+
+  //     gsl_vector_const_view row_i_1 =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i);
+  //     gsl_vector_const_view row_i_1_plus_dx =
+  //     gsl_matrix_const_row(elem_1.get_function_grid(),
+  // 			   i+1);
+  //     gsl_vector_memcpy(left_1, &row_i_1_plus_dx.vector);
+  //     gsl_vector_sub(left_1, &row_i_1.vector);
+
+  //     gsl_vector_const_view col_i_2 =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_2_plus_dy =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &col_i_2_plus_dy.vector);
+  //     gsl_vector_sub(left_2, &col_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   }
+  //   // Both derivatives wrt x and y, so that we take differences of
+  //   // *ROWS* and *COLUMNS*
+  // } else if (coord_indeex_1 == 1 && coord_indeex_2 == 0) {
+
+  //   for (int i=0; i<N-1; ++i) {
+  //     gsl_vector_const_view col_i_1 =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_1_plus_dy =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_1, &col_i_1_plus_dy.vector);
+  //     gsl_vector_sub(left_1, &col_i_1.vector);
+
+  //     gsl_vector_const_view row_i_2 =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view row_i_2_plus_dx =
+  //     gsl_matrix_const_row(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &row_i_2_plus_dx.vector);
+  //     gsl_vector_sub(left_2, &row_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   }
+    
+  //   // Both derivatives wrt x, so that we take differences of *COLUMNS*
+  // } else if (coord_indeex_1 == 1 && coord_indeex_2 == 1) {
+  //   for (int i=0; i<N-1; ++i) {
+  //     gsl_vector_const_view col_i_1 =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_1_plus_dy =
+  //     gsl_matrix_const_column(elem_1.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_1, &col_i_1_plus_dy.vector);
+  //     gsl_vector_sub(left_1, &col_i_1.vector);
+
+  //     gsl_vector_const_view col_i_2 =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i);
+  //     gsl_vector_const_view col_i_2_plus_dy =
+  //     gsl_matrix_const_column(elem_2.get_function_grid(),
+  //   			      i+1);
+  //     gsl_vector_memcpy(left_2, &col_i_2_plus_dy.vector);
+  //     gsl_vector_sub(left_2, &col_i_2.vector);
+
+  //     gsl_blas_ddot(left_1, left_2, &row_sum);
+  //     integral = integral + row_sum / (dx_*dx_);
+  //   } 
+  // } else {
+  //   std::cout << "WRONG COORD INPUT!" << std::endl;    
+  // }
 
   if (coord_indeex_1 == 0 && coord_indeex_2 == 0) {
     for (int i=0; i<N-1; ++i) {
@@ -553,10 +661,10 @@ project_deriv(const BivariateFourierInterpolant& elem_1,
 	      const BivariateFourierInterpolant& elem_2,
 	      int coord_indeex_2) const
 {
-  double out = project_deriv_fft(elem_1,
-				 coord_indeex_1,
-				 elem_2,
-				 coord_indeex_2);
+  double out = project_deriv_linear(elem_1,
+				    coord_indeex_1,
+				    elem_2,
+				    coord_indeex_2);
   return out;
 }
 

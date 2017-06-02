@@ -61,8 +61,8 @@ public:
 			 const BivariateFourierInterpolant& elem_2) const;
   virtual double project_simple(const BivariateElement& elem_1,
 				const BivariateElement& elem_2) const;
-  virtual double project_omp(const BivariateFourierInterpolant& elem_1,
-			     const BivariateFourierInterpolant& elem_2) const;
+  double project_omp(const BivariateElement& elem_1,
+		     const BivariateElement& elem_2) const;
 
   virtual double project_fft(const BivariateFourierInterpolant& elem_1,
 			     const BivariateFourierInterpolant& elem_2) const;
@@ -75,9 +75,9 @@ public:
 			       const BivariateFourierInterpolant& elem_2,
 			       int coord_indeex_2) const;
 
-  virtual double project_deriv_linear(const BivariateFourierInterpolant& elem_1,
+  virtual double project_deriv_linear(const BivariateElement& elem_1,
 				      int coord_indeex_1, 
-				      const BivariateFourierInterpolant& elem_2,
+				      const BivariateElement& elem_2,
 				      int coord_indeex_2) const;
   virtual double project_deriv_fft(const BivariateFourierInterpolant& elem_1,
 				   int coord_indeex_1, 
