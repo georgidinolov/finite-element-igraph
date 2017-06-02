@@ -317,80 +317,130 @@ operator()(const gsl_vector* input) const
   if ((t_ - small_t_solution_->get_t()) <= 1e-32) {
     out = (*small_t_solution_)(scaled_input, t_);
   } else {
-    // manually evaluating function because sin and cos are costly
+    // TRAP BEGIN
+    int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
+    int y_int = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
+
+    if (x_int == 1/dx_) {
+      x_int = 1/dx_ - 1;
+    }
+    if (y_int == 1/dx_) {
+      y_int = 1/dx_ - 1;
+    }
+
     double x = gsl_vector_get(scaled_input, 0);
     double y = gsl_vector_get(scaled_input, 1);
     
-    int N = basis_->get_orthonormal_element(0).get_FFT_grid()->size2;
+    double x_1 = x_int*dx_;
+    double x_2 = (x_int+1)*dx_;
+    double y_1 = y_int*dx_;
+    double y_2 = (y_int+1)*dx_;
+
+    double f_11 = 0;
+    double f_12 = 0;
+    double f_21 = 0;
+    double f_22 = 0;
+    double current_f = 0;
+
+    for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
+      f_11 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+    			    x_int,
+    			    y_int);
+      f_12 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+    			    x_int,
+    			    y_int+1);
+      f_21 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+    			    x_int+1,
+    			    y_int);
+      f_22 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+    			    x_int+1,
+    			    y_int+1);
+      current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
+    	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
+    	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
+
+      current_f = current_f * gsl_vector_get(solution_coefs_, i);
+
+      out = out + current_f;
+    }
+    // TRAP END
+
+    // // FFT START
+    // // manually evaluating function because sin and cos are costly
+    // double x = gsl_vector_get(scaled_input, 0);
+    // double y = gsl_vector_get(scaled_input, 1);
     
-    double big_coef_matrix_ptr [(2*N) * N];
-    double current_coef_matrix_ptr [(2*N) * N];
-    gsl_matrix_view big_coef_matrix_view =
-      gsl_matrix_view_array(big_coef_matrix_ptr, 2*N, N);
-    gsl_matrix_view current_coef_matrix_view =
-      gsl_matrix_view_array(current_coef_matrix_ptr, 2*N, N);
+    // int N = basis_->get_orthonormal_element(0).get_FFT_grid()->size2;
+    
+    // double big_coef_matrix_ptr [(2*N) * N];
+    // double current_coef_matrix_ptr [(2*N) * N];
+    // gsl_matrix_view big_coef_matrix_view =
+    //   gsl_matrix_view_array(big_coef_matrix_ptr, 2*N, N);
+    // gsl_matrix_view current_coef_matrix_view =
+    //   gsl_matrix_view_array(current_coef_matrix_ptr, 2*N, N);
 
-    gsl_matrix_memcpy(&big_coef_matrix_view.matrix,
-		      basis_->get_orthonormal_element(0).get_FFT_grid());
-    gsl_matrix_scale(&big_coef_matrix_view.matrix,
-		     gsl_vector_get(solution_coefs_, 0));
+    // gsl_matrix_memcpy(&big_coef_matrix_view.matrix,
+    // 		      basis_->get_orthonormal_element(0).get_FFT_grid());
+    // gsl_matrix_scale(&big_coef_matrix_view.matrix,
+    // 		     gsl_vector_get(solution_coefs_, 0));
 
-    for (unsigned i=1; i<basis_->get_orthonormal_elements().size(); ++i) {
-      gsl_matrix_memcpy(&current_coef_matrix_view.matrix,
-			basis_->get_orthonormal_element(i).get_FFT_grid());
-      gsl_matrix_scale(&current_coef_matrix_view.matrix,
-		       gsl_vector_get(solution_coefs_, i));
+    // for (unsigned i=1; i<basis_->get_orthonormal_elements().size(); ++i) {
+    //   gsl_matrix_memcpy(&current_coef_matrix_view.matrix,
+    // 			basis_->get_orthonormal_element(i).get_FFT_grid());
+    //   gsl_matrix_scale(&current_coef_matrix_view.matrix,
+    // 		       gsl_vector_get(solution_coefs_, i));
 
-      gsl_matrix_add(&big_coef_matrix_view.matrix, &current_coef_matrix_view.matrix);
-    }
+    //   gsl_matrix_add(&big_coef_matrix_view.matrix, &current_coef_matrix_view.matrix);
+    // }
 
-    std::vector<double> frequencies = std::vector<double> (N);
-    std::vector<double> sinkx = std::vector<double> (N);
-    std::vector<double> sinly = std::vector<double> (N);
-    std::vector<double> coskx = std::vector<double> (N);
-    std::vector<double> cosly = std::vector<double> (N);
-    for (int i=0; i<N; ++i) {
+    // std::vector<double> frequencies = std::vector<double> (N);
+    // std::vector<double> sinkx = std::vector<double> (N);
+    // std::vector<double> sinly = std::vector<double> (N);
+    // std::vector<double> coskx = std::vector<double> (N);
+    // std::vector<double> cosly = std::vector<double> (N);
+    // for (int i=0; i<N; ++i) {
 
-      if (i > N/2) {
-	frequencies[i] = i-N; // if we are above the Nyquist
-	// frequency, we envelope back.
+    //   if (i > N/2) {
+    // 	frequencies[i] = i-N; // if we are above the Nyquist
+    // 	// frequency, we envelope back.
 
-	sinkx[i] = -sinkx[-(i-N)];
-	sinly[i] = -sinly[-(i-N)];
-	coskx[i] = coskx[-(i-N)];
-	cosly[i] = cosly[-(i-N)];
+    // 	sinkx[i] = -sinkx[-(i-N)];
+    // 	sinly[i] = -sinly[-(i-N)];
+    // 	coskx[i] = coskx[-(i-N)];
+    // 	cosly[i] = cosly[-(i-N)];
 
-      } else {
-	frequencies[i] = i;
+    //   } else {
+    // 	frequencies[i] = i;
 
-	double argument_x = std::floor( (2*M_PI*frequencies[i]*x) / (2*M_PI) );
-	argument_x = (2*M_PI*frequencies[i]*x) - 2*M_PI*argument_x;
+    // 	double argument_x = std::floor( (2*M_PI*frequencies[i]*x) / (2*M_PI) );
+    // 	argument_x = (2*M_PI*frequencies[i]*x) - 2*M_PI*argument_x;
 
-	double argument_y = std::floor( (2*M_PI*frequencies[i]*y) / (2*M_PI) );
-	argument_y = (2*M_PI*frequencies[i]*x) - 2*M_PI*argument_y;
+    // 	double argument_y = std::floor( (2*M_PI*frequencies[i]*y) / (2*M_PI) );
+    // 	argument_y = (2*M_PI*frequencies[i]*x) - 2*M_PI*argument_y;
 
-	sinkx[i] = std::sin(argument_x);
-	sinly[i] = std::sin(argument_y);
-	coskx[i] = std::cos(argument_x);
-	cosly[i] = std::cos(argument_y);
-      }
-    }
+    // 	sinkx[i] = std::sin(argument_x);
+    // 	sinly[i] = std::sin(argument_y);
+    // 	coskx[i] = std::cos(argument_x);
+    // 	cosly[i] = std::cos(argument_y);
+    //   }
+    // }
 
-    out = 0.0;
-    for (int i=0; i<N; ++i) {
-      double k = frequencies[i];
+    // out = 0.0;
+    // for (int i=0; i<N; ++i) {
+    //   double k = frequencies[i];
       
-      for (int j=0; j<N; ++j) {
-    	double l = frequencies[j];
+    //   for (int j=0; j<N; ++j) {
+    // 	double l = frequencies[j];
    
-	double real = gsl_matrix_get(&big_coef_matrix_view.matrix, 2*i, j);
-	double imag = gsl_matrix_get(&big_coef_matrix_view.matrix, 2*i+1, j);
+    // 	double real = gsl_matrix_get(&big_coef_matrix_view.matrix, 2*i, j);
+    // 	double imag = gsl_matrix_get(&big_coef_matrix_view.matrix, 2*i+1, j);
 
-	out += real*(coskx[i]*cosly[j] - sinkx[i]*sinly[j]) -
-	  imag*(sinkx[i]*cosly[j] + coskx[i]*sinly[j]);
-      }
-    }
-    out = out / (N*N);
+    // 	out += real*(coskx[i]*cosly[j] - sinkx[i]*sinly[j]) -
+    // 	  imag*(sinkx[i]*cosly[j] + coskx[i]*sinly[j]);
+    //   }
+    // }
+    // out = out / (N*N);
+    // // FFT END
   }
 
 
