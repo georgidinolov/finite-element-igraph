@@ -362,7 +362,7 @@ operator()(const gsl_vector* input) const
       current_f = current_f * gsl_vector_get(solution_coefs_, i);
 
       out = out + current_f;
-    }
+    } 
     // LINEAR INTERPOLATION END
 
     // // FFT START
@@ -420,8 +420,20 @@ operator()(const gsl_vector* input) const
 
     // 	sinkx[i] = std::sin(argument_x);
     // 	sinly[i] = std::sin(argument_y);
-    // 	coskx[i] = std::cos(argument_x);
-    // 	cosly[i] = std::cos(argument_y);
+
+    // 	if ((0 <= argument_x && argument_x < M_PI/2.0) ||
+    // 	    (3*M_PI/2.0 <= argument_x && argument_x < 2.0*M_PI)) {
+    // 	  coskx[i] = std::sqrt(1-sinkx[i]*sinkx[i]);
+    // 	} else {
+    // 	  coskx[i] = -1.0*std::sqrt(1-sinkx[i]*sinkx[i]);
+    // 	}
+
+    // 	if ((0 <= argument_y && argument_y < M_PI/2.0) ||
+    // 	    (3*M_PI/2.0 <= argument_y && argument_y < 2.0*M_PI)) {
+    // 	  cosly[i] = std::sqrt(1-sinly[i]*sinly[i]);
+    // 	} else {
+    // 	  cosly[i] = -1.0*std::sqrt(1-sinly[i]*sinly[i]);
+    // 	}
     //   }
     // }
 
@@ -521,11 +533,12 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 	  //   (t2 - t1).count() << " milliseconds\n";
 
 	  // t1 = std::chrono::high_resolution_clock::now();    
+	  double out = (*this)(input);
 	  derivative = derivative + 
 	    a_indeces[i]*
 	    b_indeces[j]*
 	    c_indeces[k]*
-	    d_indeces[l]*(*this)(input);
+	    d_indeces[l]*out;
 	  // t2 = std::chrono::high_resolution_clock::now();    
 	  // std::cout << "eval duration = "
 	  // 	    << std::chrono::duration_cast<std::chrono::milliseconds>
