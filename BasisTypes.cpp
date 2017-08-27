@@ -626,7 +626,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 						       double std_dev_factor)
 {
   // creating the x-nodes
-  double by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
+  double by = std_dev_factor * sigma; // * std::sqrt(1-rho) / std::sqrt(1+rho);
   double current = 0.5 - std::sqrt(2.0);
 
   std::vector<double> x_nodes (0);
@@ -646,7 +646,11 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   x_nodes.erase(last, x_nodes.end());
 
   // creating the y-nodes
-  by = std_dev_factor * sigma;
+  if (rho >= 0.0) {
+    by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
+  } else {
+    by = std_dev_factor * sigma * std::sqrt(1+rho) / std::sqrt(1-rho);
+  }
   current = 0.5 - std::sqrt(2.0);
 
   std::vector<double> y_nodes;
@@ -676,11 +680,17 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   }
 
   double theta = M_PI/4.0;
+  if (rho >= 0.0) {
+    theta = 1.0*M_PI/4.0;
+  } else {
+    theta = -1.0*M_PI/4.0;
+  }
+  
   gsl_matrix *Rotation_matrix = gsl_matrix_alloc(2,2);
-  gsl_matrix_set(Rotation_matrix, 0, 0, std::sin(theta));
-  gsl_matrix_set(Rotation_matrix, 1, 0, -std::cos(theta));
-  gsl_matrix_set(Rotation_matrix, 0, 1, std::cos(theta));
-  gsl_matrix_set(Rotation_matrix, 1, 1, std::sin(theta));
+  gsl_matrix_set(Rotation_matrix, 0, 0, std::cos(theta));
+  gsl_matrix_set(Rotation_matrix, 1, 0, std::sin(theta));
+  gsl_matrix_set(Rotation_matrix, 0, 1, -1.0*std::sin(theta));
+  gsl_matrix_set(Rotation_matrix, 1, 1, std::cos(theta));
 
   gsl_matrix_add_constant(xy_nodes, -0.5);
 
