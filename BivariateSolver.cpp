@@ -385,15 +385,19 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
   double x = gsl_vector_get(input, 0);
   double y = gsl_vector_get(input, 1);
   double likelihood = 0;
-  if (x > (a_+h) &&
-      x < (b_-h) &&
-      y > (c_+h) &&
-      y < (d_-h) && 
+
+  double h_x = h*(b_x - a_x);
+  double h_y = h*(b_y - a_y);
+  
+  if (x > (a_+h_x) &&
+      x < (b_-h_x) &&
+      y > (c_+h_y) &&
+      y < (d_-h_y) && 
       // 
-      x_0_ > (a_+h) &&
-      x_0_ < (b_-h) &&
-      y_0_ > (c_+h) &&
-      y_0_ < (d_-h)) {
+      x_0_ > (a_+h_x) &&
+      x_0_ < (b_-h_x) &&
+      y_0_ > (c_+h_y) &&
+      y_0_ < (d_-h_y)) {
     likelihood = numerical_likelihood_second_order(input, h);
   } else {
     likelihood = numerical_likelihood_first_order(input, h);
@@ -422,6 +426,9 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
   int d_power=1;
 
   double derivative = 0;
+
+  double h_x = h*(b_x - a_x);
+  double h_y = h*(b_y - a_y);
   
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
@@ -435,12 +442,12 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 	for (unsigned l=0; l<d_indeces.size(); ++l) {
 	  if (l==0) { d_power=1; } else { d_power=0; };
 
-	  set_data(current_a + a_indeces[i]*h,
+	  set_data(current_a + a_indeces[i]*h_x,
 		   x_0_,
-		   current_b + b_indeces[j]*h,
-		   current_c + c_indeces[k]*h,
+		   current_b + b_indeces[j]*h_x,
+		   current_c + c_indeces[k]*h_y,
 		   y_0_,
-		   current_d + d_indeces[l]*h);
+		   current_d + d_indeces[l]*h_y);
 	  
 	  derivative = derivative + 
 	    a_indeces[i]*
@@ -483,6 +490,8 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
   int d_power=1;
 
   double derivative = 0;
+  double h_x = h*(b_x - a_x);
+  double h_y = h*(b_y - a_y);
   
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
@@ -496,12 +505,12 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
 	for (unsigned l=0; l<d_indeces.size(); ++l) {
 	  if (l==0) { d_power=1; } else { d_power=0; };
 
-	  set_data(current_a + a_indeces[i]*h,
+	  set_data(current_a + a_indeces[i]*h_x,
 		   x_0_,
-		   current_b + b_indeces[j]*h,
-		   current_c + c_indeces[k]*h,
+		   current_b + b_indeces[j]*h_x,
+		   current_c + c_indeces[k]*h_y,
 		   y_0_,
-		   current_d + d_indeces[l]*h);
+		   current_d + d_indeces[l]*h_y);
 	  
 	  derivative = derivative + 
 	    std::pow(-1, a_power)*
