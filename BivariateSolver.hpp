@@ -40,8 +40,6 @@ public:
     return basis_;
   }
     
-  // need to reset t_ AND solution_coefs_!
-  void set_t(double t);
   // need to reset IC_coefs_, mass_matrix_, stiffness_matrix_, eval_,
   // evec_, solution_coefs_
   void set_diffusion_parameters(double sigma_x,
@@ -87,7 +85,9 @@ private:
   double sigma_y_2_;
   double x_0_2_;
   double y_0_2_;
-  
+  double t_2_;
+  bool flipped_xy_flag_;
+
   MultivariateNormal mvtnorm_;
   BivariateBasis* basis_;
   BivariateSolverClassical* small_t_solution_;

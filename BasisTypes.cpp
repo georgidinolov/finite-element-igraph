@@ -55,6 +55,46 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
 {
   // first create the list of basis elements
   set_basis_functions(rho,sigma,power,std_dev_factor);
+  std::cout << "done with basis functions" << std::endl;
+  //
+  set_mass_matrix();
+  std::cout << "done with mass matrix" << std::endl;
+
+  //
+  set_system_matrices_stable();
+  std::cout << "done with system matrices" << std::endl;
+    
+  // igraph_matrix_init(&system_matrix_, 2, 2);
+  // igraph_matrix_fill(&system_matrix_, 1);
+  
+  // igraph_matrix_init(&mass_matrix_, 2, 2);
+  // igraph_matrix_fill(&mass_matrix_, 1);
+}
+
+BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
+							   double rho,
+							   double sigma_x,
+							   double sigma_y,
+							   double power,
+							   double std_dev_factor)
+  : dx_(dx),
+    system_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
+    system_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
+    system_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
+    system_matrix_dy_dy_(gsl_matrix_alloc(1,1)),
+    mass_matrix_(gsl_matrix_alloc(1,1)),
+    inner_product_matrix_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dx_dx_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dx_dy_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dy_dx_(gsl_matrix_alloc(1,1)),
+    deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1,1))
+{
+  // first create the list of basis elements
+  set_basis_functions(rho,
+		      sigma_x,
+		      sigma_y,
+		      power,
+		      std_dev_factor);
 
     //
   set_mass_matrix();
@@ -625,39 +665,56 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 						       double power,
 						       double std_dev_factor)
 {
+  set_basis_functions(rho,
+		      sigma,
+		      sigma,
+		      power,
+		      std_dev_factor);
+}
+
+void BivariateGaussianKernelBasis::set_basis_functions(double rho,
+						       double sigma_x,
+						       double sigma_y,
+						       double power,
+						       double std_dev_factor)
+{
   // creating the x-nodes
-  double by = std_dev_factor * sigma; // * std::sqrt(1-rho) / std::sqrt(1+rho);
-  double current = 0.5 - std::sqrt(2.0);
+  double by = std_dev_factor * sigma_x * std::sqrt(1+rho);
+  double current = 0.5;
 
   std::vector<double> x_nodes (0);
-  while ((current - 0.5) <= 1e-32) {
+  while ((current - (0.5-std::sqrt(2.0))) >= 1e-32) {
     x_nodes.push_back(current);
-    current = current + by;
+    current = current - by;
   }
+  std::reverse(x_nodes.begin(), x_nodes.end());
 
   current = 0.5;
   while ( (current-(0.5+std::sqrt(2))) <= 1e-32 ) {
     x_nodes.push_back(current);
     current = current + by;
   }
-
-  // x_nodes is already sorted
+  
+  // x_nodes is already sorted but sorting again
+  std::sort(x_nodes.begin(), x_nodes.end());
   auto last = std::unique(x_nodes.begin(), x_nodes.end());
   x_nodes.erase(last, x_nodes.end());
 
   // creating the y-nodes
-  if (rho >= 0.0) {
-    by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
-  } else {
-    by = std_dev_factor * sigma * std::sqrt(1+rho) / std::sqrt(1-rho);
-  }
-  current = 0.5 - std::sqrt(2.0);
+  // if (rho >= 0.0) {
+  //   by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
+  // } else {
+  //   by = std_dev_factor * sigma * std::sqrt(1+rho) / std::sqrt(1-rho);
+  // }
+  by = std_dev_factor * sigma_y * std::sqrt(1-rho);
+  current = 0.5;
 
   std::vector<double> y_nodes;
-  while ((current - 0.5) <= 1e-32) {
+  while ((current - (0.5-std::sqrt(2.0))) >= 1e-32) {
     y_nodes.push_back(current);
-    current = current + by;
+    current = current - by;
   }
+  std::reverse(y_nodes.begin(), y_nodes.end());
 
   current = 0.5;
   while ( (current-(0.5+std::sqrt(2))) <= 1e-32 ) {
@@ -665,7 +722,8 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
     current = current + by;
   }
 
-  // y_nodes is already sorted
+  // y_nodes is already sorted but sorting it anyway
+  std::sort(y_nodes.begin(), y_nodes.end());
   last = std::unique(y_nodes.begin(), y_nodes.end());
   y_nodes.erase(last, y_nodes.end());
 
@@ -680,17 +738,17 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   }
 
   double theta = M_PI/4.0;
-  if (rho >= 0.0) {
-    theta = 1.0*M_PI/4.0;
-  } else {
-    theta = -1.0*M_PI/4.0;
-  }
+  // if (rho >= 0.0) {
+  //   theta = 1.0*M_PI/4.0;
+  // } else {
+  //   theta = -1.0*M_PI/4.0;
+  // }
   
   gsl_matrix *Rotation_matrix = gsl_matrix_alloc(2,2);
-  gsl_matrix_set(Rotation_matrix, 0, 0, std::cos(theta));
-  gsl_matrix_set(Rotation_matrix, 1, 0, std::sin(theta));
-  gsl_matrix_set(Rotation_matrix, 0, 1, -1.0*std::sin(theta));
-  gsl_matrix_set(Rotation_matrix, 1, 1, std::cos(theta));
+  gsl_matrix_set(Rotation_matrix, 0, 0, std::sin(theta));
+  gsl_matrix_set(Rotation_matrix, 1, 0, std::cos(theta));
+  gsl_matrix_set(Rotation_matrix, 0, 1, -1.0*std::cos(theta));
+  gsl_matrix_set(Rotation_matrix, 1, 1, std::sin(theta));
 
   gsl_matrix_add_constant(xy_nodes, -0.5);
 
@@ -702,22 +760,23 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 
   std::vector<long unsigned> indeces_within_boundary;
   for (unsigned j=0; j<x_nodes.size()*y_nodes.size(); ++j) {
-    if ( (gsl_matrix_get(xieta_nodes, 0, j) >= 1e-32) &&
-	 (gsl_matrix_get(xieta_nodes, 0, j) <= 1.0-1e-32) &&
-	 (gsl_matrix_get(xieta_nodes, 1, j) >= 1e-32) &&
-	 (gsl_matrix_get(xieta_nodes, 1, j) <= 1.0-1e-32) )
+    if ( (gsl_matrix_get(xieta_nodes, 0, j) >= 1e-32 - 0.5) &&
+	 (gsl_matrix_get(xieta_nodes, 0, j) <= 1.0 + 0.5-1e-32) &&
+	 (gsl_matrix_get(xieta_nodes, 1, j) >= 1e-32 - 0.5) &&
+	 (gsl_matrix_get(xieta_nodes, 1, j) <= 1.0 + 0.5 -1e-32) )
       {
 	indeces_within_boundary.push_back(j);
       }
   }
+  printf("Number of basis elements = %d\n", indeces_within_boundary.size());
 
   gsl_vector* mean_vector = gsl_vector_alloc(2);
   gsl_matrix* covariance_matrix = gsl_matrix_alloc(2,2);
   
-  gsl_matrix_set(covariance_matrix, 0, 0, std::pow(sigma, 2));
-  gsl_matrix_set(covariance_matrix, 1, 0, rho*std::pow(sigma, 2));
-  gsl_matrix_set(covariance_matrix, 0, 1, rho*std::pow(sigma, 2));
-  gsl_matrix_set(covariance_matrix, 1, 1, std::pow(sigma, 2)); 
+  gsl_matrix_set(covariance_matrix, 0, 0, std::pow(sigma_x, 2));
+  gsl_matrix_set(covariance_matrix, 1, 0, rho*sigma_x*sigma_y);
+  gsl_matrix_set(covariance_matrix, 0, 1, rho*sigma_x*sigma_y);
+  gsl_matrix_set(covariance_matrix, 1, 1, std::pow(sigma_y, 2)); 
 
   std::vector<BivariateGaussianKernelElement> basis_functions_ =
     std::vector<BivariateGaussianKernelElement> (indeces_within_boundary.size());

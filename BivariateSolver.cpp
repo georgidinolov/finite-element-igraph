@@ -202,12 +202,6 @@ operator=(const BivariateSolver& rhs)
   return *this;
 }
 
-void BivariateSolver::set_t(double t)
-{
-  t_ = t;
-  set_solution_coefs();
-}
-
 void BivariateSolver::set_diffusion_parameters(double sigma_x,
 					       double sigma_y,
 					       double rho)
@@ -229,7 +223,6 @@ void BivariateSolver::set_diffusion_parameters(double sigma_x,
   set_eval_and_evec();
   set_IC_coefs();
   set_solution_coefs();
-  
 }
 
 gsl_vector* BivariateSolver::scale_input(const gsl_vector* input) const
@@ -252,6 +245,14 @@ gsl_vector* BivariateSolver::scale_input(const gsl_vector* input) const
 
   double Ly_2 = d_1 - c_1;
   double y_2 =  y_1 / Ly_2;
+
+  // STEP 3
+  if (flipped_xy_flag_) {
+    double x_3 = x_2;
+    double y_3 = y_2;
+    x_2 = y_3;
+    y_2 = x_3;
+  }
 
   gsl_vector* scaled_input = gsl_vector_alloc(2);
   gsl_vector_set(scaled_input, 0, x_2);
@@ -312,8 +313,8 @@ operator()(const gsl_vector* input) const
   gsl_vector* scaled_input = scale_input(input);
 
   double out = 0;
-  if ((t_ - small_t_solution_->get_t()) <= 1e-32) {
-    out = (*small_t_solution_)(scaled_input, t_);
+  if ((t_2_ - small_t_solution_->get_t()) <= 1e-32) {
+    out = (*small_t_solution_)(scaled_input, t_2_);
   } else {
     int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
     int y_int = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
@@ -370,7 +371,6 @@ operator()(const gsl_vector* input) const
     // }
   }
 
-
   double Lx_2 = b_ - a_;
   double Ly_2 = d_ - c_;
   out = out / (Lx_2 * Ly_2);
@@ -386,8 +386,8 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
   double y = gsl_vector_get(input, 1);
   double likelihood = 0;
 
-  double h_x = h*(b_x - a_x);
-  double h_y = h*(b_y - a_y);
+  double h_x = h*(b_ - a_);
+  double h_y = h*(d_ - c_);
   
   if (x > (a_+h_x) &&
       x < (b_-h_x) &&
@@ -415,10 +415,10 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
   double current_c = c_;
   double current_d = d_;
 
-  std::vector<int> a_indeces {-1,1};
-  std::vector<int> b_indeces {-1,1};
-  std::vector<int> c_indeces {-1,1};
-  std::vector<int> d_indeces {-1,1};
+  std::vector<int> a_indeces { 1,-1};
+  std::vector<int> b_indeces {-1, 1};
+  std::vector<int> c_indeces { 1,-1};
+  std::vector<int> d_indeces {-1, 1};
 
   int a_power=1;
   int b_power=1;
@@ -427,8 +427,8 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 
   double derivative = 0;
 
-  double h_x = h*(b_x - a_x);
-  double h_y = h*(b_y - a_y);
+  double h_x = h*(b_ - a_);
+  double h_y = h*(d_ - c_);
   
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
@@ -450,10 +450,10 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 		   current_d + d_indeces[l]*h_y);
 	  
 	  derivative = derivative + 
-	    a_indeces[i]*
-	    b_indeces[j]*
-	    c_indeces[k]*
-	    d_indeces[l]*(*this)(input);
+	    std::pow(-1, a_power)*
+	    std::pow(-1, b_power)*
+	    std::pow(-1, c_power)*
+	    std::pow(-1, d_power)*(*this)(input);
 	}
       }
     }
@@ -479,10 +479,10 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
   double current_c = c_;
   double current_d = d_;
 
-  std::vector<int> a_indeces {-1,0};
-  std::vector<int> b_indeces {0,1};
-  std::vector<int> c_indeces {-1,0};
-  std::vector<int> d_indeces {0,1};
+  std::vector<int> a_indeces {-1, 0};
+  std::vector<int> b_indeces { 0, 1};
+  std::vector<int> c_indeces {-1, 0};
+  std::vector<int> d_indeces { 0, 1};
 
   int a_power=1;
   int b_power=1;
@@ -490,8 +490,8 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
   int d_power=1;
 
   double derivative = 0;
-  double h_x = h*(b_x - a_x);
-  double h_y = h*(b_y - a_y);
+  double h_x = h*(b_ - a_);
+  double h_y = h*(d_ - c_);
   
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
@@ -647,18 +647,23 @@ void BivariateSolver::set_eval_and_evec()
 void BivariateSolver::set_solution_coefs()
 {
   unsigned K = basis_->get_orthonormal_elements().size();  
-  gsl_matrix* evec =gsl_matrix_alloc(K,K);
-  gsl_matrix* evec_tr =gsl_matrix_alloc(K,K);
-  gsl_matrix* exp_system_matrix =gsl_matrix_alloc(K,K);
+  gsl_matrix* evec = gsl_matrix_alloc(K,K);
+  gsl_matrix* evec_tr = gsl_matrix_alloc(K,K);
+  gsl_matrix* exp_system_matrix = gsl_matrix_alloc(K,K);
   
   gsl_matrix_memcpy(evec, evec_);
   gsl_matrix_transpose_memcpy(evec_tr, evec_);
 
+  if ( t_2_-small_t_solution_->get_t() <= 0.0 ) {
+    printf("t_2_ <= small_t_solution_->get_t()");
+    exit (EXIT_FAILURE);
+  }
+  
   // evec %*% diag(eval)
   for (unsigned i=0; i<K; ++i) {
     gsl_vector_view col_i = gsl_matrix_column(evec, i);
     gsl_vector_scale(&col_i.vector, std::exp(gsl_vector_get(eval_, i)*
-					     (t_-small_t_solution_->get_t())));
+					     (t_2_-small_t_solution_->get_t())));
   }
   // exp_system_matrix = [evec %*% diag(exp(eval*(t-t_small)))] %*% t(evec)
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,
@@ -697,4 +702,34 @@ void BivariateSolver::set_scaled_data()
   c_2_ = c_1 / Ly_2;
   d_2_ = d_1 / Ly_2;
   sigma_y_2_ = sigma_y_ / Ly_2;
+
+  // STEP 3
+  double sigma_x_3 = 1.0;
+  double sigma_y_3 = sigma_y_2_ / sigma_x_2_;
+  //
+  double x_0_3 = x_0_2_;
+  double y_0_3 = y_0_2_;
+  t_2_ = t_ * (sigma_x_2_*sigma_x_2_);
+  flipped_xy_flag_ = 0;
+  
+  if (sigma_x_2_ < sigma_y_2_) {
+    printf("sigma_x_2_ < sigma_y_2_\n");
+    sigma_x_3 = 1.0;
+    sigma_y_3 = sigma_x_2_ / sigma_y_2_;
+    //
+    x_0_3 = y_0_2_;
+    y_0_3 = x_0_2_;
+    t_2_ = t_ * (sigma_y_2_*sigma_y_2_);
+    flipped_xy_flag_ = 1;
+  }
+  
+  sigma_x_2_ = sigma_x_3;
+  sigma_y_2_ = sigma_y_3;
+  x_0_2_ = x_0_3;
+  y_0_2_ = y_0_3;
+
+  printf("sigma_x_2_^2 = %f, sigma_y_2_^2 = %f, x_0_2_ = %f, y_0_2_ = %f, t_2_ = %f\n",
+	 sigma_x_2_*sigma_x_2_,
+	 sigma_y_2_*sigma_y_2_,
+	 x_0_2_, y_0_2_, t_2_);
 }

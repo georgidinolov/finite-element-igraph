@@ -76,6 +76,38 @@ cc_binary(
 	visibility = ["//visibility:public"],
 )
 
+cc_binary(
+	name = "bivariate-solver-contour-plot",
+	srcs = ["bivariate-solver-contour-plot.cpp"],
+	deps = [":bivariate-solver",
+    	        "//src/brownian-motion:2d-brownian-motion",
+		"//src/images-expansion:2d-advection-diffusion-images"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/brownian-motion",
+	      	 "-Isrc/multivariate-normal",
+		 "-Isrc/images-expansion",
+		 "-fopenmp",
+		 "-O3"],
+	linkopts = ["-fopenmp", "-lm"],
+	visibility = ["//visibility:public"],
+)
+
+cc_binary(
+	name = "bivariate-solver-likelihood-plot",
+	srcs = ["bivariate-solver-likelihood-plot.cpp"],
+	deps = [":bivariate-solver",
+    	        "//src/brownian-motion:2d-brownian-motion",
+		"//src/images-expansion:2d-advection-diffusion-images"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/brownian-motion",
+	      	 "-Isrc/multivariate-normal",
+		 "-Isrc/images-expansion",
+		 "-fopenmp",
+		 "-O3"],
+	linkopts = ["-fopenmp", "-lm"],
+	visibility = ["//visibility:public"],
+)
+
 
 cc_binary(
 	name = "bivariate-solver-classical-test",

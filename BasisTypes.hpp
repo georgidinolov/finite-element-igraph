@@ -42,6 +42,14 @@ public:
 			       double sigma,
 			       double power,
 			       double std_dev_factor);
+
+  BivariateGaussianKernelBasis(double dx,
+			       double rho,
+			       double sigma_x,
+			       double sigma_y,
+			       double power,
+			       double std_dev_factor);
+  
   BivariateGaussianKernelBasis(const BivariateGaussianKernelBasis& basis);
   BivariateGaussianKernelBasis& operator=(const BivariateGaussianKernelBasis& rhs);
   virtual ~BivariateGaussianKernelBasis();
@@ -81,6 +89,12 @@ private:
   // sets basis functions in the class
   void set_basis_functions(double rho,
 			   double sigma,
+			   double power,
+			   double std_dev_factor);
+
+  void set_basis_functions(double rho,
+			   double sigma_x,
+			   double sigma_y,
 			   double power,
 			   double std_dev_factor);
   
