@@ -382,7 +382,7 @@ operator()(const gsl_vector* input) const
 double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input, 
 						      double h)
 {
-  double t_lower_bound = 0.2;
+  double t_lower_bound = 0.3;
   double sigma_y_2_lower_bound = 0.4;
   double likelihood = -1.0;
 
@@ -415,8 +415,39 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
     
   } else {
     printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 3 MET\n", t_2_, sigma_y_2_);
-    
-    likelihood = -1.0;
+
+    double sigma_x_current = sigma_x_;
+    double sigma_y_current = sigma_y_;
+
+    // REMEMBER TO RE-SET SIGMAS
+    // This sets sigma_y_2_ to be on the computational boundary
+    if (!flipped_xy_flag_) {
+      sigma_y_ = (sigma_y_2_lower_bound) *
+	sigma_x_ * (d_ - c_)/(b_ - a_);
+    } else {
+      sigma_x_ = (sigma_y_2_lower_bound) *
+	sigma_y_ * (b_ - a_)/(d_ - c_);
+    }
+    // -------------------------- //
+
+    // fixing sigma_y_2_ on boundary and extrapolating to the small
+    // t_2_
+    double f1 = extrapolate_t_direction(t_lower_bound,
+					t_2_,
+					t_,
+					flipped_xy_flag_,
+					input,
+					h);
+    double x1 = sigma_y_2_;
+
+    sigma_x_ = sigma_x_current;
+    sigma_y_ = sigma_y_current;
+    set_scaled_data();
+    // extrapolating to the true small sigma_y_2_ using exponential
+    // truncation only.
+    double beta = -1.0*log(f1)*x1;
+    likelihood = exp(-beta/sigma_y_2_);
+
   }
   
   return likelihood;
@@ -772,7 +803,7 @@ void BivariateSolver::set_scaled_data()
   flipped_xy_flag_ = 0;
   
   if (sigma_x_2_ < sigma_y_2_) {
-    printf("sigma_x_2_ < sigma_y_2_\n");
+    //  printf("sigma_x_2_ < sigma_y_2_\n");
     sigma_x_3 = 1.0;
     sigma_y_3 = sigma_x_2_ / sigma_y_2_;
     //
@@ -787,12 +818,12 @@ void BivariateSolver::set_scaled_data()
   x_0_2_ = x_0_3;
   y_0_2_ = y_0_3;
 
-  printf("sigma_x_ = %f, sigma_y_ = %f, sigma_x_2_^2 = %f, sigma_y_2_^2 = %f, x_0_2_ = %f, y_0_2_ = %f, t_2_ = %f\n",
-	 sigma_x_,
-	 sigma_y_,
-	 sigma_x_2_*sigma_x_2_,
-	 sigma_y_2_*sigma_y_2_,
-	 x_0_2_, y_0_2_, t_2_);
+  // printf("sigma_x_ = %f, sigma_y_ = %f, sigma_x_2_^2 = %f, sigma_y_2_^2 = %f, x_0_2_ = %f, y_0_2_ = %f, t_2_ = %f\n",
+  // 	 sigma_x_,
+  // 	 sigma_y_,
+  // 	 sigma_x_2_*sigma_x_2_,
+  // 	 sigma_y_2_*sigma_y_2_,
+  // 	 x_0_2_, y_0_2_, t_2_);
 }
 
 double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
