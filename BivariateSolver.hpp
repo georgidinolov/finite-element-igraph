@@ -64,6 +64,7 @@ public:
   virtual double numerical_likelihood_second_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood(const gsl_vector* input, double h);
+  virtual double numerical_likelihood_extended(const gsl_vector* input, double h);
   
 private:
   double a_;
@@ -108,6 +109,21 @@ private:
   void set_eval_and_evec();
   // requires t_, eval_, evec_;
   void set_solution_coefs();
+
+  double extrapolate_t_direction(const double t_lower_bound,
+				 const double t_2_current,
+				 const double t_current,
+				 const bool flipped_xy_flag,
+				 const gsl_vector* input,
+				 const double h);
+
+  double extrapolate_sigma_y_direction(const double sigma_y_2_lower_bound_in,
+				       const double sigma_y_2_current,
+				       const double sigma_x_current,
+				       const double sigma_y_current,
+				       const bool flipped_xy_flag,
+				       const gsl_vector* input,
+				       const double h);
   
   // gsl_vector * xi_eta_input_;
   // gsl_vector * initial_condition_xi_eta_;

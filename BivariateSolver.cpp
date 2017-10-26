@@ -379,6 +379,49 @@ operator()(const gsl_vector* input) const
   return out;
 }
 
+double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input, 
+						      double h)
+{
+  double t_lower_bound = 0.2;
+  double sigma_y_2_lower_bound = 0.4;
+  double likelihood = -1.0;
+
+  double t_2_current = t_2_;
+  double sigma_y_2_current = sigma_y_2_;
+
+  if (t_2_ >= t_lower_bound && sigma_y_2_ >= sigma_y_2_lower_bound) {
+      likelihood = numerical_likelihood(input, h);
+      
+  } else if (t_2_ < t_lower_bound && sigma_y_2_ >= sigma_y_2_lower_bound) {
+    // EXTRAPOLATING IN THE T-DIRECTION
+    printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 1 MET\n", t_2_, sigma_y_2_);
+
+    likelihood = extrapolate_t_direction(t_lower_bound,
+					 t_2_current,
+					 t_,
+					 flipped_xy_flag_,
+					 input,
+					 h);
+					 
+  } else if (t_2_ >= t_lower_bound && sigma_y_2_ < sigma_y_2_lower_bound) {
+    printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 2 MET\n", t_2_, sigma_y_2_);
+    likelihood = extrapolate_sigma_y_direction(sigma_y_2_lower_bound,
+					       sigma_y_2_current,
+					       sigma_x_,
+					       sigma_y_,
+					       flipped_xy_flag_,
+					       input,
+					       h);
+    
+  } else {
+    printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 3 MET\n", t_2_, sigma_y_2_);
+    
+    likelihood = -1.0;
+  }
+  
+  return likelihood;
+}
+
 double BivariateSolver::numerical_likelihood(const gsl_vector* input, 
 					     double h)
 {
@@ -388,7 +431,7 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
 
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
-  
+
   if (x > (a_+h_x) &&
       x < (b_-h_x) &&
       y > (c_+h_y) &&
@@ -402,6 +445,8 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
   } else {
     likelihood = numerical_likelihood_first_order(input, h);
   }
+  
+  
   return likelihood;
 }
 
@@ -459,6 +504,13 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
     }
   }
 
+  set_data(current_a,
+	   x_0_,
+	   current_b,
+	   current_c,
+	   y_0_,
+	   current_d);
+  
   // derivative = derivative / (16*h^4);
   if (std::signbit(derivative)) {
     derivative = 
@@ -522,6 +574,13 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
     }
   }
 
+  set_data(current_a,
+	   x_0_,
+	   current_b,
+	   current_c,
+	   y_0_,
+	   current_d);
+  
   // derivative = derivative / (h^4);
   if (std::signbit(derivative)) {
     derivative = 
@@ -681,7 +740,7 @@ void BivariateSolver::set_solution_coefs()
 
 void BivariateSolver::set_scaled_data()
 {
-  // STEP 1
+  // STEP 1 SHIFTING
   double x_0_1 = x_0_ - a_;
   double b_1 = b_ - a_;
   double a_1 = a_ - a_;
@@ -690,7 +749,7 @@ void BivariateSolver::set_scaled_data()
   double c_1 = c_ - c_;
   double d_1 = d_ - c_;
 
-  // STEP 2
+  // STEP 2 SCALING
   double Lx_2 = b_1 - a_1;
   x_0_2_ =  x_0_1 / Lx_2;
   a_2_ = a_1 / Lx_2;
@@ -703,7 +762,7 @@ void BivariateSolver::set_scaled_data()
   d_2_ = d_1 / Ly_2;
   sigma_y_2_ = sigma_y_ / Ly_2;
 
-  // STEP 3
+  // STEP 3 RE-SCALING
   double sigma_x_3 = 1.0;
   double sigma_y_3 = sigma_y_2_ / sigma_x_2_;
   //
@@ -728,8 +787,183 @@ void BivariateSolver::set_scaled_data()
   x_0_2_ = x_0_3;
   y_0_2_ = y_0_3;
 
-  printf("sigma_x_2_^2 = %f, sigma_y_2_^2 = %f, x_0_2_ = %f, y_0_2_ = %f, t_2_ = %f\n",
+  printf("sigma_x_ = %f, sigma_y_ = %f, sigma_x_2_^2 = %f, sigma_y_2_^2 = %f, x_0_2_ = %f, y_0_2_ = %f, t_2_ = %f\n",
+	 sigma_x_,
+	 sigma_y_,
 	 sigma_x_2_*sigma_x_2_,
 	 sigma_y_2_*sigma_y_2_,
 	 x_0_2_, y_0_2_, t_2_);
+}
+
+double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
+						const double t_2_current,
+						const double t_current,
+						const bool flipped_xy_flag,
+						const gsl_vector* input,
+						const double h)
+{
+  double likelihood = -1.0;
+  double t_lower_bound = t_lower_bound_in;
+
+  if (!flipped_xy_flag) {
+    t_ = t_lower_bound * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+  } else {
+    t_ = t_lower_bound * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+  }
+  
+  double f1 = numerical_likelihood(input, h);
+  double x1 = t_2_;
+
+  while (std::signbit(f1)) {
+    t_lower_bound = t_lower_bound + 0.1;
+
+    if (!flipped_xy_flag) {
+      t_ = t_lower_bound * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+    } else {
+      t_ = t_lower_bound * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+    }
+
+    f1 = numerical_likelihood(input, h);
+    x1 = t_2_;
+  }
+
+
+  if (!flipped_xy_flag) {
+    t_ = (t_lower_bound + 0.1) * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+  } else {
+    t_ = (t_lower_bound + 0.1) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+  }
+  double f2 = numerical_likelihood(input, h);
+  double x2 = t_2_;
+  
+  if (!flipped_xy_flag) {
+    t_ = (t_lower_bound + 0.2) * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+  } else {
+    t_ = (t_lower_bound + 0.2) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+  }
+  double f3 = numerical_likelihood(input, h);
+  double x3 = t_2_;
+
+  double neg_alpha_min_1 = (log(f2/f3) - log(f1/f2)/(1/x1 - 1/x2)*(1/x2 - 1/x3)) /
+		     ( log(x2/x3) - log(x1/x2)*(1/x2-1/x3)/(1/x1 - 1/x2)  );
+  double alpha = -1.0*neg_alpha_min_1 + 1;
+  double beta = -1.0*(log(f1/f2) + (alpha+1)*log(x1/x2))/(1/x1 - 1/x2);
+  double CC = exp(log(f1) + (alpha+1)*log(x1) + beta/x1);
+    
+  if (!std::signbit(alpha) && !std::signbit(beta)) {
+    likelihood = CC*std::pow(t_2_current, -1.0*(alpha+1.0))*
+      exp(-1.0*beta/t_2_current);
+  } else {
+    beta = -1.0*log(f1)*x1;
+    likelihood = exp(-beta/t_2_current);
+  }
+  
+  // RESETTING t_2_;
+  t_ = t_current;
+  set_scaled_data();
+
+  printf("function.vals = c(%f, %f, %f);\n",
+	 f1,f2,f3);
+  printf("xs = c(%f, %f, %f);\n",
+	 x1,x2,x3);
+  printf("params = c(%f,%f,%f);\n",
+	 alpha,beta,CC);
+  printf("t.2.current = %f;\n", t_2_);
+  printf("t.2.current input = %f;\n", t_2_current);
+  // LAST TWO SHOULD BE THE SAME!!
+  
+  return likelihood;
+}
+
+
+double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_lower_bound_in,
+						      const double sigma_y_2_current,
+						      const double sigma_x_current,
+						      const double sigma_y_current,
+						      const bool flipped_xy_flag,
+						      const gsl_vector* input,
+						      const double h)
+{
+  double likelihood = -1.0;
+  double sigma_y_2_lower_bound = sigma_y_2_lower_bound_in;
+
+  double x1 = sigma_y_2_lower_bound;
+  // THIS IS WHAT WE'RE DOING:  sigma_y_2_ = sigma_y_2_lower_bound;
+  if (!flipped_xy_flag) {
+    sigma_y_ = sigma_y_2_lower_bound * sigma_x_ * (d_ - c_)/(b_ - a_);
+  } else {
+    sigma_x_ = sigma_y_2_lower_bound * sigma_y_ * (b_ - a_)/(d_ - c_);
+  }
+
+  printf("sigma_y_2_lower_bound = %f, x1 = %f\n",
+	 sigma_y_2_lower_bound, x1);
+  
+  double f1 = numerical_likelihood(input, h);
+
+  while (std::signbit(f1) && sigma_y_2_lower_bound < 1.0) {
+    sigma_y_2_lower_bound = sigma_y_2_lower_bound + 0.1;
+
+    if (!flipped_xy_flag) {
+      sigma_y_ = sigma_y_2_lower_bound * sigma_x_ * (d_ - c_)/(b_ - a_);
+    } else {
+      sigma_x_ = sigma_y_2_lower_bound * sigma_y_ * (b_ - a_)/(d_ - c_);
+    }
+    f1 = numerical_likelihood(input, h);
+    x1 = sigma_y_2_;
+  }
+
+  printf("sigma_y_2_lower_bound = %f, sigma_y_2_ = %f, x1 = %f\n",
+	 sigma_y_2_lower_bound, sigma_y_2_, x1);
+
+  if (!flipped_xy_flag) {
+    sigma_y_ = (sigma_y_2_lower_bound + 1.0/2.0 * 1.0/10.0 * (1-sigma_y_2_lower_bound)) *
+      sigma_x_ * (d_ - c_)/(b_ - a_);
+  } else {
+    sigma_x_ = (sigma_y_2_lower_bound + 1.0/2.0 * 1.0/10.0 * (1-sigma_y_2_lower_bound)) *
+      sigma_y_ * (b_ - a_)/(d_ - c_);
+  }
+  double f2 = numerical_likelihood(input, h);
+  double x2 = sigma_y_2_;
+  
+  if (!flipped_xy_flag) {
+    sigma_y_ = (sigma_y_2_lower_bound + 1*1.0/10.0*(1-sigma_y_2_lower_bound)) *
+      sigma_x_ * (d_ - c_)/(b_ - a_);
+  } else {
+    sigma_x_ = (sigma_y_2_lower_bound + 1*1.0/10.0*(1-sigma_y_2_lower_bound)) *
+      sigma_y_ * (b_ - a_)/(d_ - c_);
+  }
+  double f3 = numerical_likelihood(input, h);
+  double x3 = sigma_y_2_;
+
+  
+  double neg_alpha_min_1 = (log(f2/f3) - log(f1/f2)/(1/x1 - 1/x2)*(1/x2 - 1/x3)) /
+    ( log(x2/x3) - log(x1/x2)*(1/x2-1/x3)/(1/x1 - 1/x2)  );
+  double alpha = -1.0*neg_alpha_min_1 + 1;
+  double beta = -1.0*(log(f1/f2) + (alpha+1)*log(x1/x2))/(1/x1 - 1/x2);
+  double CC = exp(log(f1) + (alpha+1)*log(x1) + beta/x1);
+  
+  if (!std::signbit(alpha) && !std::signbit(beta)) {
+    likelihood = CC*std::pow(sigma_y_2_current, -1.0*(alpha+1.0))*
+	exp(-1.0*beta/sigma_y_2_current);
+  } else {
+    beta = -1.0*log(f1)*x1;
+    likelihood = exp(-beta/sigma_y_2_current);
+  }
+
+  // RESETTING sigma_x_, sigma_y_ // 
+  sigma_x_ = sigma_x_current;
+  sigma_y_ = sigma_y_current;
+  set_scaled_data();
+  // //
+  
+  printf("function.vals = c(%f, %f, %f);\n",
+	 f1,f2,f3);
+  printf("xs = c(%f, %f, %f);\n",
+	 x1,x2,x3);
+  printf("params = c(%f,%f,%f);\n",
+	 alpha,beta,CC);
+  printf("sigma.2.y.current = %f;\n", sigma_y_2_);
+  printf("sigma.2.y.current input = %f;\n", sigma_y_2_current);
+  // LAST TWO SHOULD BE THE SAME!!
+  return likelihood;
 }
