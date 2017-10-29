@@ -54,6 +54,17 @@ public:
 		double c,
 		double y_0,
 		double d);
+
+  void set_diffusion_parameters_and_data(double sigma_x,
+					 double sigma_y,
+					 double rho,
+					 double t,
+					 double a,
+					 double x_0,
+					 double b,
+					 double c,
+					 double y_0,
+					 double d);
   
   const gsl_vector* get_solution_coefs() const;
   const gsl_vector* get_ic_coefs() const;
@@ -124,7 +135,7 @@ private:
 				       const bool flipped_xy_flag,
 				       const gsl_vector* input,
 				       const double h);
-  
+  void print_diffusion_params() const;
   // gsl_vector * xi_eta_input_;
   // gsl_vector * initial_condition_xi_eta_;
   // gsl_matrix * Rotation_matrix_;

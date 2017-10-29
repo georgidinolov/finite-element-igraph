@@ -110,6 +110,10 @@ BivariateSolver::BivariateSolver(BivariateBasis* basis,
   if (x_0 < a || x_0 > b || y_0 < c || y_0 > d) {
     std::cout << "ERROR: IC out of range" << std::endl;
   }
+  // std::cout << "before the first-ever scaling, we have\n";
+  // std::cout << "sigma_x_ = " << sigma_x_ << "\n";
+  // std::cout << "sigma_y_ = " << sigma_y_ << "\n";
+  // std::cout << "t_ = " << t_ << std::endl;
   set_scaled_data();
 
   small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
@@ -275,6 +279,9 @@ void BivariateSolver::set_data(double a,
   x_0_ = x_0;
   y_0_ = y_0;
   set_scaled_data();
+
+  // std::cout << "In set_data" << std::endl;
+  // print_diffusion_params();
   
   delete small_t_solution_;
   small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
@@ -290,6 +297,45 @@ void BivariateSolver::set_data(double a,
   set_solution_coefs();
 }
 
+void BivariateSolver::set_diffusion_parameters_and_data(double sigma_x,
+							double sigma_y,
+							double rho,
+							double t,
+							double a,
+							double x_0,
+							double b,
+							double c,
+							double y_0,
+							double d)
+{
+  t_ = t;
+  a_ = a;
+  b_ = b;
+  c_ = c;
+  d_ = d;
+  x_0_ = x_0;
+  y_0_ = y_0;
+  sigma_x_ = sigma_x;
+  sigma_y_ = sigma_y;
+
+  set_scaled_data();
+
+  // std::cout << "In set_diffusion_parameters_and_data" << std::endl;
+  // print_diffusion_params();
+
+  delete small_t_solution_;
+  small_t_solution_ = new BivariateSolverClassical(sigma_x_2_,
+						   sigma_y_2_,
+						   rho_,
+						   x_0_2_,
+						   y_0_2_);
+  small_t_solution_->set_function_grid(dx_);
+
+  set_mass_and_stiffness_matrices();
+  set_eval_and_evec();
+  set_IC_coefs();
+  set_solution_coefs();
+}
 
 
 const gsl_vector* BivariateSolver::get_solution_coefs() const 
@@ -314,7 +360,7 @@ operator()(const gsl_vector* input) const
 
   double out = 0;
   if ((t_2_ - small_t_solution_->get_t()) <= 1e-32) {
-    out = (*small_t_solution_)(scaled_input, t_2_);
+    out =  (*small_t_solution_)(scaled_input, t_2_);
   } else {
     int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
     int y_int = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
@@ -383,28 +429,54 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
 						      double h)
 {
   double t_lower_bound = 0.3;
-  double sigma_y_2_lower_bound = 0.4;
+  double sigma_y_2_lower_bound = 0.40;
   double likelihood = -1.0;
 
   double t_2_current = t_2_;
   double sigma_y_2_current = sigma_y_2_;
 
+  set_scaled_data();
   if (t_2_ >= t_lower_bound && sigma_y_2_ >= sigma_y_2_lower_bound) {
-      likelihood = numerical_likelihood(input, h);
-      
+
+    // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 0 MET\n", t_2_, sigma_y_2_);
+    likelihood = numerical_likelihood(input, h);
+
+    if (std::signbit(likelihood)) {
+      double t_current = t_;
+
+      t_lower_bound = t_2_ + 0.1;
+      if (!flipped_xy_flag_) {
+	t_ = t_lower_bound * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+      } else {
+	t_ = t_lower_bound * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+      }
+      set_scaled_data();
+
+      likelihood = extrapolate_t_direction(t_lower_bound,
+					   t_2_,
+					   t_,
+					   flipped_xy_flag_,
+					   input,
+					   h);
+
+      t_ = t_current;
+      set_scaled_data();
+    }
+    
   } else if (t_2_ < t_lower_bound && sigma_y_2_ >= sigma_y_2_lower_bound) {
     // EXTRAPOLATING IN THE T-DIRECTION
-    printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 1 MET\n", t_2_, sigma_y_2_);
+    // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 1 MET\n", t_2_, sigma_y_2_);
 
     likelihood = extrapolate_t_direction(t_lower_bound,
 					 t_2_current,
 					 t_,
 					 flipped_xy_flag_,
-					 input,
+			 		 input,
 					 h);
 					 
   } else if (t_2_ >= t_lower_bound && sigma_y_2_ < sigma_y_2_lower_bound) {
-    printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 2 MET\n", t_2_, sigma_y_2_);
+    // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 2 MET\n", t_2_, sigma_y_2_);
+    
     likelihood = extrapolate_sigma_y_direction(sigma_y_2_lower_bound,
 					       sigma_y_2_current,
 					       sigma_x_,
@@ -414,7 +486,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
 					       h);
     
   } else {
-    printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 3 MET\n", t_2_, sigma_y_2_);
+    // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 3 MET\n", t_2_, sigma_y_2_);
 
     double sigma_x_current = sigma_x_;
     double sigma_y_current = sigma_y_;
@@ -473,7 +545,9 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
       y_0_ > (c_+h_y) &&
       y_0_ < (d_-h_y)) {
     likelihood = numerical_likelihood_second_order(input, h);
+    // printf("second order deriv \n");
   } else {
+    // printf("first order deriv \n");
     likelihood = numerical_likelihood_first_order(input, h);
   }
   
@@ -482,7 +556,7 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
 }
 
 
-double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* input,
+double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_input,
 							  double h)
 {
   // there are 16 solutions to be computed
@@ -490,6 +564,25 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
   double current_b = b_;
   double current_c = c_;
   double current_d = d_;
+  double current_x_0 = x_0_;
+  double current_y_0 = y_0_;
+  // double Lx = b_ - a_;
+  // double Ly = d_ - c_;
+
+  // // NORMALIZING BEFORE DIFFERENTIATION START
+  // double a = a_/Lx;
+  // double x_0 = x_0_/Lx;
+  // double b = b_/Lx;
+  
+  // double c = c_/Ly;
+  // double y_0 = y_0_/Ly;
+  // double d = d_/Ly;
+
+  // set_data(a, x_0, b,
+  // 	   c, y_0, d);
+  
+  // gsl_vector* input = scale_input(raw_input);
+  // // NORMALIZING BEFORE DIFFERENTIATION END
 
   std::vector<int> a_indeces { 1,-1};
   std::vector<int> b_indeces {-1, 1};
@@ -502,7 +595,6 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
   int d_power=1;
 
   double derivative = 0;
-
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
   
@@ -517,43 +609,50 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* inpu
 
 	for (unsigned l=0; l<d_indeces.size(); ++l) {
 	  if (l==0) { d_power=1; } else { d_power=0; };
-
+	  
 	  set_data(current_a + a_indeces[i]*h_x,
-		   x_0_,
+		   current_x_0,
 		   current_b + b_indeces[j]*h_x,
 		   current_c + c_indeces[k]*h_y,
-		   y_0_,
+		   current_y_0,
 		   current_d + d_indeces[l]*h_y);
-	  
+
+	  double out = (*this)(raw_input);
+	  // printf("function value = %f\n\n", out);
+
 	  derivative = derivative + 
 	    std::pow(-1, a_power)*
 	    std::pow(-1, b_power)*
 	    std::pow(-1, c_power)*
-	    std::pow(-1, d_power)*(*this)(input);
+	    std::pow(-1, d_power)*out;
 	}
       }
     }
   }
 
   set_data(current_a,
-	   x_0_,
-	   current_b,
-	   current_c,
-	   y_0_,
-	   current_d);
+  	   current_x_0,
+  	   current_b,
+  	   current_c,
+  	   current_y_0,
+  	   current_d);
   
-  // derivative = derivative / (16*h^4);
+  // derivative = derivative / (16 * h^2 * h^2);
   if (std::signbit(derivative)) {
     derivative = 
-      -std::exp(std::log(std::abs(derivative)) - log(16) - 4*std::log(h));
+      -std::exp(std::log(std::abs(derivative)) - log(16) - 2*log(h_x) - 2*log(h_y));
   } else {
     derivative = 
-      std::exp(std::log(std::abs(derivative)) - log(16) - 4*std::log(h));
+      std::exp(std::log(std::abs(derivative)) - log(16) - 2*log(h_x) - 2*log(h_y));
   }
+
+  //  derivative = derivative/(std::pow(Lx, 3) * std::pow(Ly,3));
+
+  //  gsl_vector_free(raw_input);
   return derivative;
 }
 
-double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input,
+double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* raw_input,
 							 double h)
 {
   // there are 16 solutions to be computed
@@ -561,11 +660,45 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
   double current_b = b_;
   double current_c = c_;
   double current_d = d_;
+  double current_x_0 = x_0_;
+  double current_y_0 = y_0_;
+  // double Lx = b_ - a_;
+  // double Ly = d_ - c_;
+  // double current_sigma_x = sigma_x_;
+  // double current_sigma_y = sigma_y_;
 
-  std::vector<int> a_indeces {-1, 0};
-  std::vector<int> b_indeces { 0, 1};
-  std::vector<int> c_indeces {-1, 0};
-  std::vector<int> d_indeces { 0, 1};
+  // // NORMALIZING BEFORE DIFFERENTIATION START
+  // double a = a_/Lx;
+  // double x_0 = x_0_/Lx;
+  // double b = b_/Lx;
+  
+  // double c = c_/Ly;
+  // double y_0 = y_0_/Ly;
+  // double d = d_/Ly;
+
+  // double sigma_x = sigma_x_/Lx;
+  // double sigma_y = sigma_y_/Ly;
+  
+  // print_diffusion_params();
+
+  // set_diffusion_parameters_and_data(sigma_x,
+  // 				    sigma_y,
+  // 				    rho_,
+  // 				    t_,
+  // 				    a,
+  // 				    x_0,
+  // 				    b,
+  // 				    c,
+  // 				    y_0,
+  // 				    d);
+  
+  // gsl_vector* input = scale_input(input);
+  // // NORMALIZING BEFORE DIFFERENTIATION END
+
+  std::vector<int> a_indeces {0,-1};
+  std::vector<int> b_indeces {1, 0};
+  std::vector<int> c_indeces {0,-1};
+  std::vector<int> d_indeces {1, 0};
 
   int a_power=1;
   int b_power=1;
@@ -575,6 +708,15 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
   double derivative = 0;
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
+  // printf("h_x = %f, h_y = %f\n", h_x, h_y);
+  // printf("%f  %f  %f\n%f  %f  %f\n\n",
+	 // current_a,
+	 // current_x_0,
+	 // current_b,
+	 // current_c,
+	 // current_y_0,
+	 // current_d);
+
   
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
@@ -589,37 +731,45 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* input
 	  if (l==0) { d_power=1; } else { d_power=0; };
 
 	  set_data(current_a + a_indeces[i]*h_x,
-		   x_0_,
+		   current_x_0,
 		   current_b + b_indeces[j]*h_x,
 		   current_c + c_indeces[k]*h_y,
-		   y_0_,
+		   current_y_0,
 		   current_d + d_indeces[l]*h_y);
-	  
+
+	  double out = (*this)(raw_input);
+	  // printf("function value = %f\n\n", out);
+
 	  derivative = derivative + 
 	    std::pow(-1, a_power)*
 	    std::pow(-1, b_power)*
 	    std::pow(-1, c_power)*
-	    std::pow(-1, d_power)*(*this)(input);
+	    std::pow(-1, d_power)*out;
+	  
 	}
       }
     }
   }
 
   set_data(current_a,
-	   x_0_,
-	   current_b,
-	   current_c,
-	   y_0_,
-	   current_d);
+  	   current_x_0,
+  	   current_b,
+  	   current_c,
+  	   current_y_0,
+  	   current_d);
   
-  // derivative = derivative / (h^4);
+  // derivative = derivative / (h^2 * h^2);
   if (std::signbit(derivative)) {
     derivative = 
-      -std::exp(std::log(std::abs(derivative)) - 4*std::log(h));
+      -std::exp(std::log(std::abs(derivative)) - 2*log(h_x) - 2*log(h_y));
   } else {
     derivative = 
-      std::exp(std::log(std::abs(derivative)) - 4*std::log(h));
+      std::exp(std::log(std::abs(derivative)) - 2*log(h_x) - 2*log(h_y));
   }
+
+  // derivative = derivative/(std::pow(Lx, 3) * std::pow(Ly,3));
+
+  //  gsl_vector_free(input);
   return derivative;
 }
 
@@ -744,16 +894,19 @@ void BivariateSolver::set_solution_coefs()
   gsl_matrix_memcpy(evec, evec_);
   gsl_matrix_transpose_memcpy(evec_tr, evec_);
 
-  if ( t_2_-small_t_solution_->get_t() <= 0.0 ) {
-    printf("t_2_ <= small_t_solution_->get_t()");
-    exit (EXIT_FAILURE);
+  double time_diff = 0.0;
+  if ( std::signbit(t_2_-small_t_solution_->get_t()) ) {
+    // printf("t_2_ <= small_t_solution_->get_t()\n");
+    time_diff = 0.0;
+  } else {
+    time_diff = t_2_-small_t_solution_->get_t();
   }
   
   // evec %*% diag(eval)
   for (unsigned i=0; i<K; ++i) {
     gsl_vector_view col_i = gsl_matrix_column(evec, i);
     gsl_vector_scale(&col_i.vector, std::exp(gsl_vector_get(eval_, i)*
-					     (t_2_-small_t_solution_->get_t())));
+					     (time_diff)));
   }
   // exp_system_matrix = [evec %*% diag(exp(eval*(t-t_small)))] %*% t(evec)
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,
@@ -841,6 +994,10 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
   } else {
     t_ = t_lower_bound * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
   }
+  set_scaled_data();
+  
+  // std::cout << "In extrapolate_t_direction" << std::endl;
+  // print_diffusion_params();
   
   double f1 = numerical_likelihood(input, h);
   double x1 = t_2_;
@@ -853,6 +1010,7 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
     } else {
       t_ = t_lower_bound * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
     }
+    set_scaled_data();
 
     f1 = numerical_likelihood(input, h);
     x1 = t_2_;
@@ -864,6 +1022,7 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
   } else {
     t_ = (t_lower_bound + 0.1) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
   }
+  set_scaled_data();
   double f2 = numerical_likelihood(input, h);
   double x2 = t_2_;
   
@@ -872,6 +1031,7 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
   } else {
     t_ = (t_lower_bound + 0.2) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
   }
+  set_scaled_data();
   double f3 = numerical_likelihood(input, h);
   double x3 = t_2_;
 
@@ -893,14 +1053,14 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
   t_ = t_current;
   set_scaled_data();
 
-  printf("function.vals = c(%f, %f, %f);\n",
-	 f1,f2,f3);
-  printf("xs = c(%f, %f, %f);\n",
-	 x1,x2,x3);
-  printf("params = c(%f,%f,%f);\n",
-	 alpha,beta,CC);
-  printf("t.2.current = %f;\n", t_2_);
-  printf("t.2.current input = %f;\n", t_2_current);
+  // printf("function.vals = c(%f, %f, %f);\n",
+	 // f1,f2,f3);
+  // printf("xs = c(%f, %f, %f);\n",
+	 // x1,x2,x3);
+  // printf("params = c(%f,%f,%f);\n",
+	 // alpha,beta,CC);
+  // printf("t.2.current = %f;\n", t_2_);
+  // printf("t.2.current input = %f;\n", t_2_current);
   // LAST TWO SHOULD BE THE SAME!!
   
   return likelihood;
@@ -919,6 +1079,7 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
   double sigma_y_2_lower_bound = sigma_y_2_lower_bound_in;
 
   double x1 = sigma_y_2_lower_bound;
+
   // THIS IS WHAT WE'RE DOING:  sigma_y_2_ = sigma_y_2_lower_bound;
   if (!flipped_xy_flag) {
     sigma_y_ = sigma_y_2_lower_bound * sigma_x_ * (d_ - c_)/(b_ - a_);
@@ -926,8 +1087,12 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
     sigma_x_ = sigma_y_2_lower_bound * sigma_y_ * (b_ - a_)/(d_ - c_);
   }
 
-  printf("sigma_y_2_lower_bound = %f, x1 = %f\n",
-	 sigma_y_2_lower_bound, x1);
+  // printf("sigma_y_2_lower_bound = %f, x1 = %f\n",
+	 // sigma_y_2_lower_bound, x1);
+
+  set_diffusion_parameters(sigma_x_,
+			   sigma_y_,
+			   rho_);
   
   double f1 = numerical_likelihood(input, h);
 
@@ -939,12 +1104,16 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
     } else {
       sigma_x_ = sigma_y_2_lower_bound * sigma_y_ * (b_ - a_)/(d_ - c_);
     }
+
+    set_diffusion_parameters(sigma_x_,
+			     sigma_y_,
+			     rho_);
     f1 = numerical_likelihood(input, h);
     x1 = sigma_y_2_;
   }
 
-  printf("sigma_y_2_lower_bound = %f, sigma_y_2_ = %f, x1 = %f\n",
-	 sigma_y_2_lower_bound, sigma_y_2_, x1);
+  // printf("sigma_y_2_lower_bound = %f, sigma_y_2_ = %f, x1 = %f\n",
+	 // sigma_y_2_lower_bound, sigma_y_2_, x1);
 
   if (!flipped_xy_flag) {
     sigma_y_ = (sigma_y_2_lower_bound + 1.0/2.0 * 1.0/10.0 * (1-sigma_y_2_lower_bound)) *
@@ -953,8 +1122,14 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
     sigma_x_ = (sigma_y_2_lower_bound + 1.0/2.0 * 1.0/10.0 * (1-sigma_y_2_lower_bound)) *
       sigma_y_ * (b_ - a_)/(d_ - c_);
   }
+  set_diffusion_parameters(sigma_x_,
+			   sigma_y_,
+			   rho_);
   double f2 = numerical_likelihood(input, h);
   double x2 = sigma_y_2_;
+
+  // printf("sigma_y_2_lower_bound = %f, sigma_y_2_ = %f, x2 = %f\n",
+  //sigma_y_2_lower_bound, sigma_y_2_, x2);
   
   if (!flipped_xy_flag) {
     sigma_y_ = (sigma_y_2_lower_bound + 1*1.0/10.0*(1-sigma_y_2_lower_bound)) *
@@ -963,9 +1138,14 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
     sigma_x_ = (sigma_y_2_lower_bound + 1*1.0/10.0*(1-sigma_y_2_lower_bound)) *
       sigma_y_ * (b_ - a_)/(d_ - c_);
   }
+  set_diffusion_parameters(sigma_x_,
+			   sigma_y_,
+			   rho_);
   double f3 = numerical_likelihood(input, h);
   double x3 = sigma_y_2_;
 
+  // printf("sigma_y_2_lower_bound = %f, sigma_y_2_ = %f, x3 = %f\n",
+//	 sigma_y_2_lower_bound, sigma_y_2_, x3);
   
   double neg_alpha_min_1 = (log(f2/f3) - log(f1/f2)/(1/x1 - 1/x2)*(1/x2 - 1/x3)) /
     ( log(x2/x3) - log(x1/x2)*(1/x2-1/x3)/(1/x1 - 1/x2)  );
@@ -984,17 +1164,25 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
   // RESETTING sigma_x_, sigma_y_ // 
   sigma_x_ = sigma_x_current;
   sigma_y_ = sigma_y_current;
-  set_scaled_data();
+  set_diffusion_parameters(sigma_x_,
+			   sigma_y_,
+			   rho_);
   // //
   
-  printf("function.vals = c(%f, %f, %f);\n",
-	 f1,f2,f3);
-  printf("xs = c(%f, %f, %f);\n",
-	 x1,x2,x3);
-  printf("params = c(%f,%f,%f);\n",
-	 alpha,beta,CC);
-  printf("sigma.2.y.current = %f;\n", sigma_y_2_);
-  printf("sigma.2.y.current input = %f;\n", sigma_y_2_current);
+  // printf("function.vals = c(%f, %f, %f);\n",
+	 // f1,f2,f3);
+  // printf("xs = c(%f, %f, %f);\n",
+	 // x1,x2,x3);
+  // printf("params = c(%f,%f,%f);\n",
+	 // alpha,beta,CC);
+  // printf("sigma.2.y.current = %f;\n", sigma_y_2_);
+  // printf("sigma.2.y.current input = %f;\n", sigma_y_2_current);
   // LAST TWO SHOULD BE THE SAME!!
   return likelihood;
+}
+
+void BivariateSolver::print_diffusion_params() const
+{
+  // printf("Lx = %f,\n Ly = %f,\n sigma_x_ = %f,\n sigma_y_ = %f,\n t_ = %f,\n\n",
+  //	 b_-a_, d_-c_, sigma_x_, sigma_y_, t_);
 }

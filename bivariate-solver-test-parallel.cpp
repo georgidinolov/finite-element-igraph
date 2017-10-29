@@ -83,13 +83,13 @@ double likelihood_serial(std::vector<BivariateGaussianKernelBasis>& bases,
 }
 
 std::vector<double> likelihood(const std::vector<BrownianMotion>& BMs,
-		  const std::vector<double>& basis_rhos,
-		  double sigma_x_data_gen,
-		  double sigma_y_data_gen,
-		  double rho,
-		  double t,
-		  double dx,
-		  double dx_likelihood) 
+			       const std::vector<double>& basis_rhos,
+			       double sigma_x_data_gen,
+			       double sigma_y_data_gen,
+			       double rho,
+			       double t,
+			       double dx,
+			       double dx_likelihood) 
 {
   unsigned i = 0;
   int tid = 0;
