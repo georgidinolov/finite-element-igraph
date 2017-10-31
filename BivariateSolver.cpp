@@ -359,7 +359,7 @@ operator()(const gsl_vector* input) const
   gsl_vector* scaled_input = scale_input(input);
 
   double out = 0;
-  if ((t_2_ - small_t_solution_->get_t()) <= 1e-32) {
+  if ( std::signbit(t_2_-small_t_solution_->get_t()) ) {
     out =  (*small_t_solution_)(scaled_input, t_2_);
   } else {
     int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
@@ -431,6 +431,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
   double t_lower_bound = 0.3;
   double sigma_y_2_lower_bound = 0.40;
   double likelihood = -1.0;
+  double likelihood_upper_bound = 100;
 
   double t_2_current = t_2_;
   double sigma_y_2_current = sigma_y_2_;
@@ -441,7 +442,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
     // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 0 MET\n", t_2_, sigma_y_2_);
     likelihood = numerical_likelihood(input, h);
 
-    if (std::signbit(likelihood)) {
+    if (std::signbit(likelihood) || likelihood >= likelihood_upper_bound) {
       double t_current = t_;
 
       t_lower_bound = t_2_ + 0.1;
