@@ -428,8 +428,8 @@ operator()(const gsl_vector* input) const
 double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input, 
 						      double h)
 {
-  double t_lower_bound = 0.3;
-  double sigma_y_2_lower_bound = 0.40;
+  double t_lower_bound = 0.2;
+  double sigma_y_2_lower_bound = 0.30;
   double likelihood = -1.0;
   double likelihood_upper_bound = 100;
 
@@ -442,7 +442,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
     // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 0 MET\n", t_2_, sigma_y_2_);
     likelihood = numerical_likelihood(input, h);
 
-    if (std::signbit(likelihood) || likelihood >= likelihood_upper_bound) {
+    if (std::signbit(likelihood)) {
       double t_current = t_;
 
       t_lower_bound = t_2_ + 0.1;
