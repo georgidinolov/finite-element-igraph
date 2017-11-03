@@ -50,7 +50,7 @@ int main() {
   double dx_likelihood = 1.0/256.0;
   double rho_basis = 0.0;
   double sigma_x_basis = 0.30;
-  double sigma_y_basis = 0.05;
+  double sigma_y_basis = 0.07;
   double power = 1.0;
   double std_dev_factor = 1.0;
 
@@ -78,7 +78,7 @@ int main() {
 
   gsl_vector_view gsl_current_xy = gsl_vector_view_array(current_xy, 2);
 
-  double like = solver.numerical_likelihood_extended(&gsl_current_xy.vector, dx_likelihood*2.0);
+  double like = solver.numerical_likelihood_extended(&gsl_current_xy.vector, dx_likelihood);
   double likelihood = like/( std::pow((bx-ax),3) * std::pow((by-ay),3) );
   printf("likelihood = %f,\n", like/( std::pow((bx-ax),3) * std::pow((by-ay),3) ) );
   printf("log likelihood = %f,\n", log(likelihood));
@@ -86,35 +86,11 @@ int main() {
   std::cout << "sign(-1) = " << std::signbit(-1) << std::endl;
   std::cout << "like > 0 = " << ( like > 0.0 ) << std::endl;
 
-    std::cout << std::endl;
+  solver.set_diffusion_parameters(beta_x,
+				  beta_y,
+				  0);
+  std::cout << std::endl;
   like = solver.numerical_likelihood_extended(&gsl_current_xy.vector, dx_likelihood);
-  likelihood = like/( std::pow((bx-ax),3) * std::pow((by-ay),3) );
-  printf("likelihood = %f,\n", like/( std::pow((bx-ax),3) * std::pow((by-ay),3) ) );
-  printf("log likelihood = %f,\n", log(likelihood));
-  std::cout << "sign(like) = " << std::signbit(like) << std::endl;
-  std::cout << "sign(-1) = " << std::signbit(-1) << std::endl;
-  std::cout << "like > 0 = " << ( like > 0.0 ) << std::endl;
-
-  std::cout << std::endl;
-  like = solver.numerical_likelihood_extended(&gsl_current_xy.vector, dx_likelihood/2.0);
-  likelihood = like/( std::pow((bx-ax),3) * std::pow((by-ay),3) );
-  printf("likelihood = %f,\n", like/( std::pow((bx-ax),3) * std::pow((by-ay),3) ) );
-  printf("log likelihood = %f,\n", log(likelihood));
-  std::cout << "sign(like) = " << std::signbit(like) << std::endl;
-  std::cout << "sign(-1) = " << std::signbit(-1) << std::endl;
-  std::cout << "like > 0 = " << ( like > 0.0 ) << std::endl;
-
-  std::cout << std::endl;
-  like = solver.numerical_likelihood_extended(&gsl_current_xy.vector, dx_likelihood/4.0);
-  likelihood = like/( std::pow((bx-ax),3) * std::pow((by-ay),3) );
-  printf("likelihood = %f,\n", like/( std::pow((bx-ax),3) * std::pow((by-ay),3) ) );
-  printf("log likelihood = %f,\n", log(likelihood));
-  std::cout << "sign(like) = " << std::signbit(like) << std::endl;
-  std::cout << "sign(-1) = " << std::signbit(-1) << std::endl;
-  std::cout << "like > 0 = " << ( like > 0.0 ) << std::endl;
-
-    std::cout << std::endl;
-  like = solver.numerical_likelihood_extended(&gsl_current_xy.vector, dx_likelihood/8.0);
   likelihood = like/( std::pow((bx-ax),3) * std::pow((by-ay),3) );
   printf("likelihood = %f,\n", like/( std::pow((bx-ax),3) * std::pow((by-ay),3) ) );
   printf("log likelihood = %f,\n", log(likelihood));

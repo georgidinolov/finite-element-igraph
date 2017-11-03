@@ -688,7 +688,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   // } else {
   //   by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
   // }
-  by = std_dev_factor*std::sqrt(1.-rho);
+  by = std_dev_factor*std::sqrt(1.0 - rho);
 
   std::vector<double> x_nodes (0);
   while ((current - (0.5/sigma_x -
@@ -774,10 +774,10 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   // gsl_matrix_set(Rotation_matrix, 1, 1,
   // 		 sigma_y/
   // 		 (std::sqrt(2.0)*std::sqrt(1+rho)));
-  gsl_matrix_set(Rotation_matrix, 0, 0, sigma_x * std::cos(theta));
-  gsl_matrix_set(Rotation_matrix, 1, 0, sigma_y * std::sin(theta));
-  gsl_matrix_set(Rotation_matrix, 0, 1, sigma_x * -1.0*std::sin(theta));
-  gsl_matrix_set(Rotation_matrix, 1, 1, sigma_y * std::cos(theta));
+  gsl_matrix_set(Rotation_matrix, 0, 0, sigma_x * std::cos(-theta));
+  gsl_matrix_set(Rotation_matrix, 1, 0, sigma_y * std::sin(-theta));
+  gsl_matrix_set(Rotation_matrix, 0, 1, sigma_x * -1.0*std::sin(-theta));
+  gsl_matrix_set(Rotation_matrix, 1, 1, sigma_y * std::cos(-theta));
 
   gsl_vector_view x_nodes_view = gsl_matrix_row(xy_nodes, 0);
   gsl_vector_view y_nodes_view = gsl_matrix_row(xy_nodes, 1);
