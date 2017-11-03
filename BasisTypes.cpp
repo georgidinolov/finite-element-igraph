@@ -683,11 +683,12 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   // if rho is negative
   double by = 0;
   double current = 0.5/sigma_x;
-  if (std::signbit(rho)) {
-    by = std_dev_factor;
-  } else {
-    by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
-  }
+  // if (std::signbit(rho)) {
+  //   by = std_dev_factor;
+  // } else {
+  //   by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
+  // }
+  by = std_dev_factor*std::sqrt(1.-rho);
 
   std::vector<double> x_nodes (0);
   while ((current - (0.5/sigma_x -
@@ -715,11 +716,12 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   // } else {
   //   by = std_dev_factor * sigma * std::sqrt(1+rho) / std::sqrt(1-rho);
   // }
-  if (std::signbit(rho)) {
-    by = std_dev_factor*std::sqrt(1.0+rho)/std::sqrt(1.0-rho);
-  } else {
-    by = std_dev_factor;
-  }
+  // if (std::signbit(rho)) {
+  //   by = std_dev_factor*std::sqrt(1.0+rho)/std::sqrt(1.0-rho);
+  // } else {
+  //   by = std_dev_factor;
+  // }
+  by = std_dev_factor*std::sqrt(1.0 + rho);
   current = 0.5/sigma_y;
 
   std::vector<double> y_nodes;
