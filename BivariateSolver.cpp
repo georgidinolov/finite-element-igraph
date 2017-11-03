@@ -428,10 +428,9 @@ operator()(const gsl_vector* input) const
 double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input, 
 						      double h)
 {
-  double t_lower_bound = 0.2;
-  double sigma_y_2_lower_bound = 0.30;
+  double t_lower_bound = 0.3;
+  double sigma_y_2_lower_bound = 0.40;
   double likelihood = -1.0;
-  double likelihood_upper_bound = 100;
 
   double t_2_current = t_2_;
   double sigma_y_2_current = sigma_y_2_;

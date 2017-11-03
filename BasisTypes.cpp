@@ -692,7 +692,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 
   std::vector<double> x_nodes (0);
   while ((current - (0.5/sigma_x -
-		     std::sqrt(0.25 * (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))))) >= 1e-32) {
+		     std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))))) >= 1e-32) {
     x_nodes.push_back(current);
     current = current - by;
   }
@@ -700,7 +700,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 
   current = 0.5/sigma_x;
   while ( (current-(0.5/sigma_x +
-		    std::sqrt(0.25 * (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2)) ))) <= 1e-32 ) {
+		    std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2)) ))) <= 1e-32 ) {
     x_nodes.push_back(current);
     current = current + by;
   }
@@ -726,7 +726,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 
   std::vector<double> y_nodes;
   while ((current - (0.5/sigma_y -
-		     std::sqrt(0.25 * (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))  ) )) >= 1e-32) {
+		     std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))  ) )) >= 1e-32) {
     y_nodes.push_back(current);
     current = current - by;
   }
@@ -734,7 +734,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 
   current = 0.5/sigma_y;
   while ( (current-(0.5/sigma_y +
-		    std::sqrt(0.25 * (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))))) <= 1e-32 ) {
+		    std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))))) <= 1e-32 ) {
     y_nodes.push_back(current);
     current = current + by;
   }
