@@ -1057,7 +1057,11 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
     beta = -1.0*log(f1)*x1;
     likelihood = exp(-beta/t_2_current);
   }
-  
+
+  if (!std::signbit(alpha) && !std::signbit(beta) && (f1-likelihood_upper_bound > std::numeric_limits<double>::epsilon())) {
+    beta = -1.0*log(f1)*x1;
+    likelihood = exp(-beta/t_2_current);
+  }
   // RESETTING t_2_;
   t_ = t_current;
   set_scaled_data();
