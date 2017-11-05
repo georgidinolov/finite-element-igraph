@@ -5,6 +5,7 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_eigen.h>
 #include <iostream>
+#include <limits>
 #include <string>
 
 BivariateSolver::BivariateSolver()
@@ -431,6 +432,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
   double t_lower_bound = 0.3;
   double sigma_y_2_lower_bound = 0.40;
   double likelihood = -1.0;
+  double likelihood_upper_bound = 15.0;
 
   double t_2_current = t_2_;
   double sigma_y_2_current = sigma_y_2_;
@@ -441,7 +443,8 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
     // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 0 MET\n", t_2_, sigma_y_2_);
     likelihood = numerical_likelihood(input, h);
 
-    if (std::signbit(likelihood)) {
+    if ( std::signbit(likelihood) || 
+	 ( (likelihood-likelihood_upper_bound) > std::numeric_limits<double>::epsilon() ) ) {
       double t_current = t_;
 
       t_lower_bound = t_2_ + 0.1;
@@ -452,7 +455,8 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
       }
       set_scaled_data();
 
-      likelihood = extrapolate_t_direction(t_lower_bound,
+      likelihood = extrapolate_t_direction(likelihood_upper_bound,
+					   t_lower_bound,
 					   t_2_,
 					   t_,
 					   flipped_xy_flag_,
@@ -467,7 +471,8 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
     // EXTRAPOLATING IN THE T-DIRECTION
     // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 1 MET\n", t_2_, sigma_y_2_);
 
-    likelihood = extrapolate_t_direction(t_lower_bound,
+    likelihood = extrapolate_t_direction(likelihood_upper_bound,
+					 t_lower_bound,
 					 t_2_current,
 					 t_,
 					 flipped_xy_flag_,
@@ -477,7 +482,8 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
   } else if (t_2_ >= t_lower_bound && sigma_y_2_ < sigma_y_2_lower_bound) {
     // printf("t_2_ = %f, sigma_y_2_ = %f, CONDITION 2 MET\n", t_2_, sigma_y_2_);
     
-    likelihood = extrapolate_sigma_y_direction(sigma_y_2_lower_bound,
+    likelihood = extrapolate_sigma_y_direction(likelihood_upper_bound,
+					       sigma_y_2_lower_bound,
 					       sigma_y_2_current,
 					       sigma_x_,
 					       sigma_y_,
@@ -504,7 +510,8 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
 
     // fixing sigma_y_2_ on boundary and extrapolating to the small
     // t_2_
-    double f1 = extrapolate_t_direction(t_lower_bound,
+    double f1 = extrapolate_t_direction(likelihood_upper_bound,
+					t_lower_bound,
 					t_2_,
 					t_,
 					flipped_xy_flag_,
@@ -979,7 +986,8 @@ void BivariateSolver::set_scaled_data()
   // 	 x_0_2_, y_0_2_, t_2_);
 }
 
-double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
+double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bound,
+						const double t_lower_bound_in,
 						const double t_2_current,
 						const double t_current,
 						const bool flipped_xy_flag,
@@ -1002,7 +1010,8 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
   double f1 = numerical_likelihood(input, h);
   double x1 = t_2_;
 
-  while (std::signbit(f1)) {
+  while ( (std::signbit(f1) || 
+	   (f1-likelihood_upper_bound > std::numeric_limits<double>::epsilon()) ) ) {
     t_lower_bound = t_lower_bound + 0.1;
 
     if (!flipped_xy_flag) {
@@ -1067,7 +1076,8 @@ double BivariateSolver::extrapolate_t_direction(const double t_lower_bound_in,
 }
 
 
-double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_lower_bound_in,
+double BivariateSolver::extrapolate_sigma_y_direction(const double likelihood_upper_bound,
+						      const double sigma_y_2_lower_bound_in,
 						      const double sigma_y_2_current,
 						      const double sigma_x_current,
 						      const double sigma_y_current,
@@ -1096,7 +1106,9 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double sigma_y_2_low
   
   double f1 = numerical_likelihood(input, h);
 
-  while (std::signbit(f1) && sigma_y_2_lower_bound < 1.0) {
+  while ( (std::signbit(f1) || 
+	   (f1 - likelihood_upper_bound > std::numeric_limits<double>::epsilon())) 
+	  && sigma_y_2_lower_bound < 1.0) {
     sigma_y_2_lower_bound = sigma_y_2_lower_bound + 0.1;
 
     if (!flipped_xy_flag) {

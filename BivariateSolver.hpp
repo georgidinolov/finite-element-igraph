@@ -121,14 +121,16 @@ private:
   // requires t_, eval_, evec_;
   void set_solution_coefs();
 
-  double extrapolate_t_direction(const double t_lower_bound,
+  double extrapolate_t_direction(const double likelihood_upper_bound,
+				 const double t_lower_bound,
 				 const double t_2_current,
 				 const double t_current,
 				 const bool flipped_xy_flag,
 				 const gsl_vector* input,
 				 const double h);
 
-  double extrapolate_sigma_y_direction(const double sigma_y_2_lower_bound_in,
+  double extrapolate_sigma_y_direction(const double likelihood_upper_bound,
+				       const double sigma_y_2_lower_bound_in,
 				       const double sigma_y_2_current,
 				       const double sigma_x_current,
 				       const double sigma_y_current,
