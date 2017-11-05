@@ -1059,6 +1059,7 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
   }
 
   if (!std::signbit(alpha) && !std::signbit(beta) && (f1-likelihood_upper_bound > std::numeric_limits<double>::epsilon())) {
+    printf("\nalpha or beta are positive AND likelihood is big\n");
     beta = -1.0*log(f1)*x1;
     likelihood = exp(-beta/t_2_current);
   }
