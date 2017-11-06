@@ -432,7 +432,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
   double t_lower_bound = 0.3;
   double sigma_y_2_lower_bound = 0.40;
   double likelihood = -1.0;
-  double likelihood_upper_bound = 15.0;
+  double likelihood_upper_bound = 20.0;
 
   double t_2_current = t_2_;
   double sigma_y_2_current = sigma_y_2_;
@@ -1054,15 +1054,16 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
     likelihood = CC*std::pow(t_2_current, -1.0*(alpha+1.0))*
       exp(-1.0*beta/t_2_current);
   } else {
-    beta = -1.0*log(f1)*x1;
-    likelihood = exp(-beta/t_2_current);
+    if ( (f1-1) < std::numeric_limits<double>::epsilon() &&
+	 std::signbit(f1-1.0) ) {
+      beta = -1.0*log(f1)*x1;
+      likelihood = exp(-beta/t_2_current);
+    } else {
+      beta = -1.0*log(1.1)*x1;
+      likelihood = exp(-beta/t_2_current);
+    }
   }
 
-  if (!std::signbit(alpha) && !std::signbit(beta) && (f1-likelihood_upper_bound > std::numeric_limits<double>::epsilon())) {
-    printf("\nalpha or beta are positive AND likelihood is big\n");
-    beta = -1.0*log(f1)*x1;
-    likelihood = exp(-beta/t_2_current);
-  }
   // RESETTING t_2_;
   t_ = t_current;
   set_scaled_data();
@@ -1076,7 +1077,12 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
   // printf("t.2.current = %f;\n", t_2_);
   // printf("t.2.current input = %f;\n", t_2_current);
   // LAST TWO SHOULD BE THE SAME!!
-  
+
+  printf("\nalpha = %f; beta = %f; f1 = %f; f2 = %f; f3 = %f; x1 = %f; x2 = %f; x3 = %f; CC = %f;\n", 
+	 alpha, beta,
+	 f1, f2, f3,
+	 x1, x2, x3,
+	 CC);
   return likelihood;
 }
 
@@ -1172,10 +1178,16 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double likelihood_up
   
   if (!std::signbit(alpha) && !std::signbit(beta)) {
     likelihood = CC*std::pow(sigma_y_2_current, -1.0*(alpha+1.0))*
-	exp(-1.0*beta/sigma_y_2_current);
+      exp(-1.0*beta/sigma_y_2_current);
   } else {
-    beta = -1.0*log(f1)*x1;
-    likelihood = exp(-beta/sigma_y_2_current);
+    if ( (f1-1.0) < std::numeric_limits<double>::epsilon() &&
+	 std::signbit(f1-1.0) ) {
+      beta = -1.0*log(f1)*x1;
+      likelihood = exp(-beta/sigma_y_2_current);
+    } else {
+      beta = -1.0*log(1.1)*x1;
+      likelihood = exp(-beta/sigma_y_2_current);
+    }
   }
 
   // RESETTING sigma_x_, sigma_y_ // 
