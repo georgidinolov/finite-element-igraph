@@ -1053,14 +1053,14 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
   if (!std::signbit(alpha) && !std::signbit(beta)) {
     if (log(likelihood_upper_bound) + (alpha+1)*(log(beta) - log(alpha+1) + 1) >= log(CC)) {
 
-      likelihood = CC*std::pow(sigma_y_2_current, -1.0*(alpha+1.0))*
-	exp(-1.0*beta/sigma_y_2_current);
+      likelihood = CC*std::pow(t_2_current, -1.0*(alpha+1.0))*
+	exp(-1.0*beta/t_2_current);
     } else {
       double log_CC = log(likelihood_upper_bound) + (alpha+1)*(log(beta) - log(alpha+1) + 1);
       CC = exp(log_CC);
       
-      likelihood = CC*std::pow(sigma_y_2_current, -1.0*(alpha+1.0))*
-	exp(-1.0*beta/sigma_y_2_current);
+      likelihood = CC*std::pow(t_2_current, -1.0*(alpha+1.0))*
+	exp(-1.0*beta/t_2_current);
     }
   } else {
     if ( (f1-1) < std::numeric_limits<double>::epsilon() &&
