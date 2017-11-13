@@ -432,7 +432,7 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
   double t_lower_bound = 0.3;
   double sigma_y_2_lower_bound = 0.40;
   double likelihood = -1.0;
-  double likelihood_upper_bound = 20.0;
+  double likelihood_upper_bound = 25.0;
 
   double t_2_current = t_2_;
   double sigma_y_2_current = sigma_y_2_;
@@ -1129,7 +1129,8 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double likelihood_up
   while ( (std::signbit(f1) || 
 	   (f1 - likelihood_upper_bound > std::numeric_limits<double>::epsilon())) 
 	  && sigma_y_2_lower_bound < 1.0) {
-    sigma_y_2_lower_bound = sigma_y_2_lower_bound + 0.1;
+    sigma_y_2_lower_bound = sigma_y_2_lower_bound + 
+      0.1*(1.0 - sigma_y_2_lower_bound);
 
     if (!flipped_xy_flag) {
       sigma_y_ = sigma_y_2_lower_bound * sigma_x_ * (d_ - c_)/(b_ - a_);
