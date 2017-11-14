@@ -445,26 +445,35 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
 
     if ( std::signbit(likelihood) || 
 	 ( (likelihood-likelihood_upper_bound) > std::numeric_limits<double>::epsilon() ) ) {
+
       double t_current = t_;
+      double sigma_x_current = sigma_x_;
+      double sigma_y_current = sigma_y_;
 
-      t_lower_bound = t_2_ + 0.1;
       if (!flipped_xy_flag_) {
-	t_ = t_lower_bound * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+	sigma_y_ = sigma_y_2_lower_bound * sigma_x_ * (d_ - c_)/(b_ - a_);
       } else {
-	t_ = t_lower_bound * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+	sigma_x_ = sigma_y_2_lower_bound * sigma_y_ * (b_ - a_)/(d_ - c_);
       }
-      set_scaled_data();
+      
+      set_diffusion_parameters(sigma_x_,
+			       sigma_y_,
+			       rho_);
 
-      likelihood = extrapolate_t_direction(likelihood_upper_bound,
-					   t_lower_bound,
-					   t_2_,
-					   t_,
-					   flipped_xy_flag_,
-					   input,
-					   h);
+      likelihood = extrapolate_sigma_y_direction(likelihood_upper_bound,
+						 sigma_y_2_lower_bound,
+						 sigma_y_2_,
+						 sigma_x_,
+						 sigma_y_,
+						 flipped_xy_flag_,
+						 input,
+						 h);
 
-      t_ = t_current;
-      set_scaled_data();
+      sigma_x_ = sigma_x_current;
+      sigma_y_ = sigma_y_current; 
+      set_diffusion_parameters(sigma_x_,
+			       sigma_y_,
+			       rho_);
     }
     
   } else if (t_2_ < t_lower_bound && sigma_y_2_ >= sigma_y_2_lower_bound) {
@@ -1011,7 +1020,8 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
   double x1 = t_2_;
 
   while ( (std::signbit(f1) || 
-	   (f1-likelihood_upper_bound > std::numeric_limits<double>::epsilon()) ) ) {
+	   (f1-likelihood_upper_bound > std::numeric_limits<double>::epsilon())) &&
+	  t_2_ < 3.0) {
     t_lower_bound = t_lower_bound + 0.1;
 
     if (!flipped_xy_flag) {
