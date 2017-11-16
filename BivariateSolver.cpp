@@ -1037,18 +1037,18 @@ double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bo
 
 
   if (!flipped_xy_flag) {
-    t_ = (t_lower_bound + 0.1) * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+    t_ = (t_lower_bound + 0.03) * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
   } else {
-    t_ = (t_lower_bound + 0.1) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+    t_ = (t_lower_bound + 0.03) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
   }
   set_scaled_data();
   double f2 = numerical_likelihood(input, h);
   double x2 = t_2_;
   
   if (!flipped_xy_flag) {
-    t_ = (t_lower_bound + 0.2) * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
+    t_ = (t_lower_bound + 0.06) * ((b_ - a_)/sigma_x_) * ((b_ - a_)/sigma_x_);
   } else {
-    t_ = (t_lower_bound + 0.2) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
+    t_ = (t_lower_bound + 0.06) * ((d_ - c_)/sigma_y_) * ((d_ - c_)/sigma_y_);
   }
   set_scaled_data();
   double f3 = numerical_likelihood(input, h);
@@ -1138,9 +1138,8 @@ double BivariateSolver::extrapolate_sigma_y_direction(const double likelihood_up
 
   while ( (std::signbit(f1) || 
 	   (f1 - likelihood_upper_bound > std::numeric_limits<double>::epsilon())) 
-	  && sigma_y_2_lower_bound < 1.0) {
-    sigma_y_2_lower_bound = sigma_y_2_lower_bound + 
-      0.1*(1.0 - sigma_y_2_lower_bound);
+	  && sigma_y_2_lower_bound < 0.9) {
+    sigma_y_2_lower_bound = sigma_y_2_lower_bound + 0.1;
 
     if (!flipped_xy_flag) {
       sigma_y_ = sigma_y_2_lower_bound * sigma_x_ * (d_ - c_)/(b_ - a_);
