@@ -79,6 +79,8 @@ public:
   // function_grid_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_function_grid(const gsl_matrix* new_function_grid);
+  virtual void set_function_grid(const gsl_matrix* new_function_grid,
+				 double dx);
   // WARNING: Call below function ONLY if you are sure the
   // deriv_function_grid_dx_ is in agreement with the elements_ and
   // coefficients_.

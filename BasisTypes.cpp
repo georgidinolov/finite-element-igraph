@@ -1084,3 +1084,33 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
   save_matrix(system_matrix_dy_dy_,
 	      "system_matixr_dy_dy.csv");
 }
+
+std::ostream& operator<<(std::ostream& os, const BivariateGaussianKernelBasis& current_basis)
+{
+  // creating a list of files within a file that contains, in the
+  // following order:
+  // * unsigned number orthonormal functions
+  // ** list of files containing files for the orthonormal functions
+  // *  system_matrix_dx_dx_;
+  // *  system_matrix_dx_dy_;
+  // *  system_matrix_dy_dx_;
+  // *  system_matrix_dy_dy_;
+  // *  mass_matrix_;
+  // *  inner_product_matrix_;
+  // *  deriv_inner_product_matrix_dx_dx_;
+  // *  deriv_inner_product_matrix_dx_dy_;
+  // *  deriv_inner_product_matrix_dy_dx_;
+  // *  deriv_inner_product_matrix_dy_dy_;
+
+  os << current_basis.orthonormal_functions_.size() << "\n";
+
+  for (unsigned i=0; i<current_basis.orthonormal_functions_.size(); ++i) {
+    std::string current_orthonormal_function =
+      "orthonormal_function_" + std::to_string(i) + ".csv";
+
+    current_basis.orthonormal_functions_[i].save_function_grid(current_orthonormal_function);
+    os << current_orthonormal_function << "\n";
+  }
+
+  return os;
+}

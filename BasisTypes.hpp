@@ -83,7 +83,9 @@ public:
   {
     return dx_;
   }
-  
+
+  friend std::ostream& operator<<(std::ostream& os, const BivariateGaussianKernelBasis& current_basis);
+
 private:
   double dx_;
   // sets basis functions in the class
