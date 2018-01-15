@@ -426,7 +426,60 @@ operator()(const gsl_vector* input) const
   return out;
 }
 
-double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input, 
+double BivariateSolver::analytic_solution(const gsl_vector* input) const
+{
+  int little_n = 10;
+
+  std::vector<double> d1x (2*little_n + 1);
+  std::vector<double> d2x (2*little_n + 1);
+
+  std::vector<double> d1y (2*little_n + 1);
+  std::vector<double> d2y (2*little_n + 1);
+
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+
+  for (int i=0; i<2*little_n+1; ++i) {
+    int n = i - little_n;
+
+    d1x[i] = std::pow(gsl_vector_get(input,0) - x_0_ - 2.0*n*(b_-a_), 2) /
+      (2.0 * std::pow(sigma_x_, 2) * t_);
+    d2x[i] = std::pow(gsl_vector_get(input,0) + x_0_ - 2.0*a_ - 2.0*n*(b_-a_), 2) /
+      (2.0 * std::pow(sigma_x_, 2) * t_);
+
+    d1y[i] = std::pow(gsl_vector_get(input,1) - y_0_ - 2.0*n*(d_-c_), 2) /
+      (2.0 * std::pow(sigma_y_, 2) * t_);
+    d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_ - 2.0*c_ - 2.0*n*(d_-c_), 2) /
+      (2.0 * std::pow(sigma_y_, 2) * t_);
+
+    sum_x = sum_x +
+      (std::exp(-d1x[i]) - std::exp(-d2x[i]));
+
+    sum_y = sum_y +
+      (std::exp(-d1y[i]) - std::exp(-d2y[i]));
+
+    std::cout << "d1x[" << n << "] = " << d1x[i] << " ";
+  }
+  std::cout << std::endl;
+
+  double out_x = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_x_,2)*t_))*
+    sum_x;
+
+  double out_y = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_y_,2)*t_))*
+    sum_y;
+
+  double out = out_x*out_y;
+  std::cout << "t = " << t_ << ";" << std::endl;
+  std::cout << "ax = " << a_ << ";" << std::endl;
+  std::cout << "bx = " << b_ << ";" << std::endl;
+  std::cout << "x.ic = " << x_0_ << ";" << std::endl;
+  std::cout << "x.fc = " << gsl_vector_get(input,0) << ";" << std::endl;
+  std::cout << "sigma.2.x = " << std::pow(sigma_x_, 2) << ";" << std::endl;
+  std::cout << "out_x = " << out_x << ";" << std::endl;
+  return out;
+}
+
+double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
 						      double h)
 {
   double t_lower_bound = 0.3;
@@ -541,6 +594,60 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
   return likelihood;
 }
 
+double BivariateSolver::analytic_likelihood(const gsl_vector* input,
+					    int little_n)
+{
+  double d1x [2*little_n + 1];
+  double d2x [2*little_n + 1];
+
+  double d1y [2*little_n + 1];
+  double d2y [2*little_n + 1];
+
+  for (int i=0; i<2*little_n+1; ++i) {
+    int n = i - little_n;
+
+    d1x[i] = std::pow(gsl_vector_get(input,0) - x_0_ - 2.0*n*(b_-a_), 2) /
+      (2.0 * std::pow(sigma_x_, 2) * t_);
+    d2x[i] = std::pow(gsl_vector_get(input,0) + x_0_ - 2.0*a_ - 2.0*n*(b_-a_), 2) /
+      (2.0 * std::pow(sigma_x_, 2) * t_);
+    d1y[i] = std::pow(gsl_vector_get(input,1) - y_0_ - 2.0*n*(d_-c_), 2) /
+      (2.0 * std::pow(sigma_y_, 2) * t_);
+    d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_ - 2.0*c_ - 2.0*n*(d_-c_), 2) /
+      (2.0 * std::pow(sigma_y_, 2) * t_);
+
+    // d1x[i] = std::pow(gsl_vector_get(scaled_input,0) - x_0_ - 2.0*n, 2) /
+    //   (2.0);
+    // d2x[i] = std::pow(gsl_vector_get(scaled_input,0) + x_0_ - 2.0*n, 2) /
+    //   (2.0);
+    // d1y[i] = std::pow(gsl_vector_get(scaled_input,1) - y_0_ - 2.0*n, 2) /
+    //   (2.0 * std::pow(sigma_y_, 2));
+    // d2x[i] = std::pow(gsl_vector_get(scaled_input,1) + y_0_ - 2.0*n, 2) /
+    //   (2.0 * std::pow(sigma_y_, 2));
+  }
+
+  double deriv_x = 0.0;
+  double deriv_y = 0.0;
+
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+
+  for (int i=0; i<2*little_n+1; ++i) {
+    int n = i - little_n;
+
+    sum_x = sum_x +
+      (4.0*n*n*(2.0*d1x[i] - 1)*std::exp(-d1x[i]) - 4.0*n*(n-1)*(2.0*d2x[i] - 1)*std::exp(-d2x[i]));
+
+    sum_y = sum_y +
+      (4.0*n*n*(2.0*d1y[i] - 1)*std::exp(-d1y[i]) - 4.0*n*(n-1)*(2.0*d2y[i] - 1)*std::exp(-d2y[i]));
+  }
+
+  deriv_x = 1.0/(std::sqrt(2*M_PI)*std::pow(sigma_x_*std::sqrt(t_), 3)) * sum_x;
+  deriv_y = 1.0/(std::sqrt(2*M_PI)*std::pow(sigma_y_*std::sqrt(t_), 3)) * sum_y;
+
+  double out = deriv_x*deriv_y;
+  return (out);
+}
+
 double BivariateSolver::numerical_likelihood(const gsl_vector* input, 
 					     double h)
 {
@@ -634,7 +741,6 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_
 		   current_d + d_indeces[l]*h_y);
 
 	  double out = (*this)(raw_input);
-	  // printf("function value = %f\n\n", out);
 
 	  derivative = derivative + 
 	    std::pow(-1, a_power)*
@@ -663,7 +769,6 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_
   }
 
   //  derivative = derivative/(std::pow(Lx, 3) * std::pow(Ly,3));
-
   //  gsl_vector_free(raw_input);
   return derivative;
 }
@@ -754,6 +859,7 @@ double BivariateSolver::numerical_likelihood_first_order(const gsl_vector* raw_i
 		   current_d + d_indeces[l]*h_y);
 
 	  double out = (*this)(raw_input);
+	  // double out = analytic_solution(raw_input);
 	  // printf("function value = %f\n\n", out);
 
 	  derivative = derivative + 
