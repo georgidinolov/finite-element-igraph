@@ -21,7 +21,6 @@
 #include <vector>
 
 
-
 struct parameters_nominal {
   double sigma_2;
   //
@@ -546,37 +545,23 @@ double optimization_wrapper(const std::vector<double> &x,
 }
 
 int main(int argc, char *argv[]) {
-  if (argc < 9 || argc > 9) {
+  if (argc < 5 || argc > 5) {
     printf("You must provide input\n");
-    printf("The input is: \n\nnumber data points;\nrho;\nrho_basis;\nsigma_x;\nsigma_y;\ndx_likelihood;\nfile prefix;\nnumber_points_for_integration;\n");
+    printf("The input is: \n\nnumber data points;\nrho;\ninput file for likelihoods;\nnumber_points_for_integration;\n");
     exit(0);
   }
 
   unsigned N = std::stoi(argv[1]);
   double rho = std::stod(argv[2]);
-  double rho_basis = std::stod(argv[3]);
-  double sigma_x_basis = std::stod(argv[4]);
-  double sigma_y_basis = std::stod(argv[5]);
-  double dx_likelihood = std::stod(argv[6]);
-  std::string file_prefix = argv[7];
-  unsigned M = std::stoi(argv[8]);
-  double dx = 1.0/500.0;
-
+  std::string input_file_name = argv[3];
+  int M = std::stoi(argv[4]);
+  
   static int counter = 0;
-  static BivariateGaussianKernelBasis* private_bases;
   static gsl_rng* r_ptr_threadprivate;
 
-#pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
+#pragma omp threadprivate(counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
   omp_set_num_threads(3);
-
-  BivariateGaussianKernelBasis basis_positive =
-    BivariateGaussianKernelBasis(dx,
-				 rho_basis,
-				 sigma_x_basis,
-				 sigma_y_basis,
-				 1.0,
-				 1.0);
 
   long unsigned seed_init = 10;
   gsl_rng * r_ptr_local;
@@ -588,12 +573,9 @@ int main(int argc, char *argv[]) {
   
   int tid=0;
   unsigned i=0;
-#pragma omp parallel default(none) private(tid, i) shared(basis_positive, r_ptr_local)
+#pragma omp parallel default(none) private(tid, i) shared(r_ptr_local)
   {
     tid = omp_get_thread_num();
-
-    private_bases = new BivariateGaussianKernelBasis();
-    (*private_bases) = basis_positive;
 
     r_ptr_threadprivate = gsl_rng_clone(r_ptr_local);
     gsl_rng_set(r_ptr_threadprivate, tid);
@@ -601,220 +583,60 @@ int main(int argc, char *argv[]) {
     printf("Thread %d: counter %d\n", tid, counter);
   }
 
-
-
   std::vector<likelihood_point> points_for_kriging (N);
   std::vector<likelihood_point> points_for_integration (M);
 
   auto t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local, rho) firstprivate(dx_likelihood, dx)
-    {
+#pragma omp parallel default(none) private(i) shared(points_for_integration, N, M, seed_init, rho)
+  {
 #pragma omp for
-      for (i=0; i<N; ++i) {
-	long unsigned seed = seed_init + i;
+    for (i=0; i<M; ++i) {
+      long unsigned seed = seed_init + N + i;
 
-	double log_sigma_x = 2 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
-	double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
+      double log_sigma_x = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 1.0);
+      double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 1.0);
 
-	BrownianMotion BM = BrownianMotion(seed,
-					   10e6,
-					   rho,
-					   exp(log_sigma_x),
-					   exp(log_sigma_y),
-					   0.0,
-					   0.0,
-					   1.0);
+      BrownianMotion BM = BrownianMotion(seed,
+					 10e6,
+					 rho,
+					 exp(log_sigma_x),
+					 exp(log_sigma_y),
+					 0.0,
+					 0.0,
+					 1.0);
 
-	points_for_kriging[i] = BM;
-
-	double likelihood = 0.0;
-	double x [2] = {points_for_kriging[i].x_t_tilde,
-			points_for_kriging[i].y_t_tilde};
-	
-	gsl_vector_view gsl_x = gsl_vector_view_array(x, 2);
-
-	if (!std::signbit(rho)) {
-	  BivariateSolver solver = BivariateSolver(private_bases,
-						   1.0,
-						   points_for_kriging[i].sigma_y_tilde,
-						   rho,
-						   0.0,
-						   points_for_kriging[i].x_0_tilde,
-						   1.0,
-						   0.0,
-						   points_for_kriging[i].y_0_tilde,
-						   1.0,
-						   points_for_kriging[i].t_tilde,
-						   dx);
-	  
-	  x[0] = points_for_kriging[i].x_t_tilde;
-	  x[1] = points_for_kriging[i].y_t_tilde;
-	  
-	  likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
-	  						    dx_likelihood);
-	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
-	} else {
-	  BivariateSolver solver = BivariateSolver(private_bases,
-						   1.0,
-						   points_for_kriging[i].sigma_y_tilde,
-						   rho,
-						   -1.0,
-						   -points_for_kriging[i].x_0_tilde,
-						   0.0,
-						   0.0,
-						   points_for_kriging[i].y_0_tilde,
-						   1.0,
-						   points_for_kriging[i].t_tilde,
-						   dx);
-
-	  x[0] = -points_for_kriging[i].x_t_tilde;
-	  x[1] = points_for_kriging[i].y_t_tilde;
-
-	  likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
-	  						    dx_likelihood);
-	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
-	}
-
-	points_for_kriging[i].likelihood = likelihood;
-
-	printf("Thread %d with address %p produces likelihood %f\n",
-	       omp_get_thread_num(),
-	       private_bases,
-	       likelihood);
-      }
+      points_for_integration[i] = BM;
     }
-    auto t2 = std::chrono::high_resolution_clock::now();
+  }
+  auto t2 = std::chrono::high_resolution_clock::now();
 
-    t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_integration, N, M, seed_init, r_ptr_local, rho) firstprivate(dx_likelihood, dx)
-    {
-#pragma omp for
-      for (i=0; i<M; ++i) {
-	long unsigned seed = seed_init + N + i;
+  std::cout << "Generating " << M << " points for integration took "
+	    << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds." << std::endl;
 
-	double log_sigma_x = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 1.0);
-	double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 1.0);
+  std::ifstream input_file(input_file_name);
 
-	BrownianMotion BM = BrownianMotion(seed,
-					   10e6,
-					   rho,
-					   exp(log_sigma_x),
-					   exp(log_sigma_y),
-					   0.0,
-					   0.0,
-					   1.0);
-
-	points_for_integration[i] = BM;
-      }
-    }
-    t2 = std::chrono::high_resolution_clock::now();
-
-    std::cout << "Generating " << M << " points for integration took "
-	      << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds." << std::endl;
-
-    std::string output_file_name = file_prefix +
-      "-number-points-" + argv[1] +
-      "-rho-" + argv[2] +
-      "-rho_basis-" + argv[3] + 
-      "-sigma_x_basis-" + argv[4] +
-      "-sigma_y_basis-" + argv[5] +
-      "-dx_likelihood-" + argv[6] +
-      ".csv";
-
-    std::ofstream output_file;
-    output_file.open(output_file_name);
-    
+  if (input_file.is_open()) {
     for (i=0; i<N; ++i) {
-      output_file << points_for_kriging[i];
+      input_file >> points_for_kriging[i];
+      points_for_kriging[i].likelihood = log(points_for_kriging[i].likelihood);
     }
-    output_file.close();
+  }
 
-    parameters_nominal params = parameters_nominal();
-    GaussianInterpolator GP_prior = GaussianInterpolator(points_for_integration,
-							 points_for_kriging,
-							 params);
-    // for (unsigned i=0; i<points_for_kriging.size(); ++i) {
-    //   for (unsigned j=0; j<points_for_kriging.size(); ++j) {
-    // 	std::cout << gsl_matrix_get(GP_prior.Cinv, i,j) << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-    
-    double integral = 0;
-    for (unsigned i=0; i<points_for_integration.size(); ++i) {
-      double add = GP_prior(points_for_integration[i]);
-      integral = integral +
-	add;
-      if (add < 0) {
-	std::cout << points_for_integration[i] << std::endl;
-      }
+  parameters_nominal params = parameters_nominal();
+  GaussianInterpolator GP_prior = GaussianInterpolator(points_for_integration,
+						       points_for_kriging,
+						       params);
+  
+  double integral = 0;
+  for (unsigned i=0; i<points_for_integration.size(); ++i) {
+    double add = GP_prior(points_for_integration[i]);
+    integral = integral +
+      1.0/M * add;
+    if (add < 0) {
+      std::cout << points_for_integration[i] << std::endl;
     }
-    std::cout << "Integral = " << integral << std::endl;
-
-    // MultivariateNormal mvtnorm = MultivariateNormal();
-    // std::cout << mvtnorm.dmvnorm(N,y,mu,C) << std::endl;
-
-    nlopt::opt opt(nlopt::LN_NELDERMEAD, 32);
-    //    std::vector<double> lb = 
-    
-    // std::vector<double> x = params.as_vector();
-    // std::cout << optimization_wrapper(x, NULL, &points_for_kriging) << std::endl;
-
-    gsl_rng_free(r_ptr_local);
-
-    std::cout << "sigma2s.for.integration = c(";
-    for (unsigned i=0; i<M; ++i) {
-      if (i < M-1) {
-	std::cout << points_for_integration[i].sigma_y_tilde << ",";
-      } else {
-	std::cout << points_for_integration[i].sigma_y_tilde << ");" << std::endl;;
-      }
-    }
-
-    std::cout << "t.tilde.for.integration = c(";
-    for (unsigned i=0; i<M; ++i) {
-      if (i < M-1) {
-	std::cout << points_for_integration[i].t_tilde << ",";
-      } else {
-	std::cout << points_for_integration[i].t_tilde << ");" << std::endl;;
-      }
-    }
-
-    std::cout << "x.0 = c(";
-    for (unsigned i=0; i<M; ++i) {
-      if (i < M-1) {
-	std::cout << points_for_integration[i].x_0_tilde << ",";
-      } else {
-	std::cout << points_for_integration[i].x_0_tilde << ");" << std::endl;;
-      }
-    }
-
-        std::cout << "y.0 = c(";
-    for (unsigned i=0; i<M; ++i) {
-      if (i < M-1) {
-	std::cout << points_for_integration[i].y_0_tilde << ",";
-      } else {
-	std::cout << points_for_integration[i].y_0_tilde << ");" << std::endl;;
-      }
-    }
-
-        std::cout << "x.t = c(";
-    for (unsigned i=0; i<M; ++i) {
-      if (i < M-1) {
-	std::cout << points_for_integration[i].x_t_tilde << ",";
-      } else {
-	std::cout << points_for_integration[i].x_t_tilde << ");" << std::endl;;
-      }
-    }
-
-        std::cout << "y.t = c(";
-    for (unsigned i=0; i<M; ++i) {
-      if (i < M-1) {
-	std::cout << points_for_integration[i].y_t_tilde << ",";
-      } else {
-	std::cout << points_for_integration[i].y_t_tilde << ");" << std::endl;;
-      }
-    }
-
-    return 0;
+  }
+  std::cout << "Integral = " << integral << std::endl;
+  
+  return 0;
 }
