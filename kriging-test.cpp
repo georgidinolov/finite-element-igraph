@@ -32,12 +32,18 @@ struct parameters_nominal {
   std::vector<double> lower_triag_mat_as_vec = std::vector<double> (1.0, 28);
 
   parameters_nominal()
-    : sigma_2(1.0),
+    : sigma_2(0.0001),
       phi(1.0),
       nu(2),
       tau_2(1.0)
   {
-    lower_triag_mat_as_vec = std::vector<double> (1.0, 28);
+    lower_triag_mat_as_vec = std::vector<double> {1.0,
+						  0.0, 1.0,
+						  0.0, 0.0, 1.0,
+						  0.0, 0.0, 0.0, 1.0,
+						  0.0, 0.0, 0.0, 0.0, 1.0,
+						  0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+						  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
   };
 
   parameters_nominal(const std::vector<double> &x)
@@ -546,20 +552,19 @@ double optimization_wrapper(const std::vector<double> &x,
 }
 
 int main(int argc, char *argv[]) {
-  if (argc < 9 || argc > 9) {
+  if (argc < 8 || argc > 8) {
     printf("You must provide input\n");
-    printf("The input is: \n\nnumber data points;\nrho;\nrho_basis;\nsigma_x;\nsigma_y;\ndx_likelihood;\nfile prefix;\nnumber_points_for_integration;\n");
+    printf("The input is: \n\nnumber data points;\nrho_basis;\nsigma_x;\nsigma_y;\ndx_likelihood;\nfile prefix;\nnumber_points_for_integration;\n");
     exit(0);
   }
 
   unsigned N = std::stoi(argv[1]);
-  double rho = std::stod(argv[2]);
-  double rho_basis = std::stod(argv[3]);
-  double sigma_x_basis = std::stod(argv[4]);
-  double sigma_y_basis = std::stod(argv[5]);
-  double dx_likelihood = std::stod(argv[6]);
-  std::string file_prefix = argv[7];
-  unsigned M = std::stoi(argv[8]);
+  double rho_basis = std::stod(argv[2]);
+  double sigma_x_basis = std::stod(argv[3]);
+  double sigma_y_basis = std::stod(argv[4]);
+  double dx_likelihood = std::stod(argv[5]);
+  std::string file_prefix = argv[6];
+  unsigned M = std::stoi(argv[7]);
   double dx = 1.0/500.0;
 
   static int counter = 0;
@@ -568,7 +573,7 @@ int main(int argc, char *argv[]) {
 
 #pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
-  omp_set_num_threads(3);
+  omp_set_num_threads(4);
 
   BivariateGaussianKernelBasis basis_positive =
     BivariateGaussianKernelBasis(dx,
@@ -607,118 +612,175 @@ int main(int argc, char *argv[]) {
   std::vector<likelihood_point> points_for_integration (M);
 
   auto t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local, rho) firstprivate(dx_likelihood, dx)
+#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local) firstprivate(dx_likelihood, dx)
     {
 #pragma omp for
       for (i=0; i<N; ++i) {
-	long unsigned seed = seed_init + i;
+	if (i < N/2) {
+	  long unsigned seed = seed_init + i;
+	  double likelihood = 0.0 / 0.0;
 
-	double log_sigma_x = 2 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
-	double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
-
-	BrownianMotion BM = BrownianMotion(seed,
-					   10e6,
-					   rho,
-					   exp(log_sigma_x),
-					   exp(log_sigma_y),
-					   0.0,
-					   0.0,
-					   1.0);
-
-	points_for_kriging[i] = BM;
-
-	double likelihood = 0.0;
-	double x [2] = {points_for_kriging[i].x_t_tilde,
-			points_for_kriging[i].y_t_tilde};
+	  while (std::isnan(likelihood) ||
+		 std::abs(likelihood) <= std::numeric_limits<double>::epsilon() ) {
+	    double log_sigma_x = 2 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
+	    double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
+	    double rho = (gsl_rng_uniform(r_ptr_threadprivate)*2.0 - 1.0)*0.5;
 	
-	gsl_vector_view gsl_x = gsl_vector_view_array(x, 2);
+	    BrownianMotion BM = BrownianMotion(seed,
+					       10e6,
+					       rho,
+					       exp(log_sigma_x),
+					       exp(log_sigma_y),
+					       0.0,
+					       0.0,
+					       1.0);
 
-	if (!std::signbit(rho)) {
-	  BivariateSolver solver = BivariateSolver(private_bases,
-						   1.0,
-						   points_for_kriging[i].sigma_y_tilde,
-						   rho,
-						   0.0,
-						   points_for_kriging[i].x_0_tilde,
-						   1.0,
-						   0.0,
-						   points_for_kriging[i].y_0_tilde,
-						   1.0,
-						   points_for_kriging[i].t_tilde,
-						   dx);
+	    points_for_kriging[i] = BM;
+
+
+	    double x [2] = {points_for_kriging[i].x_t_tilde,
+			    points_for_kriging[i].y_t_tilde};
+	
+	    gsl_vector_view gsl_x = gsl_vector_view_array(x, 2);
+	
+	    if (!std::signbit(rho)) {
+	      BivariateSolver solver = BivariateSolver(private_bases,
+						       1.0,
+						       points_for_kriging[i].sigma_y_tilde,
+						       rho,
+						       0.0,
+						       points_for_kriging[i].x_0_tilde,
+						       1.0,
+						       0.0,
+						       points_for_kriging[i].y_0_tilde,
+						       1.0,
+						       points_for_kriging[i].t_tilde,
+						       dx);
 	  
-	  x[0] = points_for_kriging[i].x_t_tilde;
-	  x[1] = points_for_kriging[i].y_t_tilde;
+	      x[0] = points_for_kriging[i].x_t_tilde;
+	      x[1] = points_for_kriging[i].y_t_tilde;
 	  
-	  likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
-	  						    dx_likelihood);
-	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	      likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
+								dx_likelihood);
+	      // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	    } else {
+	      BivariateSolver solver = BivariateSolver(private_bases,
+						       1.0,
+						       points_for_kriging[i].sigma_y_tilde,
+						       rho,
+						       -1.0,
+						       -points_for_kriging[i].x_0_tilde,
+						       0.0,
+						       0.0,
+						       points_for_kriging[i].y_0_tilde,
+						       1.0,
+						       points_for_kriging[i].t_tilde,
+						       dx);
+
+	      x[0] = -points_for_kriging[i].x_t_tilde;
+	      x[1] = points_for_kriging[i].y_t_tilde;
+
+	      likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
+								dx_likelihood);
+	      // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	    }
+	  }
+	
+	  points_for_kriging[i].likelihood = likelihood;
+	  printf("Thread %d with address %p produces likelihood %f\n",
+		 omp_get_thread_num(),
+		 private_bases,
+		 likelihood);
 	} else {
-	  BivariateSolver solver = BivariateSolver(private_bases,
-						   1.0,
-						   points_for_kriging[i].sigma_y_tilde,
-						   rho,
-						   -1.0,
-						   -points_for_kriging[i].x_0_tilde,
-						   0.0,
-						   0.0,
-						   points_for_kriging[i].y_0_tilde,
-						   1.0,
-						   points_for_kriging[i].t_tilde,
-						   dx);
 
-	  x[0] = -points_for_kriging[i].x_t_tilde;
-	  x[1] = points_for_kriging[i].y_t_tilde;
+	  long unsigned seed = seed_init + i;
+	  double likelihood = 0.0 / 0.0;
 
-	  likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
-	  						    dx_likelihood);
-	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	  while (std::isnan(likelihood) ||
+		 std::abs(likelihood) <= std::numeric_limits<double>::epsilon() ) {
+	    double log_sigma_x = 2 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
+	    double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 2.0);
+	    double rho = (gsl_rng_uniform(r_ptr_threadprivate)*2.0 - 1.0)*0.5;
+	
+	    BrownianMotion BM = BrownianMotion(seed,
+					       10e6,
+					       rho,
+					       exp(log_sigma_x),
+					       exp(log_sigma_y),
+					       0.0,
+					       0.0,
+					       1.0);
+	    points_for_kriging[i] = BM;
+	    if (gsl_rng_uniform(r_ptr_threadprivate) < 0.5) {
+	      points_for_kriging[i].t_tilde = 0.0;
+	    } else {
+	      points_for_kriging[i].sigma_y_tilde = 0.0;
+	    }
+
+	    double x [2] = {points_for_kriging[i].x_t_tilde,
+			    points_for_kriging[i].y_t_tilde};
+	
+	    gsl_vector_view gsl_x = gsl_vector_view_array(x, 2);
+	
+	    if (!std::signbit(rho)) {
+	      BivariateSolver solver = BivariateSolver(private_bases,
+						       1.0,
+						       points_for_kriging[i].sigma_y_tilde,
+						       rho,
+						       0.0,
+						       points_for_kriging[i].x_0_tilde,
+						       1.0,
+						       0.0,
+						       points_for_kriging[i].y_0_tilde,
+						       1.0,
+						       points_for_kriging[i].t_tilde,
+						       dx);
+	  
+	      x[0] = points_for_kriging[i].x_t_tilde;
+	      x[1] = points_for_kriging[i].y_t_tilde;
+	  
+	      likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
+								dx_likelihood);
+	      // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	    } else {
+	      BivariateSolver solver = BivariateSolver(private_bases,
+						       1.0,
+						       points_for_kriging[i].sigma_y_tilde,
+						       rho,
+						       -1.0,
+						       -points_for_kriging[i].x_0_tilde,
+						       0.0,
+						       0.0,
+						       points_for_kriging[i].y_0_tilde,
+						       1.0,
+						       points_for_kriging[i].t_tilde,
+						       dx);
+
+	      x[0] = -points_for_kriging[i].x_t_tilde;
+	      x[1] = points_for_kriging[i].y_t_tilde;
+
+	      likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
+								dx_likelihood);
+	      // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	    }
+	  }
+	
+	  points_for_kriging[i].likelihood = likelihood;
+	  printf("Thread %d with address %p produces likelihood %f\n",
+		 omp_get_thread_num(),
+		 private_bases,
+		 likelihood);
 	}
-
-	points_for_kriging[i].likelihood = likelihood;
-
-	printf("Thread %d with address %p produces likelihood %f\n",
-	       omp_get_thread_num(),
-	       private_bases,
-	       likelihood);
       }
     }
     auto t2 = std::chrono::high_resolution_clock::now();
 
-    t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_integration, N, M, seed_init, r_ptr_local, rho) firstprivate(dx_likelihood, dx)
-    {
-#pragma omp for
-      for (i=0; i<M; ++i) {
-	long unsigned seed = seed_init + N + i;
-
-	double log_sigma_x = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 1.0);
-	double log_sigma_y = 1 + gsl_ran_gaussian(r_ptr_threadprivate, 1.0);
-
-	BrownianMotion BM = BrownianMotion(seed,
-					   10e6,
-					   rho,
-					   exp(log_sigma_x),
-					   exp(log_sigma_y),
-					   0.0,
-					   0.0,
-					   1.0);
-
-	points_for_integration[i] = BM;
-      }
-    }
-    t2 = std::chrono::high_resolution_clock::now();
-
-    std::cout << "Generating " << M << " points for integration took "
-	      << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count() << " seconds." << std::endl;
-
     std::string output_file_name = file_prefix +
       "-number-points-" + argv[1] +
-      "-rho-" + argv[2] +
-      "-rho_basis-" + argv[3] + 
-      "-sigma_x_basis-" + argv[4] +
-      "-sigma_y_basis-" + argv[5] +
-      "-dx_likelihood-" + argv[6] +
+      "-rho_basis-" + argv[2] + 
+      "-sigma_x_basis-" + argv[3] +
+      "-sigma_y_basis-" + argv[4] +
+      "-dx_likelihood-" + argv[5] +
       ".csv";
 
     std::ofstream output_file;
