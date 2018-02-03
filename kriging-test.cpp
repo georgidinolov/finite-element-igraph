@@ -159,7 +159,6 @@ int main(int argc, char *argv[]) {
 	       likelihood);
       }
     }
-
     auto t2 = std::chrono::high_resolution_clock::now();
 
     std::string output_file_name = file_prefix +
