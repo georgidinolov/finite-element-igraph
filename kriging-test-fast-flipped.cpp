@@ -95,11 +95,8 @@ int main(int argc, char *argv[]) {
     for (i=0; i<N; ++i) {
       likelihood_point current_lp = likelihood_point();
       input_file >> current_lp;
-
-      if (i >= 0) { 
-	if (current_lp.FLIPPED) {
-	  points_for_kriging.push_back(current_lp); 
-	}
+      if ((i >= 0) && (current_lp.FLIPPED)) { 
+	points_for_kriging.push_back(current_lp); 
       }
 
     }

@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   double dx_likelihood = std::stod(argv[5]);
   std::string file_prefix = argv[6];
   std::string input_file_name = argv[7];
-  double dx = 1.0/500.0;
+  double dx = 1.0/600.0;
 
   static int counter = 0;
   static BivariateGaussianKernelBasis* private_bases;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
 #pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
-  omp_set_num_threads(4);
+  omp_set_num_threads(40);
 
   BivariateGaussianKernelBasis basis_positive =
     BivariateGaussianKernelBasis(dx,
@@ -82,10 +82,10 @@ int main(int argc, char *argv[]) {
   if (input_file.is_open()) {
     for (i=0; i<N; ++i) {
       input_file >> points_for_kriging[i];
-      points_for_kriging[i].likelihood = 0.0;
+      points_for_kriging[i].log_likelihood = 1.0;
     }
   }
-  
+
   std::vector<likelihood_point> points_for_integration (1);
 
   auto t1 = std::chrono::high_resolution_clock::now();
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 #pragma omp for
       for (i=0; i<N; ++i) {
 	long unsigned seed = seed_init + i;
-	double likelihood = 0.0 / 0.0;
+	double likelihood = 0.0;
 	double rho = points_for_kriging[i].rho;
 	  
 	double x [2] = {points_for_kriging[i].x_t_tilde,
@@ -123,12 +123,6 @@ int main(int argc, char *argv[]) {
 							    dx_likelihood);
 	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
 
-
-	  points_for_kriging[i].likelihood = likelihood;
-	  printf("Thread %d with address %p produces likelihood %f\n",
-		 omp_get_thread_num(),
-		 private_bases,
-		 likelihood);
 	} else {
 	  BivariateSolver solver = BivariateSolver(private_bases,
 						   1.0,
@@ -152,7 +146,7 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	points_for_kriging[i].likelihood = likelihood;
+	points_for_kriging[i].log_likelihood = log(likelihood);
 	printf("Thread %d with address %p produces likelihood %f\n",
 	       omp_get_thread_num(),
 	       private_bases,
