@@ -4,10 +4,10 @@
 // create those matrices.
 
 extern "C" {
-#include "igraph.h"
+#include "src/igraph-0.7.1/include/igraph.h"
 }
 
-#include "MultivariateNormal.hpp"
+#include "src/multivariate-normal/MultivariateNormal.hpp"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -216,7 +216,27 @@ public:
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
 
+  double distance_from_point_to_axis_raw(const gsl_vector* point_1,
+					 const gsl_vector* point_2,
+					 const gsl_vector* normal_point,
+					 const gsl_vector* input);
+
+  double distance_from_point_to_axis(const gsl_vector* axis_vector,
+				     const gsl_vector* normal_point,
+				     const gsl_vector* input);
+
+  void reflect_point_raw(const gsl_vector* point_1,
+			 const gsl_vector* point_2,
+			 gsl_vector* input);
+  void reflect_point(const gsl_vector* axis_vector,
+		     gsl_vector* input);
+  
   double get_t() const;
+  inline const gsl_matrix* get_rotation_matrix() const
+  {
+    return Rotation_matrix_;
+  }
+  
   inline virtual double get_dx() const
   { return 0.0; }
 

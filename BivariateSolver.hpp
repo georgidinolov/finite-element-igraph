@@ -75,6 +75,10 @@ public:
   double analytic_solution(const gsl_vector* input) const;
   
   virtual double numerical_likelihood_second_order(const gsl_vector* input, double h);
+  virtual double analytic_likelihood_second_order_small_t(const gsl_vector* input,
+							  double small_t,
+							  double h);
+  
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood(const gsl_vector* input, double h);
   virtual double numerical_likelihood_extended(const gsl_vector* input, double h);

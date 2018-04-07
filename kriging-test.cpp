@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
 #pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
-  omp_set_num_threads(40);
+  omp_set_num_threads(1);
 
   BivariateGaussianKernelBasis basis_positive =
     BivariateGaussianKernelBasis(dx,
@@ -96,9 +96,9 @@ int main(int argc, char *argv[]) {
 	long unsigned seed = seed_init + i;
 	double likelihood = 0.0;
 	double rho = points_for_kriging[i].rho;
-	  
 	double x [2] = {points_for_kriging[i].x_t_tilde,
 			points_for_kriging[i].y_t_tilde};
+	points_for_kriging[i].sigma_y_tilde = points_for_kriging[i].sigma_y_tilde/3.0;
 
 	gsl_vector_view gsl_x = gsl_vector_view_array(x, 2);
 	  
@@ -119,9 +119,11 @@ int main(int argc, char *argv[]) {
 	  x[0] = points_for_kriging[i].x_t_tilde;
 	  x[1] = points_for_kriging[i].y_t_tilde;
 	    
-	  likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
-							    dx_likelihood);
-	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	  // likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
+	  // 						    dx_likelihood);
+	  likelihood = solver.analytic_likelihood_second_order_small_t(&gsl_x.vector,
+								       0.002,
+								       dx_likelihood);
 
 	} else {
 	  BivariateSolver solver = BivariateSolver(private_bases,
@@ -140,14 +142,16 @@ int main(int argc, char *argv[]) {
 	  x[0] = -points_for_kriging[i].x_t_tilde;
 	  x[1] = points_for_kriging[i].y_t_tilde;
 
-	  likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
-							    dx_likelihood);
-	  // likelihood = solver.analytic_likelihood(&gsl_x.vector, 100);
+	  // likelihood = solver.numerical_likelihood_extended(&gsl_x.vector,
+	  // 						    dx_likelihood);
+	  likelihood = solver.analytic_likelihood_second_order_small_t(&gsl_x.vector,
+								       0.002,
+								       dx_likelihood);
 	}
 
 
 	points_for_kriging[i].log_likelihood = log(likelihood);
-	printf("Thread %d with address %p produces likelihood %f\n",
+	printf("Thread %d with address %p produces likelihood %g\n",
 	       omp_get_thread_num(),
 	       private_bases,
 	       likelihood);

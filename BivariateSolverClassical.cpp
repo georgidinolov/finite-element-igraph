@@ -70,7 +70,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
   // BORDER 1
 
   double ss_1 = atan(-1.0*sqrt(1.0+rho_)/sqrt(1-rho_));
-  
+
   double C_1 = (-1.0*eta_ic + xi_ic*sqrt(1.0-rho_)/sqrt(1.0+rho_))/
     (sin(ss_1) - cos(ss_1)*sqrt(1.0-rho_)/sqrt(1.0+rho_));
 
@@ -129,7 +129,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
       }
     }
   }
-  
+
   double xi_ic_reflected = 2.0*Cs[Cs_indeces[0]]*cos(ss_s[Cs_indeces[0]])
     + xi_ic;
   double eta_ic_reflected = 2.0*Cs[Cs_indeces[0]]*sin(ss_s[Cs_indeces[0]])
@@ -181,7 +181,7 @@ BivariateSolverClassical::BivariateSolverClassical(const BivariateSolverClassica
 }
 
 BivariateSolverClassical& BivariateSolverClassical::
-operator=(const BivariateSolverClassical& rhs) 
+operator=(const BivariateSolverClassical& rhs)
 {
   sigma_x_ = rhs.sigma_x_;
   sigma_y_ = rhs.sigma_y_;
@@ -196,7 +196,7 @@ operator=(const BivariateSolverClassical& rhs)
 
   gsl_vector_free(initial_condition_xi_eta_);
   initial_condition_xi_eta_ = gsl_vector_alloc(rhs.initial_condition_xi_eta_->size);
-  gsl_vector_memcpy(initial_condition_xi_eta_, 
+  gsl_vector_memcpy(initial_condition_xi_eta_,
 		    rhs.initial_condition_xi_eta_);
 
   gsl_matrix_free(Rotation_matrix_);
@@ -212,9 +212,9 @@ operator=(const BivariateSolverClassical& rhs)
   gsl_matrix_memcpy(Variance_, rhs.Variance_);
 
   gsl_vector_free(initial_condition_xi_eta_reflected_);
-  initial_condition_xi_eta_reflected_ = 
+  initial_condition_xi_eta_reflected_ =
     gsl_vector_alloc(rhs.initial_condition_xi_eta_reflected_->size);
-  gsl_vector_memcpy(initial_condition_xi_eta_reflected_, 
+  gsl_vector_memcpy(initial_condition_xi_eta_reflected_,
 		    rhs.initial_condition_xi_eta_reflected_);
 
   gsl_matrix_free(function_grid_);
@@ -274,21 +274,26 @@ operator()(const gsl_vector* input, double tt) const
 
   gsl_matrix* Variance = gsl_matrix_alloc(2,2);
   gsl_matrix_set_all(Variance, 0.0);
-  
+
   for (int i=0; i<2; ++i) {
     gsl_matrix_set(Variance, i, i, tt);
   }
-  
-  double out = (mvtnorm_.dmvnorm(2,
-				 xi_eta_input_,
-				 initial_condition_xi_eta_,
-				 Variance) -
-		mvtnorm_.dmvnorm(2,
-				 xi_eta_input_,
-				 initial_condition_xi_eta_reflected_,
-				 Variance)) /
-		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
-  
+
+  // double out = (mvtnorm_.dmvnorm(2,
+  // 				 xi_eta_input_,
+  // 				 initial_condition_xi_eta_,
+  // 				 Variance) -
+  // 		mvtnorm_.dmvnorm(2,
+  // 				 xi_eta_input_,
+  // 				 initial_condition_xi_eta_reflected_,
+  // 				 Variance)) /
+  // 		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+  double out = mvtnorm_.dmvnorm(2,
+				xi_eta_input_,
+				initial_condition_xi_eta_,
+				Variance) /
+    (sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+
   gsl_matrix_free(Variance);
   return out;
 }
@@ -303,6 +308,150 @@ double BivariateSolverClassical::first_derivative(const gsl_vector* input,
 						  long int coord_index) const
 {
   return 0.0;
+}
+
+double BivariateSolverClassical::
+distance_from_point_to_axis_raw(const gsl_vector* point_1,
+				const gsl_vector* point_2,
+				const gsl_vector* normal_point,
+				const gsl_vector* input)
+{
+  gsl_vector* axis_vector = gsl_vector_alloc(2);
+  gsl_vector* input_cpy = gsl_vector_alloc(2);
+  gsl_vector* normal_point_cpy = gsl_vector_alloc(2);
+  
+  gsl_vector_memcpy(input_cpy, input);
+  gsl_vector_memcpy(axis_vector, point_2);
+  gsl_vector_memcpy(normal_point_cpy, normal_point);
+  
+  // re-centering on zero
+  gsl_vector_sub(axis_vector, point_1);
+  gsl_vector_sub(input_cpy, point_1);
+  gsl_vector_sub(normal_point_cpy, point_1);
+
+  double out = distance_from_point_to_axis(axis_vector,
+					   normal_point_cpy,
+					   input_cpy);
+
+  gsl_vector_free(axis_vector);
+  gsl_vector_free(input_cpy);
+  gsl_vector_free(normal_point_cpy);
+
+  return out;
+}
+
+void BivariateSolverClassical::reflect_point_raw(const gsl_vector* point_1,
+						 const gsl_vector* point_2,
+						 gsl_vector* input)
+{
+  gsl_vector* axis_vector = gsl_vector_alloc(2);
+  gsl_vector* input_cpy = gsl_vector_alloc(2);
+  gsl_vector_memcpy(input_cpy, input);
+  gsl_vector_memcpy(axis_vector, point_2);
+  // re-centering on zero
+  gsl_vector_sub(axis_vector, point_1);
+  gsl_vector_sub(input_cpy, point_1);
+
+  reflect_point(axis_vector, input_cpy);
+
+  gsl_vector_add(input_cpy, point_1);
+  gsl_vector_memcpy(input, input_cpy);
+
+  gsl_vector_free(axis_vector);
+  gsl_vector_free(input_cpy);
+}
+
+// both axis_vector and input are centered on (0,0)
+double BivariateSolverClassical::
+distance_from_point_to_axis(const gsl_vector* axis_vector,
+			    const gsl_vector* normal_point,
+			    const gsl_vector* input) {
+  double input_cpy [input->size];
+  gsl_vector_view input_cpy_view = gsl_vector_view_array(input_cpy,input->size);
+  gsl_vector_memcpy(&input_cpy_view.vector, input);
+  
+  double axis_vector_array [axis_vector->size];
+  gsl_vector_view axis_vector_view =
+    gsl_vector_view_array(axis_vector_array, axis_vector->size);
+  gsl_vector_memcpy(&axis_vector_view.vector, axis_vector);
+
+  double normal_point_array [normal_point->size];
+  gsl_vector_view normal_point_view =
+    gsl_vector_view_array(normal_point_array, normal_point->size);
+  gsl_vector_memcpy(&normal_point_view.vector, normal_point);
+  
+  double norm = 0.0;
+  for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
+    norm = norm +
+      std::pow(axis_vector_array[i],2);
+  }
+  norm = std::sqrt(norm);
+  gsl_vector_scale(&axis_vector_view.vector, 1.0/norm);
+
+  double inner_product = 0;
+  for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
+    inner_product = inner_product + axis_vector_array[i]*input_cpy[i];
+  }
+  gsl_vector_scale(&axis_vector_view.vector, inner_product);
+
+  // normalized_axis <normalized_axis | input> + Delta = input
+  // \Rightarrow Delta = input - normalized_axis <normalized_axis | input>
+  for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
+    input_cpy[i] = input_cpy[i] - axis_vector_array[i];
+  }
+
+  // \Rightarrow Delta_normal_point = normal_point - normalized_axis<normalized_axis | normal_point>
+  gsl_vector_scale(&axis_vector_view.vector, 1.0/inner_product);
+  gsl_blas_ddot(&axis_vector_view.vector, &normal_point_view.vector, &inner_product);
+  gsl_vector_sub(&normal_point_view.vector, &axis_vector_view.vector);
+  
+  double out = 0;
+  for (unsigned i=0; i<input_cpy_view.vector.size; ++i) {
+    out = out + std::pow(input_cpy[i],2);
+  }
+  out = std::sqrt(out);
+
+  double sign_inner_prod = 0;
+  gsl_blas_ddot(&input_cpy_view.vector, &normal_point_view.vector, &sign_inner_prod);
+
+  if (std::signbit(sign_inner_prod)) {
+    out = -out;
+  }
+  
+  return out;
+}
+
+// both axis_vector and input are centered on (0,0)
+void BivariateSolverClassical::reflect_point(const gsl_vector* axis_vector,
+					     gsl_vector* input)
+{
+  double axis_vector_array [axis_vector->size];
+  gsl_vector_view axis_vector_view = gsl_vector_view_array(axis_vector_array, axis_vector->size);
+  gsl_vector_memcpy(&axis_vector_view.vector, axis_vector);
+  //
+  double norm = 0.0;
+  for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
+    norm = norm +
+      std::pow(axis_vector_array[i],2);
+  }
+  norm = std::sqrt(norm);
+  gsl_vector_scale(&axis_vector_view.vector, 1.0/norm);
+
+  double inner_product = 0;
+  gsl_blas_ddot(&axis_vector_view.vector, input, &inner_product);
+
+  gsl_vector_scale(&axis_vector_view.vector, inner_product);
+  
+  // normalized_axis <normalized_axis | input> + Delta = input
+  // \Rightarrow Delta = input - normalized_axis <normalized_axis | input>
+  double Delta [axis_vector->size];
+  gsl_vector_view Delta_view = gsl_vector_view_array(Delta, axis_vector->size);
+  gsl_vector_memcpy(&Delta_view.vector, input);
+  gsl_vector_sub(&Delta_view.vector, &axis_vector_view.vector);
+  gsl_vector_scale(&Delta_view.vector, -1.0);
+
+  gsl_vector_add(&Delta_view.vector, &axis_vector_view.vector);
+  gsl_vector_memcpy(input, &Delta_view.vector);
 }
 
 double BivariateSolverClassical::get_t() const
