@@ -796,7 +796,6 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
   gsl_matrix_free(Rotation_matrix);
   
   gsl_vector * scaled_input = scale_input(raw_input);
-
   double corner_points_array [20] = {a_2_, b_2_, b_2_, a_2_, x_0_2_, gsl_vector_get(scaled_input,0), x_0_2_, x_0_2_, x_0_2_, x_0_2_,
 				     c_2_, c_2_, d_2_, d_2_, y_0_2_, gsl_vector_get(scaled_input,1), y_0_2_, y_0_2_, y_0_2_, y_0_2_};
 
@@ -806,6 +805,22 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
     images_array[i+16] = y_0_2_;
   }
   double images_transformed_array [32];
+
+  printf("library(gridExtra);\n");
+  printf("par(mar=c(2,2,0,0));\n");
+  printf("plot(x=0, type=\"n\", xlim = c(-0.5, 1.5), ylim=c(-0.5, 1.5), xlab=\"x\", ylab=\"y\");\n");
+  printf("lines(x=c(0,1), y=c(0,0), lwd=2, col=\"black\");\n"); // border 1
+  printf("lines(x=c(1,1), y=c(0,1), lwd=2, col=\"black\");\n"); // border 2
+  printf("lines(x=c(1,0), y=c(1,1), lwd=2, col=\"black\");\n"); // border 3
+  printf("lines(x=c(0,0), y=c(1,0), lwd=2, col=\"black\");\n"); // border 4
+  printf("points(x=%g, y=%g, lwd=3, pch=20, col=\"black\");\n",
+	 gsl_vector_get(scaled_input, 0),
+	 gsl_vector_get(scaled_input, 0)); // IC
+  printf("samples <- rmvnorm(n=1e6, mean=c(%g,%g), sigma=diag(c(1,%g)));\n",
+	 gsl_vector_get(scaled_input, 0),
+	 gsl_vector_get(scaled_input, 0),
+	 sigma_y_2_);
+  
 
   gsl_matrix_view images_view = gsl_matrix_view_array(images_array, 2, 16);
   gsl_matrix_view images_transformed_view = gsl_matrix_view_array(images_transformed_array, 2, 16);
@@ -931,10 +946,10 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
   }
 
   unsigned counter = 0;
-  for (unsigned i=0; i<2; ++i) {
-    for (unsigned j=0; j<2; ++j) {
-      for (unsigned k=0; k<2; ++k) {
-	for (unsigned l=0; l<2; ++l) {
+  for (unsigned l=0; l<2; ++l) {
+    for (unsigned k=0; k<2; ++k) {
+      for (unsigned j=0; j<2; ++j) {
+	for (unsigned i=0; i<2; ++i) {
 	  gsl_vector* current_image = &images_vector[counter].vector;
 	  if (i==1) {
 	    small_t_solution_->reflect_point_raw(lines[distance_to_line_indeces[0]][0],
@@ -959,79 +974,29 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
 	  counter = counter + 1;
 	  std::cout << "image " << counter << " distances: ";
 
-	  if (l==1) {
-	    double d1 = small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-					      lines[distance_to_line_indeces[0]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    double d2 = small_t_solution_->
- 	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-					      lines[distance_to_line_indeces[1]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    double d3 = small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-					      lines[distance_to_line_indeces[2]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    std::cout << d1 << " " << d2 << " " << d3 << " 0\n";
-	  } else if (k==1) {
-	    std::cout << small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-					      lines[distance_to_line_indeces[0]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image)
-		      << " "
-		      << small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-					      lines[distance_to_line_indeces[1]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image)
-		      << " "
-		      << "0"
-		      << " 0\n";
-	} else if (j==1) {
-	    std::cout << small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-					      lines[distance_to_line_indeces[0]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image)
-		      << " "
-		      << "0"
-		      << " "
-		      << "0"
-		      << " 0\n";
-	  } else if (i==1) {
-	    double d1 = small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-					      lines[distance_to_line_indeces[0]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    std::cout << d1 << " " << "0" << " " << "0" << " " << "0" << "\n";
-	  } else if (i==0) {
-	    double d1 = small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-					      lines[distance_to_line_indeces[0]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    double d2 = small_t_solution_->
- 	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-					      lines[distance_to_line_indeces[1]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    double d3 = small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-					      lines[distance_to_line_indeces[2]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    double d4 = small_t_solution_->
-	      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-					      lines[distance_to_line_indeces[2]][1],
-					      &initial_condition_transformed_view.vector,
-					      current_image);
-	    std::cout << d1 << " " << d2 << " " << d3 << " " << d4 << "\n";
-	  }
+
+	  double d1 = small_t_solution_->
+	    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+					    lines[distance_to_line_indeces[0]][1],
+					    &initial_condition_transformed_view.vector,
+					    current_image);
+	  double d2 = small_t_solution_->
+	    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+					    lines[distance_to_line_indeces[1]][1],
+					    &initial_condition_transformed_view.vector,
+					    current_image);
+	  double d3 = small_t_solution_->
+	    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+					    lines[distance_to_line_indeces[2]][1],
+					    &initial_condition_transformed_view.vector,
+					    current_image);
+	  double d4 = small_t_solution_->
+	    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+					    lines[distance_to_line_indeces[2]][1],
+					    &initial_condition_transformed_view.vector,
+					    current_image);
+	  std::cout << d1 << " " << d2 << " " << d3 << " " << d4 << "\n";
+	  
 	}
       }
     }

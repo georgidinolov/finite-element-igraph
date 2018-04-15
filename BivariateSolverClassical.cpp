@@ -379,7 +379,8 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
   gsl_vector_view normal_point_view =
     gsl_vector_view_array(normal_point_array, normal_point->size);
   gsl_vector_memcpy(&normal_point_view.vector, normal_point);
-  
+
+  // scaling the axis vector to be unit length
   double norm = 0.0;
   for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
     norm = norm +
@@ -388,21 +389,23 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
   norm = std::sqrt(norm);
   gsl_vector_scale(&axis_vector_view.vector, 1.0/norm);
 
+  
   double inner_product = 0;
-  for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
-    inner_product = inner_product + axis_vector_array[i]*input_cpy[i];
-  }
+  gsl_blas_ddot(&input_cpy_view.vector,
+		&axis_vector_view.vector,
+		&inner_product);
   gsl_vector_scale(&axis_vector_view.vector, inner_product);
 
   // normalized_axis <normalized_axis | input> + Delta = input
   // \Rightarrow Delta = input - normalized_axis <normalized_axis | input>
-  for (unsigned i=0; i<axis_vector_view.vector.size; ++i) {
-    input_cpy[i] = input_cpy[i] - axis_vector_array[i];
-  }
+  gsl_vector_sub(&input_cpy_view.vector, &axis_vector_view.vector);
 
   // \Rightarrow Delta_normal_point = normal_point - normalized_axis<normalized_axis | normal_point>
-  gsl_vector_scale(&axis_vector_view.vector, 1.0/inner_product);
+  gsl_blas_ddot(&axis_vector_view.vector, &axis_vector_view.vector, &norm);
+  norm = std::sqrt(norm);
+  gsl_vector_scale(&axis_vector_view.vector, 1.0/norm);
   gsl_blas_ddot(&axis_vector_view.vector, &normal_point_view.vector, &inner_product);
+  gsl_vector_scale(&axis_vector_view.vector, inner_product);
   gsl_vector_sub(&normal_point_view.vector, &axis_vector_view.vector);
   
   double out = 0;
