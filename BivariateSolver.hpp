@@ -8,6 +8,37 @@ extern "C" {
 }
 #include "BasisTypes.hpp"
 
+class BivariateImageWithTime
+{
+public:
+  BivariateImageWithTime();
+  BivariateImageWithTime(const BivariateImageWithTime& image_with_time);
+  virtual BivariateImageWithTime& operator=(const BivariateImageWithTime& rhs);
+
+  BivariateImageWithTime(const gsl_vector* position,
+			 double time);
+
+  virtual ~BivariateImageWithTime();
+
+  inline const gsl_vector * get_position() const {
+    return position_;
+  }
+  inline void set_position(const gsl_vector* position) {
+    gsl_vector_memcpy(position_, position);
+  }
+  inline double get_t() const {
+    return t_;
+  }
+  inline void set_t(double t) {
+    t_ = t;
+  }
+  
+  
+private:
+  gsl_vector * position_;
+  double t_;
+};
+
 class BivariateSolver
 {
 public:
@@ -69,6 +100,27 @@ public:
   const gsl_vector* get_solution_coefs() const;
   const gsl_vector* get_ic_coefs() const;
   const gsl_vector* get_evals() const;
+
+  inline double get_a_2() const
+  { return a_2_; };
+  inline double get_b_2() const
+  { return b_2_; };
+  inline double get_c_2() const
+  { return c_2_; };
+  inline double get_d_2() const
+  { return d_2_; };
+  inline double get_sigma_x_2() const
+  { return sigma_x_2_; };
+  inline double get_sigma_y_2() const
+  { return sigma_y_2_; };
+  inline double get_x_0_2() const
+  { return x_0_2_; };
+  inline double get_y_0_2() const
+  { return y_0_2_; };
+  inline double get_t_2() const
+  { return t_2_; };
+  inline bool get_flipped_xy_flag() const
+  { return flipped_xy_flag_; };
   
   
   virtual double operator()(const gsl_vector* input) const;
@@ -78,12 +130,17 @@ public:
   virtual double analytic_likelihood_second_order_small_t(const gsl_vector* input,
 							  double small_t,
 							  double h);
+  int small_parameter_image_position(gsl_vector *input) const;
   
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood(const gsl_vector* input, double h);
   virtual double numerical_likelihood_extended(const gsl_vector* input, double h);
   // only valid for rho = 0
   virtual double analytic_likelihood(const gsl_vector* input, int little_n);
+  inline const BivariateSolverClassical* get_small_t_solution() const
+  {
+    return small_t_solution_;
+  }
   
 private:
   double a_;

@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
 	double rho = points_for_kriging[i].rho;
 	double x [2] = {points_for_kriging[i].x_t_tilde,
 			points_for_kriging[i].y_t_tilde};
-	// points_for_kriging[i].sigma_y_tilde = points_for_kriging[i].sigma_y_tilde/3;
+	points_for_kriging[i].sigma_y_tilde = points_for_kriging[i].sigma_y_tilde/1.0;
 	// points_for_kriging[i].sigma_y_tilde = 1;
 	rho = 0.0;
 	

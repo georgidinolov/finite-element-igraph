@@ -8,6 +8,44 @@
 #include <limits>
 #include <string>
 
+BivariateImageWithTime::BivariateImageWithTime()
+  : position_(NULL),
+    t_(0.0)
+{
+  position_ = gsl_vector_calloc(2);
+}
+
+BivariateImageWithTime::BivariateImageWithTime(const BivariateImageWithTime& image_with_time)
+{
+  gsl_vector_memcpy(position_, image_with_time.get_position());
+  t_ = image_with_time.get_t();
+}
+
+BivariateImageWithTime& BivariateImageWithTime::operator=(const BivariateImageWithTime& rhs)
+{
+  if (this==&rhs) {
+    return *this;
+  } else {
+    gsl_vector_memcpy(position_, rhs.get_position());
+    t_ = rhs.get_t();
+    return *this;
+  }
+}
+
+BivariateImageWithTime::BivariateImageWithTime(const gsl_vector* position,
+					       double time)
+  : position_(NULL),
+    t_(time)
+{
+  position_ = gsl_vector_calloc(2);
+  gsl_vector_memcpy(position_, position);
+}
+
+BivariateImageWithTime::~BivariateImageWithTime()
+{
+  gsl_vector_free(position_);
+}
+
 BivariateSolver::BivariateSolver()
   : a_(0),
     b_(1),
@@ -428,7 +466,7 @@ operator()(const gsl_vector* input) const
 
 double BivariateSolver::analytic_solution(const gsl_vector* input) const
 {
-  int little_n = 10;
+  int little_n = 100;
 
   std::vector<double> d1x (2*little_n + 1);
   std::vector<double> d2x (2*little_n + 1);
@@ -458,9 +496,9 @@ double BivariateSolver::analytic_solution(const gsl_vector* input) const
     sum_y = sum_y +
       (std::exp(-d1y[i]) - std::exp(-d2y[i]));
 
-    std::cout << "d1x[" << n << "] = " << d1x[i] << " ";
+    // std::cout << "d1x[" << n << "] = " << d1x[i] << " ";
   }
-  std::cout << std::endl;
+  // std::cout << std::endl;
 
   double out_x = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_x_,2)*t_))*
     sum_x;
@@ -469,13 +507,13 @@ double BivariateSolver::analytic_solution(const gsl_vector* input) const
     sum_y;
 
   double out = out_x*out_y;
-  std::cout << "t = " << t_ << ";" << std::endl;
-  std::cout << "ax = " << a_ << ";" << std::endl;
-  std::cout << "bx = " << b_ << ";" << std::endl;
-  std::cout << "x.ic = " << x_0_ << ";" << std::endl;
-  std::cout << "x.fc = " << gsl_vector_get(input,0) << ";" << std::endl;
-  std::cout << "sigma.2.x = " << std::pow(sigma_x_, 2) << ";" << std::endl;
-  std::cout << "out_x = " << out_x << ";" << std::endl;
+  // std::cout << "t = " << t_ << ";" << std::endl;
+  // std::cout << "ax = " << a_ << ";" << std::endl;
+  // std::cout << "bx = " << b_ << ";" << std::endl;
+  // std::cout << "x.ic = " << x_0_ << ";" << std::endl;
+  // std::cout << "x.fc = " << gsl_vector_get(input,0) << ";" << std::endl;
+  // std::cout << "sigma.2.x = " << std::pow(sigma_x_, 2) << ";" << std::endl;
+  // std::cout << "out_x = " << out_x << ";" << std::endl;
   return out;
 }
 
@@ -806,7 +844,9 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
   }
   double images_transformed_array [32];
 
+  printf("library(mvtnorm);\n");
   printf("library(gridExtra);\n");
+  printf("library(MASS);\n");
   printf("par(mar=c(2,2,0,0));\n");
   printf("plot(x=0, type=\"n\", xlim = c(-0.5, 1.5), ylim=c(-0.5, 1.5), xlab=\"x\", ylab=\"y\");\n");
   printf("lines(x=c(0,1), y=c(0,0), lwd=2, col=\"black\");\n"); // border 1
@@ -816,11 +856,13 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
   printf("points(x=%g, y=%g, lwd=3, pch=20, col=\"black\");\n",
 	 gsl_vector_get(scaled_input, 0),
 	 gsl_vector_get(scaled_input, 0)); // IC
-  printf("samples <- rmvnorm(n=1e6, mean=c(%g,%g), sigma=diag(c(1,%g)));\n",
+  printf("samples <- rmvnorm(n=1e5, mean=c(%g,%g), sigma=diag(%g*c(1,%g)));\n",
 	 gsl_vector_get(scaled_input, 0),
 	 gsl_vector_get(scaled_input, 0),
+	 t_2_/100,
 	 sigma_y_2_);
-  
+  printf("z <- kde2d(samples[,1], samples[,2]);\n");
+  printf("contour(z, add=TRUE);\n");
 
   gsl_matrix_view images_view = gsl_matrix_view_array(images_array, 2, 16);
   gsl_matrix_view images_transformed_view = gsl_matrix_view_array(images_transformed_array, 2, 16);
@@ -866,33 +908,33 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
 		 0.0, //beta=0
 		 &images_transformed_view.matrix); //C
   
-  printf("corner1=c(%g,%g); corner2=c(%g,%g); corner3=c(%g,%g); corner4=c(%g,%g); final.condition=c(%g,%g); initial.condition=c(%g,%g);\n",
-	 gsl_vector_get(&lower_left_view.vector,0), // corner1 x
-	 gsl_vector_get(&lower_left_view.vector,1), // corner1 y
-	 gsl_vector_get(&lower_right_view.vector,0), // corner2 x
-	 gsl_vector_get(&lower_right_view.vector,1), // corner2 y
-	 gsl_vector_get(&upper_right_view.vector,0), // corner3 x
-	 gsl_vector_get(&upper_right_view.vector,1), // corner3 y
-	 gsl_vector_get(&upper_left_view.vector,0), // corner4 x
-	 gsl_vector_get(&upper_left_view.vector,1), // corner4 y
-	 gsl_vector_get(&final_condition_view.vector,0), // final condition x
-	 gsl_vector_get(&final_condition_view.vector,1), // final condition y
-	 gsl_vector_get(&initial_condition_view.vector,0),
-	 gsl_vector_get(&initial_condition_view.vector,1));
+  // printf("corner1=c(%g,%g); corner2=c(%g,%g); corner3=c(%g,%g); corner4=c(%g,%g); final.condition=c(%g,%g); initial.condition=c(%g,%g);\n",
+  // 	 gsl_vector_get(&lower_left_view.vector,0), // corner1 x
+  // 	 gsl_vector_get(&lower_left_view.vector,1), // corner1 y
+  // 	 gsl_vector_get(&lower_right_view.vector,0), // corner2 x
+  // 	 gsl_vector_get(&lower_right_view.vector,1), // corner2 y
+  // 	 gsl_vector_get(&upper_right_view.vector,0), // corner3 x
+  // 	 gsl_vector_get(&upper_right_view.vector,1), // corner3 y
+  // 	 gsl_vector_get(&upper_left_view.vector,0), // corner4 x
+  // 	 gsl_vector_get(&upper_left_view.vector,1), // corner4 y
+  // 	 gsl_vector_get(&final_condition_view.vector,0), // final condition x
+  // 	 gsl_vector_get(&final_condition_view.vector,1), // final condition y
+  // 	 gsl_vector_get(&initial_condition_view.vector,0),
+  // 	 gsl_vector_get(&initial_condition_view.vector,1));
 
-  printf("corner1=c(%g,%g); corner2=c(%g,%g); corner3=c(%g,%g); corner4=c(%g,%g); final.condition=c(%g,%g); initial.condition=c(%g,%g);\n",
-	 gsl_vector_get(&lower_left_transformed_view.vector,0), // corner1 x
-	 gsl_vector_get(&lower_left_transformed_view.vector,1), // corner1 y
-	 gsl_vector_get(&lower_right_transformed_view.vector,0), // corner2 x
-	 gsl_vector_get(&lower_right_transformed_view.vector,1), // corner2 y
-	 gsl_vector_get(&upper_right_transformed_view.vector,0), // corner3 x
-	 gsl_vector_get(&upper_right_transformed_view.vector,1), // corner3 y
-	 gsl_vector_get(&upper_left_transformed_view.vector,0), // corner4 x
-	 gsl_vector_get(&upper_left_transformed_view.vector,1), // corner4 y
-	 gsl_vector_get(&final_condition_transformed_view.vector,0), // final condition x
-	 gsl_vector_get(&final_condition_transformed_view.vector,1), // final condition y
-	 gsl_vector_get(&initial_condition_transformed_view.vector,0), // initial condition x
-	 gsl_vector_get(&initial_condition_transformed_view.vector,1)); // initial condition y
+  // printf("corner1=c(%g,%g); corner2=c(%g,%g); corner3=c(%g,%g); corner4=c(%g,%g); final.condition=c(%g,%g); initial.condition=c(%g,%g);\n",
+  // 	 gsl_vector_get(&lower_left_transformed_view.vector,0), // corner1 x
+  // 	 gsl_vector_get(&lower_left_transformed_view.vector,1), // corner1 y
+  // 	 gsl_vector_get(&lower_right_transformed_view.vector,0), // corner2 x
+  // 	 gsl_vector_get(&lower_right_transformed_view.vector,1), // corner2 y
+  // 	 gsl_vector_get(&upper_right_transformed_view.vector,0), // corner3 x
+  // 	 gsl_vector_get(&upper_right_transformed_view.vector,1), // corner3 y
+  // 	 gsl_vector_get(&upper_left_transformed_view.vector,0), // corner4 x
+  // 	 gsl_vector_get(&upper_left_transformed_view.vector,1), // corner4 y
+  // 	 gsl_vector_get(&final_condition_transformed_view.vector,0), // final condition x
+  // 	 gsl_vector_get(&final_condition_transformed_view.vector,1), // final condition y
+  // 	 gsl_vector_get(&initial_condition_transformed_view.vector,0), // initial condition x
+  // 	 gsl_vector_get(&initial_condition_transformed_view.vector,1)); // initial condition y
 
   std::vector<std::vector<gsl_vector*>> lines {
     std::vector<gsl_vector*> {&lower_left_transformed_view.vector,
@@ -1042,91 +1084,91 @@ double BivariateSolver::analytic_likelihood_second_order_small_t(const gsl_vecto
 				       lines[distance_to_line_indeces[1]][1],
 				       &image_3_transformed_view.vector);
 
-printf("\ntwo TIMES from image1 and IC to line 2 are: %g, %g\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-								     lines[distance_to_line_indeces[1]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_1_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-								     lines[distance_to_line_indeces[1]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2));
- printf("two TIMES from IC and image1 to line 3 are: %g, %g\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-								     lines[distance_to_line_indeces[2]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_1_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-								     lines[distance_to_line_indeces[2]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2));
-  printf("two TIMES from IC and image1 to line 4 are: %g, %g\n\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
-								     lines[distance_to_line_indeces[3]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_1_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
-								     lines[distance_to_line_indeces[3]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2));
+// printf("\ntwo TIMES from image1 and IC to line 2 are: %g, %g\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+// 								     lines[distance_to_line_indeces[1]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_1_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+// 								     lines[distance_to_line_indeces[1]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2));
+//  printf("two TIMES from IC and image1 to line 3 are: %g, %g\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+// 								     lines[distance_to_line_indeces[2]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_1_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+// 								     lines[distance_to_line_indeces[2]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2));
+//   printf("two TIMES from IC and image1 to line 4 are: %g, %g\n\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+// 								     lines[distance_to_line_indeces[3]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_1_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+// 								     lines[distance_to_line_indeces[3]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2));
 
-  printf("two TIMES from IC to lines 1,2, 3 and 4 are: %g, %g, %g, %g\n\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-								     lines[distance_to_line_indeces[0]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-								     lines[distance_to_line_indeces[1]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-								     lines[distance_to_line_indeces[2]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
-								     lines[distance_to_line_indeces[3]][1],
-								     &initial_condition_transformed_view.vector,
-								     &initial_condition_transformed_view.vector)/5.0, 2));
+//   printf("two TIMES from IC to lines 1,2, 3 and 4 are: %g, %g, %g, %g\n\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+// 								     lines[distance_to_line_indeces[0]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+// 								     lines[distance_to_line_indeces[1]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+// 								     lines[distance_to_line_indeces[2]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+// 								     lines[distance_to_line_indeces[3]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &initial_condition_transformed_view.vector)/5.0, 2));
   
-  printf("two distances from images 2 and 3 to line 1 are: %g, %g\n",
-	 small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-							    lines[distance_to_line_indeces[0]][1],
-							    &initial_condition_transformed_view.vector,
-							    &image_2_transformed_view.vector),
-	 small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-							    lines[distance_to_line_indeces[0]][1],
-							    &initial_condition_transformed_view.vector,
-							    &image_3_transformed_view.vector));
-  printf("two TIMES from images 2 and 3 to line 1 are: %g, %g\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-								     lines[distance_to_line_indeces[0]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_2_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-								     lines[distance_to_line_indeces[0]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_3_transformed_view.vector)/5.0, 2));
-  printf("two TIMES from images 2 and 3 to line 3 are: %g, %g\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-								     lines[distance_to_line_indeces[2]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_2_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-								     lines[distance_to_line_indeces[2]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_3_transformed_view.vector)/5.0, 2));
-  printf("two TIMES from images 2 and 3 to line 4 are: %g, %g\n",
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
-								     lines[distance_to_line_indeces[3]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_2_transformed_view.vector)/5.0, 2),
-	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
-								     lines[distance_to_line_indeces[3]][1],
-								     &initial_condition_transformed_view.vector,
-								     &image_3_transformed_view.vector)/5.0, 2)); 
-  printf("current small time is %g, and current time is %g \n\n",
-	 small_t_solution_->get_t(),
-	 t_2_);
+//   printf("two distances from images 2 and 3 to line 1 are: %g, %g\n",
+// 	 small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+// 							    lines[distance_to_line_indeces[0]][1],
+// 							    &initial_condition_transformed_view.vector,
+// 							    &image_2_transformed_view.vector),
+// 	 small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+// 							    lines[distance_to_line_indeces[0]][1],
+// 							    &initial_condition_transformed_view.vector,
+// 							    &image_3_transformed_view.vector));
+//   printf("two TIMES from images 2 and 3 to line 1 are: %g, %g\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+// 								     lines[distance_to_line_indeces[0]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_2_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+// 								     lines[distance_to_line_indeces[0]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_3_transformed_view.vector)/5.0, 2));
+//   printf("two TIMES from images 2 and 3 to line 3 are: %g, %g\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+// 								     lines[distance_to_line_indeces[2]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_2_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+// 								     lines[distance_to_line_indeces[2]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_3_transformed_view.vector)/5.0, 2));
+//   printf("two TIMES from images 2 and 3 to line 4 are: %g, %g\n",
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+// 								     lines[distance_to_line_indeces[3]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_2_transformed_view.vector)/5.0, 2),
+// 	 std::pow(small_t_solution_->distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+// 								     lines[distance_to_line_indeces[3]][1],
+// 								     &initial_condition_transformed_view.vector,
+// 								     &image_3_transformed_view.vector)/5.0, 2)); 
+//   printf("current small time is %g, and current time is %g \n\n",
+// 	 small_t_solution_->get_t(),
+// 	 t_2_);
 
   printf("flipped_flag = %u\n", flipped_xy_flag_);
   printf("after reflection\ncorner1=c(%g,%g); corner2=c(%g,%g); corner3=c(%g,%g); corner4=c(%g,%g); final.condition=c(%g,%g); initial.condition=c(%g,%g);\n",
@@ -1142,13 +1184,20 @@ printf("\ntwo TIMES from image1 and IC to line 2 are: %g, %g\n",
 	 gsl_vector_get(&final_condition_transformed_view.vector,1), // final condition y
 	 gsl_vector_get(&initial_condition_transformed_view.vector,0),
 	 gsl_vector_get(&initial_condition_transformed_view.vector,1));
-  printf("plot(x=1,type=\"n\",xlim=6*c(-sqrt(2),sqrt(2)),ylim=6*c(-sqrt(2),sqrt(2)));\n");
+  printf("par(mar=c(2,2,1,1));\n");
+  printf("plot(x=1,type=\"n\",xlim=c(-max(abs(c(corner1, corner2, corner3, corner4))), max(abs(c(corner1, corner2, corner3, corner4)))),ylim=c(-max(abs(c(corner1, corner2, corner3, corner4))), max(abs(c(corner1, corner2, corner3, corner4)))));\n");
   printf("lines(c(corner1[1], corner2[1]),c(corner1[2], corner2[2]));\n");
   printf("lines(c(corner2[1], corner3[1]),c(corner2[2], corner3[2]));\n");
   printf("lines(c(corner3[1], corner4[1]),c(corner3[2], corner4[2]));\n");
   printf("lines(c(corner4[1], corner1[1]),c(corner4[2], corner1[2]));\n");
   printf("points(final.condition[1], final.condition[2],lwd=2,col=\"red\");\n");
   printf("points(initial.condition[1], initial.condition[2],lwd=2,col=\"red\");\n");
+
+  printf("samples <- rmvnorm(n=1e5, mean=c(initial.condition[1],initial.condition[2]), sigma=diag(%g*c(1,1)));\n",
+	 t_2_/100);
+  printf("z <- kde2d(samples[,1], samples[,2]);\n");
+  printf("contour(z, add=TRUE);\n");
+  
   printf("\nimage.1=c(%g,%g); image.2=c(%g,%g); image.3=c(%g,%g); image.4=c(%g,%g);\n",
   	 gsl_vector_get(&images_vector[0].vector,0),
   	 gsl_vector_get(&images_vector[0].vector,1),
@@ -2036,4 +2085,355 @@ void BivariateSolver::print_diffusion_params() const
 {
   // printf("Lx = %f,\n Ly = %f,\n sigma_x_ = %f,\n sigma_y_ = %f,\n t_ = %f,\n\n",
   //	 b_-a_, d_-c_, sigma_x_, sigma_y_, t_);
+}
+
+// changes input and returns a good/bad flag
+int BivariateSolver::small_parameter_image_position(gsl_vector* input) const
+{
+  int FLAG = 1;
+
+  gsl_matrix* Rotation_matrix = gsl_matrix_alloc(2,2);
+  gsl_matrix_memcpy(Rotation_matrix, small_t_solution_->get_rotation_matrix());
+
+  double Rotation_matrix_inv [4];
+  gsl_matrix_view Rotation_matrix_inv_view =
+    gsl_matrix_view_array(Rotation_matrix_inv, 2, 2);
+
+  gsl_matrix_memcpy(&Rotation_matrix_inv_view.matrix,
+  		    small_t_solution_->get_rotation_matrix());
+  
+  int s = 0;
+  gsl_permutation * p = gsl_permutation_alloc(2);
+  gsl_linalg_LU_decomp(Rotation_matrix, p, &s);
+  gsl_linalg_LU_invert(Rotation_matrix, p, &Rotation_matrix_inv_view.matrix);
+  gsl_permutation_free(p);
+  gsl_matrix_free(Rotation_matrix);
+
+  double corner_points_array [10] = {get_a_2(),
+  				     get_b_2(),
+  				     get_b_2(),
+  				     get_a_2(),
+  				     get_x_0_2(),
+  				     // // //
+  				     get_c_2(),
+  				     get_c_2(),
+  				     get_d_2(),
+  				     get_d_2(),
+  				     get_y_0_2()};
+  
+  gsl_matrix_view corner_points_view = gsl_matrix_view_array(corner_points_array,
+  							     2, 5);
+
+  double corner_points_transformed_array [10];
+  gsl_matrix_view corner_points_transformed_view =
+    gsl_matrix_view_array(corner_points_transformed_array, 2, 5);
+	  
+  double images_array [32];
+  for (unsigned i=0; i<16; ++i) {
+    images_array[i] = get_x_0_2();
+    images_array[i+16] = get_y_0_2();
+  }
+  double images_transformed_array [32];
+
+  gsl_matrix_view images_view = gsl_matrix_view_array(images_array, 2, 16);
+  gsl_matrix_view images_transformed_view =
+    gsl_matrix_view_array(images_transformed_array, 2, 16);
+
+  // C = alpha*op(A)*op(B) + beta*C
+  gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+  		 CblasNoTrans, //op(B) = B
+  		 1.0, //alpha=1
+  		 small_t_solution_->get_rotation_matrix(), //A
+  		 &corner_points_view.matrix, //B
+  		 0.0, //beta=0
+  		 &corner_points_transformed_view.matrix); //C
+
+  // C = alpha*op(A)*op(B) + beta*C
+  gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+  		 CblasNoTrans, //op(B) = B
+  		 1.0, //alpha=1
+  		 small_t_solution_->get_rotation_matrix(), //A
+  		 &images_view.matrix, //B
+  		 0.0, //beta=0
+  		 &images_transformed_view.matrix); //C
+  
+  gsl_vector_view lower_left_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,0);
+  gsl_vector_view lower_right_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,1);
+  gsl_vector_view upper_right_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,2);
+  gsl_vector_view upper_left_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,3);
+  gsl_vector_view initial_condition_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,4);
+
+  std::vector<std::vector<gsl_vector*>> lines {
+    std::vector<gsl_vector*> {&lower_left_transformed_view.vector,
+  	&lower_right_transformed_view.vector}, // line 1
+      std::vector<gsl_vector*> {&upper_right_transformed_view.vector,
+  	  &lower_right_transformed_view.vector}, // line 2
+  	std::vector<gsl_vector*> {&upper_left_transformed_view.vector,
+  	    &upper_right_transformed_view.vector}, // line 3
+  	  std::vector<gsl_vector*> {&upper_left_transformed_view.vector,
+  	      &lower_left_transformed_view.vector} // line 4
+  };
+
+  std::vector<double> distance_to_line {
+    small_t_solution_->
+      distance_from_point_to_axis_raw(lines[0][0],
+  				      lines[0][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector),
+      small_t_solution_->
+      distance_from_point_to_axis_raw(lines[1][0],
+  				      lines[1][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector),
+      small_t_solution_->
+      distance_from_point_to_axis_raw(lines[2][0],
+  				      lines[2][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector),
+      small_t_solution_->
+      distance_from_point_to_axis_raw(lines[3][0],
+  				      lines[3][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector)};
+
+  std::vector<unsigned> distance_to_line_indeces (4);
+  unsigned n=0;
+  std::generate(distance_to_line_indeces.begin(),
+  		distance_to_line_indeces.end(),
+  		[&n]{ return n++; });
+
+  std::sort(distance_to_line_indeces.begin(), distance_to_line_indeces.end(),
+  	    [&distance_to_line] (unsigned i1, unsigned i2) -> bool
+  	    {
+  	      return distance_to_line[i1] < distance_to_line[i2];
+  	    });
+
+  std::vector<gsl_vector_view> images_vector (16);
+
+  for (unsigned i=0; i<16; ++i) {
+    images_vector[i] =
+      gsl_matrix_column(&images_transformed_view.matrix,i);
+  }
+
+  std::vector<std::vector<double>> distance_from_image_to_line (16, std::vector<double> (4));
+  std::vector<double> max_admissible_times (24);
+  std::vector<BivariateImageWithTime> final_images (24);
+
+  printf("par(mfrow=c(5,5), mar=c(1,1,1,1));\n");
+  unsigned image_counter = 0;
+  for (unsigned p=0; p<4; ++p) {
+    std::vector<unsigned> o_indeces(4);
+    std::iota(o_indeces.begin(), o_indeces.end(), 0);
+    o_indeces.erase(o_indeces.begin() + p);
+        
+    for (unsigned o : o_indeces) {
+      std::vector<unsigned> n_indeces(4);
+      std::iota(n_indeces.begin(), n_indeces.end(), 0);
+
+      std::vector<unsigned>::iterator it;
+      it = std::find(n_indeces.begin(), n_indeces.end(), p);
+      n_indeces.erase(it);
+      //
+      it = std::find(n_indeces.begin(), n_indeces.end(), o);
+      n_indeces.erase(it);
+
+      for (unsigned n : n_indeces) {
+  	std::vector<unsigned> m_indeces(4);
+  	std::iota(m_indeces.begin(), m_indeces.end(), 0);
+
+  	std::vector<unsigned>::iterator it;
+  	it = std::find(m_indeces.begin(), m_indeces.end(), p);
+  	m_indeces.erase(it);
+  	//
+  	it = std::find(m_indeces.begin(), m_indeces.end(), o);
+  	m_indeces.erase(it);
+  	//
+  	it = std::find(m_indeces.begin(), m_indeces.end(), n);
+  	m_indeces.erase(it);
+
+  	for (unsigned m : m_indeces) {
+  	  std::cout << "## (p=" << p
+  		    << ",o=" << o
+  		    << ",n=" << n
+  		    << ",m=" << m << ")" << std::endl;
+
+  	  // C = alpha*op(A)*op(B) + beta*C
+  	  gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+  	  		 CblasNoTrans, //op(B) = B
+  	  		 1.0, //alpha=1
+  	  		 small_t_solution_->get_rotation_matrix(), //A
+  	  		 &images_view.matrix, //B
+  	  		 0.0, //beta=0
+  	  		 &images_transformed_view.matrix); //C
+
+	  std::vector<double> signs_vector = std::vector<double> (16,1.0);
+	  unsigned counter = 0;
+	  for (unsigned l=0; l<2; ++l) {
+	    for (unsigned k=0; k<2; ++k) {
+	      for (unsigned j=0; j<2; ++j) {
+		for (unsigned i=0; i<2; ++i) {
+		  gsl_vector* current_image = &images_vector[counter].vector;
+		  if (i==1) {
+		    small_t_solution_->reflect_point_raw(lines[p][0],
+							 lines[p][1],
+							 current_image);
+		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+		  }
+		  if (j==1) {
+		    small_t_solution_->reflect_point_raw(lines[o][0],
+							 lines[o][1],
+							 current_image);
+		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+		  }
+		  if (k==1) {
+		    small_t_solution_->reflect_point_raw(lines[n][0],
+							 lines[n][1],
+							 current_image);
+		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+		  }
+		  if (l==1) {
+		    small_t_solution_->reflect_point_raw(lines[m][0],
+							 lines[m][1],
+							 current_image);
+		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+		  }
+		  printf("## image %i distances: ", counter);
+
+		  double d1 = small_t_solution_->
+		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+						    lines[distance_to_line_indeces[0]][1],
+						    &initial_condition_transformed_view.vector,
+						    current_image);
+		  double d2 = small_t_solution_->
+		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+						    lines[distance_to_line_indeces[1]][1],
+						    &initial_condition_transformed_view.vector,
+						    current_image);
+		  double d3 = small_t_solution_->
+		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+						    lines[distance_to_line_indeces[2]][1],
+						    &initial_condition_transformed_view.vector,
+						    current_image);
+		  double d4 = small_t_solution_->
+		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+						    lines[distance_to_line_indeces[3]][1],
+						    &initial_condition_transformed_view.vector,
+						    current_image);
+		  printf("%g %g %g %g\n", d1,d2,d3,d4);
+	  
+		  distance_from_image_to_line[counter][0] = d1;
+		  distance_from_image_to_line[counter][1] = d2;
+		  distance_from_image_to_line[counter][2] = d3;
+		  distance_from_image_to_line[counter][3] = d4;
+
+		  printf("image.%i = c(%g,%g);\n",
+			 counter,
+			 gsl_vector_get(current_image, 0),
+			 gsl_vector_get(current_image, 1));
+	  
+		  counter = counter + 1;
+		}
+	      }
+	    }
+	  }
+	  printf("lower.left.corner=c(%g,%g);\n",
+		 gsl_vector_get(&lower_left_transformed_view.vector, 0),
+		 gsl_vector_get(&lower_left_transformed_view.vector, 1));
+	  printf("lower.right.corner=c(%g,%g);\n",
+		 gsl_vector_get(&lower_right_transformed_view.vector, 0),
+		 gsl_vector_get(&lower_right_transformed_view.vector, 1));
+	  printf("upper.left.corner=c(%g,%g);\n",
+		 gsl_vector_get(&upper_left_transformed_view.vector, 0),
+		 gsl_vector_get(&upper_left_transformed_view.vector, 1));
+	  printf("upper.right.corner=c(%g,%g);\n",
+		 gsl_vector_get(&upper_right_transformed_view.vector, 0),
+		 gsl_vector_get(&upper_right_transformed_view.vector, 1));
+
+	  printf("plot(x=0, type=\"n\", xlim = 3*c(-max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner))), max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner)))), ylim = 3*c(-max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner))), max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner)))), xlab=\"x\", ylab=\"y\");\n");
+	  printf("lines(x=c(lower.left.corner[1],lower.right.corner[1]), y=c(lower.left.corner[2],lower.right.corner[2]), lwd=2, col=\"black\");\n"); // border 1
+	  printf("lines(x=c(lower.right.corner[1],upper.right.corner[1]), y=c(lower.right.corner[2],upper.right.corner[2]), lwd=2, col=\"black\");\n"); // border 2
+	  printf("lines(x=c(upper.right.corner[1],upper.left.corner[1]), y=c(upper.right.corner[2],upper.left.corner[2]), lwd=2, col=\"black\");\n"); // border 3
+	  printf("lines(x=c(upper.left.corner[1],lower.left.corner[1]), y=c(upper.left.corner[2],lower.left.corner[2]), lwd=2, col=\"black\");\n"); // border 4
+
+	  for (unsigned ii=0; ii<16; ++ii) {
+	    // printf("points(x=image.%i[1],y=image.%i[2],lwd=2,col=\"blue\");\n", ii, ii);
+	    printf("text(x=image.%i[1],y=image.%i[2],%f);\n", ii, ii, signs_vector[ii]);
+	  }
+	  printf("points(x=image.%i[1],y=image.%i[2],lwd=2,pch=20,col=\"red\");\n", 15, 15);
+	  
+	  int sign = 1;
+	  for (unsigned i=1; i<16; ++i) {
+	    std::vector<double>::iterator result = std::min_element(distance_from_image_to_line[i].begin(),
+								    distance_from_image_to_line[i].end());
+	    if (!std::signbit(*result)) {
+	      sign = -1;
+	      break;
+	    }
+	  }
+
+	  // calculating max admissible time
+	  double mmax = 1.0;
+	  double max_admissible_t = 1.0; //(1.0/0.9) * std::pow(distance_from_image_to_line[0][1]/6.0, 2);
+
+	  while (mmax > 1e-8) {
+	    max_admissible_t = 0.9*max_admissible_t;
+	    mmax = 0.0;
+	    for (unsigned k=0; k<4; ++k) { // iterating over boundaries
+	      unsigned M = 100;
+	      double t_max = 1.0;
+	      std::vector<double> ts(M);
+	      std::vector<double> ls = std::vector<double>(M, 0.0);
+	      std::generate(ts.begin(), ts.end(), [t=0.0, dt = t_max/M] () mutable {t = t + dt; return t; });
+    
+	      for (unsigned j=0; j<M; ++j) { // iterating over points on boundaries
+		double tt = ts[j];
+    
+		double x_current = gsl_vector_get(lines[k][0], 0) +
+		  tt*( gsl_vector_get(lines[k][1], 0) - gsl_vector_get(lines[k][0], 0) );
+
+		double y_current = gsl_vector_get(lines[k][0], 1) +
+		  tt*( gsl_vector_get(lines[k][1], 1) - gsl_vector_get(lines[k][0], 1) );
+    
+		for (unsigned i=0; i<16; ++i) { // iterating over images
+		  gsl_vector* current_image = &images_vector[i].vector;
+		  double x_not = gsl_vector_get(current_image, 0);
+		  double y_not = gsl_vector_get(current_image, 1);
+
+		  ls[j] = ls[j] +
+		    signs_vector[i]*
+		    gsl_ran_gaussian_pdf(x_current-x_not, std::sqrt(max_admissible_t))*
+		    gsl_ran_gaussian_pdf(y_current-y_not, std::sqrt(max_admissible_t));
+		}
+	      }
+      
+	      for (double ll : ls) {
+		if (std::abs(ll) > mmax) {
+		  mmax = std::abs(ll);
+		}
+	      }
+	    }
+	  }
+	  std::cout << "## max_admissible_t=" << max_admissible_t << std::endl;
+	  max_admissible_times[image_counter] = sign*max_admissible_t;
+	  final_images[image_counter] = BivariateImageWithTime(&images_vector[15].vector,
+							       sign*max_admissible_t);
+	  
+	  image_counter = image_counter + 1;
+	}
+      }
+    }
+  }
+  
+  for (const BivariateImageWithTime& current_image : final_images) {
+    std::cout << "(" << gsl_vector_get(current_image.get_position(),0)
+	      << "," << gsl_vector_get(current_image.get_position(),1)
+	      << "," << current_image.get_t() << ")\n";
+  }
+  
+  return FLAG;
 }

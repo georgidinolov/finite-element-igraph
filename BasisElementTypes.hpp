@@ -219,17 +219,18 @@ public:
   double distance_from_point_to_axis_raw(const gsl_vector* point_1,
 					 const gsl_vector* point_2,
 					 const gsl_vector* normal_point,
-					 const gsl_vector* input);
+					 const gsl_vector* input) const;
 
   double distance_from_point_to_axis(const gsl_vector* axis_vector,
 				     const gsl_vector* normal_point,
-				     const gsl_vector* input);
+				     const gsl_vector* input) const;
 
   void reflect_point_raw(const gsl_vector* point_1,
 			 const gsl_vector* point_2,
-			 gsl_vector* input);
+			 gsl_vector* input) const;
+  
   void reflect_point(const gsl_vector* axis_vector,
-		     gsl_vector* input);
+		     gsl_vector* input) const;
   
   double get_t() const;
   inline const gsl_matrix* get_rotation_matrix() const

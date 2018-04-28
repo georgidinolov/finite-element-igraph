@@ -314,7 +314,7 @@ double BivariateSolverClassical::
 distance_from_point_to_axis_raw(const gsl_vector* point_1,
 				const gsl_vector* point_2,
 				const gsl_vector* normal_point,
-				const gsl_vector* input)
+				const gsl_vector* input) const
 {
   gsl_vector* axis_vector = gsl_vector_alloc(2);
   gsl_vector* input_cpy = gsl_vector_alloc(2);
@@ -342,7 +342,7 @@ distance_from_point_to_axis_raw(const gsl_vector* point_1,
 
 void BivariateSolverClassical::reflect_point_raw(const gsl_vector* point_1,
 						 const gsl_vector* point_2,
-						 gsl_vector* input)
+						 gsl_vector* input) const 
 {
   gsl_vector* axis_vector = gsl_vector_alloc(2);
   gsl_vector* input_cpy = gsl_vector_alloc(2);
@@ -365,7 +365,8 @@ void BivariateSolverClassical::reflect_point_raw(const gsl_vector* point_1,
 double BivariateSolverClassical::
 distance_from_point_to_axis(const gsl_vector* axis_vector,
 			    const gsl_vector* normal_point,
-			    const gsl_vector* input) {
+			    const gsl_vector* input) const
+{
   double input_cpy [input->size];
   gsl_vector_view input_cpy_view = gsl_vector_view_array(input_cpy,input->size);
   gsl_vector_memcpy(&input_cpy_view.vector, input);
@@ -426,7 +427,7 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
 
 // both axis_vector and input are centered on (0,0)
 void BivariateSolverClassical::reflect_point(const gsl_vector* axis_vector,
-					     gsl_vector* input)
+					     gsl_vector* input) const
 {
   double axis_vector_array [axis_vector->size];
   gsl_vector_view axis_vector_view = gsl_vector_view_array(axis_vector_array, axis_vector->size);
