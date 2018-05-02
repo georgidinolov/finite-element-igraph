@@ -16,7 +16,8 @@ public:
   virtual BivariateImageWithTime& operator=(const BivariateImageWithTime& rhs);
 
   BivariateImageWithTime(const gsl_vector* position,
-			 double time);
+			 double time,
+			 double mult_factor);
 
   virtual ~BivariateImageWithTime();
 
@@ -32,11 +33,14 @@ public:
   inline void set_t(double t) {
     t_ = t;
   }
-  
+  inline double get_mult_factor() const {
+    return mult_factor_;
+  }
   
 private:
   gsl_vector * position_;
   double t_;
+  double mult_factor_;
 };
 
 class BivariateSolver
@@ -113,6 +117,8 @@ public:
   { return sigma_x_2_; };
   inline double get_sigma_y_2() const
   { return sigma_y_2_; };
+  inline double get_rho() const
+  { return rho_; };
   inline double get_x_0_2() const
   { return x_0_2_; };
   inline double get_y_0_2() const
@@ -125,12 +131,13 @@ public:
   
   virtual double operator()(const gsl_vector* input) const;
   double analytic_solution(const gsl_vector* input) const;
+  double analytic_solution_small_t(const gsl_vector* input) const;
   
   virtual double numerical_likelihood_second_order(const gsl_vector* input, double h);
-  virtual double analytic_likelihood_second_order_small_t(const gsl_vector* input,
+  virtual double numerical_likelihood_first_order_small_t(const gsl_vector* input,
 							  double small_t,
 							  double h);
-  int small_parameter_image_position(gsl_vector *input) const;
+  std::vector<BivariateImageWithTime> small_t_image_positions() const;
   
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood(const gsl_vector* input, double h);

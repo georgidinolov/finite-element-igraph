@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
   points_for_kriging[0].y_0_tilde=7.61119804763752e-01;
   points_for_kriging[0].x_t_tilde=1.85135596642142e-01;
   points_for_kriging[0].y_t_tilde=3.19775518059827e-02;
-  points_for_kriging[0].sigma_y_tilde=0.8;
-  points_for_kriging[0].t_tilde=9.0;
+  points_for_kriging[0].sigma_y_tilde=0.5;
+  points_for_kriging[0].t_tilde=0.10;
   points_for_kriging[0].rho=0.0;
   points_for_kriging[0].log_likelihood=-4.32267567159303e+00;
   points_for_kriging[0].FLIPPED=0;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 	
 	long unsigned seed = seed_init + i;
 	double likelihood = 0.0;
-	double rho = 0.90; //points_for_kriging[i].rho;
+	double rho = 0.0; //points_for_kriging[i].rho;
 	double x [2] = {points_for_kriging[i].x_t_tilde,
 			points_for_kriging[i].y_t_tilde};
 	
@@ -370,10 +370,10 @@ int main(int argc, char *argv[]) {
 		   gsl_vector_get(&images_vector[2].vector,1),
 		   gsl_vector_get(&images_vector[3].vector,0),
 		   gsl_vector_get(&images_vector[3].vector,1));
-	    printf("points(image.1[1], image.1[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.2[1], image.2[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.3[1], image.3[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.4[1], image.4[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.1[1], image.1[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.2[1], image.2[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.3[1], image.3[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.4[1], image.4[2],lwd=10, pch=20,col=\"green\");\n");
 	    printf("\nimage.5=c(%g,%g); image.6=c(%g,%g); image.7=c(%g,%g); image.8=c(%g,%g);\n",
 		   gsl_vector_get(&images_vector[4].vector,0),
 		   gsl_vector_get(&images_vector[4].vector,1),
@@ -383,10 +383,10 @@ int main(int argc, char *argv[]) {
 		   gsl_vector_get(&images_vector[6].vector,1),
 		   gsl_vector_get(&images_vector[7].vector,0),
 		   gsl_vector_get(&images_vector[7].vector,1));
-	    printf("points(image.5[1], image.5[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.6[1], image.6[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.7[1], image.7[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.8[1], image.8[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.5[1], image.5[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.6[1], image.6[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.7[1], image.7[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.8[1], image.8[2],lwd=10, pch=20,col=\"green\");\n");
 
 	    printf("\nimage.9=c(%g,%g); image.10=c(%g,%g); image.11=c(%g,%g); image.12=c(%g,%g);\n",
 		   gsl_vector_get(&images_vector[8].vector,0),
@@ -397,10 +397,10 @@ int main(int argc, char *argv[]) {
 		   gsl_vector_get(&images_vector[10].vector,1),
 		   gsl_vector_get(&images_vector[11].vector,0),
 		   gsl_vector_get(&images_vector[11].vector,1));
-	    printf("points(image.9[1], image.9[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.10[1], image.10[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.11[1], image.11[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.12[1], image.12[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.9[1], image.9[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.10[1], image.10[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.11[1], image.11[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.12[1], image.12[2],lwd=10, pch=20,col=\"green\");\n");
 	    printf("\nimage.13=c(%g,%g); image.14=c(%g,%g); image.15=c(%g,%g); image.16=c(%g,%g);\n",
 		   gsl_vector_get(&images_vector[12].vector,0),
 		   gsl_vector_get(&images_vector[12].vector,1),
@@ -410,34 +410,51 @@ int main(int argc, char *argv[]) {
 		   gsl_vector_get(&images_vector[14].vector,1),
 		   gsl_vector_get(&images_vector[15].vector,0),
 		   gsl_vector_get(&images_vector[15].vector,1));
-	    printf("points(image.13[1], image.13[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.14[1], image.14[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.15[1], image.15[2],lwd=10, pch=20,col=\"green\");\n");
-	    printf("points(image.16[1], image.16[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.13[1], image.13[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.14[1], image.14[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.15[1], image.15[2],lwd=10, pch=20,col=\"green\");\n");
+	    // printf("points(image.16[1], image.16[2],lwd=10, pch=20,col=\"green\");\n");
 
-	    printf("points(image.16[1], image.16[2],lwd=10, pch=20,col=\"red\");\n");
+	    // printf("points(image.16[1], image.16[2],lwd=10, pch=20,col=\"red\");\n");
 	    printf("dev.off();\n");
 
-	    unsigned M = 100;
-	    double sigma_max = 1.0;
+	    unsigned M = 5;
+	    double sigma_max = 0.9;
 	    std::vector<double> sigma_tildes(M);
-	    std::generate(sigma_tildes.begin(), sigma_tildes.end(), [sigma=0.1, dsigma = sigma_max/M] () mutable {sigma = sigma + dsigma; return sigma; });
+	    std::generate(sigma_tildes.begin(), sigma_tildes.end(), [sigma=0.01, dsigma = sigma_max/M] () mutable {sigma = sigma + dsigma; return sigma; });
 
 	    for (double sigma_tilde : sigma_tildes) {
 	      solver.set_diffusion_parameters(1.0,
 					      sigma_tilde,
 					      rho);
-	      printf("%g ,", solver.analytic_solution(&raw_input.vector));
+	      std::vector<BivariateImageWithTime> images = solver.small_t_image_positions();
+	      printf("## t = %g\n", images[0].get_t());
+	      solver.set_diffusion_parameters_and_data(1.0,
+						       sigma_tilde,
+						       rho,
+						       images[0].get_t(),
+						       solver.get_a_2(),
+						       solver.get_x_0_2(),
+						       solver.get_b_2(),
+						       solver.get_c_2(),
+						       solver.get_y_0_2(),
+						       solver.get_d_2());
+	      // double out = solver.numerical_likelihood_first_order_small_t(scaled_input, 1.0, dx_likelihood);
+	      // printf("## (%g,%g)\n",
+	      // 	     sigma_tilde,
+	      // 	     out);
+	      // printf("## %g\n", solver.analytic_likelihood(scaled_input,100));
+	      double out = solver.numerical_likelihood_first_order_small_t(scaled_input,
+									   0.07,
+									   dx_likelihood);
+	      printf("## (%g,%g)\n",
+	      	     sigma_tilde,
+	      	     out);
+	      printf("## %g\n", solver.analytic_likelihood(scaled_input, 100));
 	    }
 	    printf("\n");
 
-	    solver.set_diffusion_parameters(1.0,
-	    				    points_for_kriging[i].sigma_y_tilde,
-	    				    rho);
 
-	    double image_position_arr [2];
-	    gsl_vector_view image_position = gsl_vector_view_array(image_position_arr, 2);
-	    solver.small_parameter_image_position(&image_position.vector);
 
 	}
 	points_for_kriging[i].log_likelihood = log(likelihood);
