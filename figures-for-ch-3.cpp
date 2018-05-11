@@ -76,13 +76,15 @@ int main(int argc, char *argv[]) {
   }
 
 
+
+  
   std::vector<likelihood_point> points_for_kriging (1);
-  points_for_kriging[0].x_0_tilde=6.50160070618248e-02;
-  points_for_kriging[0].y_0_tilde=7.61119804763752e-01;
-  points_for_kriging[0].x_t_tilde=1.85135596642142e-01;
-  points_for_kriging[0].y_t_tilde=3.19775518059827e-02;
+  points_for_kriging[1].x_0_tilde=5.00160070618248e-01;
+  points_for_kriging[0].y_0_tilde=5.01119804763752e-01;
+  points_for_kriging[1].x_t_tilde=2.85135596642142e-01;
+  points_for_kriging[0].y_t_tilde=3.19775518059827e-01;
   points_for_kriging[0].sigma_y_tilde=0.5;
-  points_for_kriging[0].t_tilde=0.10;
+  points_for_kriging[0].t_tilde=0.00510;
   points_for_kriging[0].rho=0.0;
   points_for_kriging[0].log_likelihood=-4.32267567159303e+00;
   points_for_kriging[0].FLIPPED=0;
@@ -418,39 +420,29 @@ int main(int argc, char *argv[]) {
 	    // printf("points(image.16[1], image.16[2],lwd=10, pch=20,col=\"red\");\n");
 	    printf("dev.off();\n");
 
-	    unsigned M = 5;
-	    double sigma_max = 0.9;
+	    unsigned M = 10;
+	    double sigma_max = 1.0;
 	    std::vector<double> sigma_tildes(M);
-	    std::generate(sigma_tildes.begin(), sigma_tildes.end(), [sigma=0.01, dsigma = sigma_max/M] () mutable {sigma = sigma + dsigma; return sigma; });
+	    double sigma = 0.0;
+	    double dsigma = sigma_max/M;
+	    std::generate(sigma_tildes.begin(), sigma_tildes.end(), [&] ()->double {sigma = sigma + dsigma; return sigma; });
 
 	    for (double sigma_tilde : sigma_tildes) {
 	      solver.set_diffusion_parameters(1.0,
 					      sigma_tilde,
 					      rho);
-	      std::vector<BivariateImageWithTime> images = solver.small_t_image_positions();
-	      printf("## t = %g\n", images[0].get_t());
-	      solver.set_diffusion_parameters_and_data(1.0,
-						       sigma_tilde,
-						       rho,
-						       images[0].get_t(),
-						       solver.get_a_2(),
-						       solver.get_x_0_2(),
-						       solver.get_b_2(),
-						       solver.get_c_2(),
-						       solver.get_y_0_2(),
-						       solver.get_d_2());
-	      // double out = solver.numerical_likelihood_first_order_small_t(scaled_input, 1.0, dx_likelihood);
-	      // printf("## (%g,%g)\n",
-	      // 	     sigma_tilde,
-	      // 	     out);
-	      // printf("## %g\n", solver.analytic_likelihood(scaled_input,100));
-	      double out = solver.numerical_likelihood_first_order_small_t(scaled_input,
-									   0.07,
-									   dx_likelihood);
-	      printf("## (%g,%g)\n",
+	      double out_analytic = solver.analytic_likelihood_ax(&raw_input.vector, 10000);
+	      double out_numeric = solver.numerical_likelihood_first_order_small_t(&raw_input.vector,
+										   1,
+										   dx_likelihood);
+	      double before = solver.analytic_solution(scaled_input);
+	      double CC = 1.0/( 2.0*(1-solver.get_rho()*solver.get_rho())*
+				solver.get_t()*solver.get_sigma_y()*solver.get_sigma_y() );
+	      printf("\n## (%g,%g,%g)\n\n",
 	      	     sigma_tilde,
-	      	     out);
-	      printf("## %g\n", solver.analytic_likelihood(scaled_input, 100));
+		     out_analytic,
+		     out_numeric);
+		     
 	    }
 	    printf("\n");
 

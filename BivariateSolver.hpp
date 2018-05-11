@@ -90,6 +90,13 @@ public:
 		double y_0,
 		double d);
 
+    void set_data_for_small_t(double a,
+			      double x_0,
+			      double b,
+			      double c,
+			      double y_0,
+			      double d);
+
   void set_diffusion_parameters_and_data(double sigma_x,
 					 double sigma_y,
 					 double rho,
@@ -117,14 +124,22 @@ public:
   { return sigma_x_2_; };
   inline double get_sigma_y_2() const
   { return sigma_y_2_; };
+
+  inline double get_sigma_x() const
+  { return sigma_x_; };
+  inline double get_sigma_y() const
+  { return sigma_y_; };
+  
   inline double get_rho() const
   { return rho_; };
   inline double get_x_0_2() const
   { return x_0_2_; };
   inline double get_y_0_2() const
   { return y_0_2_; };
+
   inline double get_t_2() const
   { return t_2_; };
+
   inline bool get_flipped_xy_flag() const
   { return flipped_xy_flag_; };
   
@@ -138,12 +153,14 @@ public:
 							  double small_t,
 							  double h);
   std::vector<BivariateImageWithTime> small_t_image_positions() const;
+  std::vector<BivariateImageWithTime> small_t_image_positions_ax() const;
   
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood(const gsl_vector* input, double h);
   virtual double numerical_likelihood_extended(const gsl_vector* input, double h);
   // only valid for rho = 0
   virtual double analytic_likelihood(const gsl_vector* input, int little_n);
+  virtual double analytic_likelihood_ax(const gsl_vector* input, int little_n);
   inline const BivariateSolverClassical* get_small_t_solution() const
   {
     return small_t_solution_;
@@ -185,6 +202,7 @@ private:
   gsl_vector* solution_coefs_;
 
   void set_scaled_data();
+  double scale_back_t(double t_2) const;
   void set_IC_coefs();
   // requires sigma_x_, sigma_y_, rho_;
   void set_mass_and_stiffness_matrices();

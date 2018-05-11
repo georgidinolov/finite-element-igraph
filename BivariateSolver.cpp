@@ -309,6 +309,21 @@ gsl_vector* BivariateSolver::scale_input(const gsl_vector* input) const
   return scaled_input;
 }
 
+void BivariateSolver::set_data_for_small_t(double a,
+			       double x_0,
+			       double b,
+			       double c,
+			       double y_0,
+			       double d)
+{
+  a_ = a;
+  b_ = b;
+  c_ = c;
+  d_ = d;
+  x_0_ = x_0;
+  y_0_ = y_0;
+  set_scaled_data();
+}
 void BivariateSolver::set_data(double a,
 			       double x_0,
 			       double b,
@@ -471,7 +486,15 @@ operator()(const gsl_vector* input) const
 
 double BivariateSolver::analytic_solution(const gsl_vector* input) const
 {
-  int little_n = 1000;
+  // std::cout << "## analytic_solution start ##" << std::endl;
+  // std::cout << "t_=" << t_ << ","
+  // 	    << "sigma_x_=" << sigma_x_ << ","
+  // 	    << "sigma_y_=" << sigma_y_ << "\n"
+  // 	    << "(a_=" << a_ << "," << "x_0_=" << x_0_ << "," << "x_t_=" << gsl_vector_get(input,0) << "," << "b_=" << b_ << ")\n"
+  //   	    << "(c_=" << c_ << "," << "y_0_=" << y_0_ << "," << "y_t_=" << gsl_vector_get(input,1) << "," << "d_=" << d_ << ")\n";
+  // std::cout << "## analytic_solution end ##" << std::endl;;
+  
+  int little_n = 10000;
 
   std::vector<double> d1x (2*little_n + 1);
   std::vector<double> d2x (2*little_n + 1);
@@ -485,15 +508,15 @@ double BivariateSolver::analytic_solution(const gsl_vector* input) const
   for (int i=0; i<2*little_n+1; ++i) {
     int n = i - little_n;
 
-    d1x[i] = std::pow(gsl_vector_get(input,0) - x_0_ - 2.0*n*(b_-a_), 2) /
-      (2.0 * std::pow(sigma_x_, 2) * t_);
-    d2x[i] = std::pow(gsl_vector_get(input,0) + x_0_ - 2.0*a_ - 2.0*n*(b_-a_), 2) /
-      (2.0 * std::pow(sigma_x_, 2) * t_);
+    d1x[i] = std::pow(gsl_vector_get(input,0) - x_0_2_ - 2.0*n*(b_2_-a_2_), 2) /
+      (2.0 * std::pow(sigma_x_2_, 2) * t_2_);
+    d2x[i] = std::pow(gsl_vector_get(input,0) + x_0_2_ - 2.0*a_2_ - 2.0*n*(b_2_-a_2_), 2) /
+      (2.0 * std::pow(sigma_x_2_, 2) * t_2_);
 
-    d1y[i] = std::pow(gsl_vector_get(input,1) - y_0_ - 2.0*n*(d_-c_), 2) /
-      (2.0 * std::pow(sigma_y_, 2) * t_);
-    d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_ - 2.0*c_ - 2.0*n*(d_-c_), 2) /
-      (2.0 * std::pow(sigma_y_, 2) * t_);
+    d1y[i] = std::pow(gsl_vector_get(input,1) - y_0_2_ - 2.0*n*(d_2_-c_2_), 2) /
+      (2.0 * std::pow(sigma_y_2_, 2) * t_2_);
+    d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_2_ - 2.0*c_2_ - 2.0*n*(d_2_-c_2_), 2) /
+      (2.0 * std::pow(sigma_y_2_, 2) * t_2_);
 
     sum_x = sum_x +
       (std::exp(-d1x[i]) - std::exp(-d2x[i]));
@@ -505,10 +528,10 @@ double BivariateSolver::analytic_solution(const gsl_vector* input) const
   }
   // std::cout << std::endl;
 
-  double out_x = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_x_,2)*t_))*
+  double out_x = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_x_2_,2)*t_2_))*
     sum_x;
 
-  double out_y = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_y_,2)*t_))*
+  double out_y = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_y_2_,2)*t_2_))*
     sum_y;
 
   double out = out_x*out_y;
@@ -519,6 +542,7 @@ double BivariateSolver::analytic_solution(const gsl_vector* input) const
   // std::cout << "x.fc = " << gsl_vector_get(input,0) << ";" << std::endl;
   // std::cout << "sigma.2.x = " << std::pow(sigma_x_, 2) << ";" << std::endl;
   // std::cout << "out_x = " << out_x << ";" << std::endl;
+
   return out;
 }
 
@@ -640,9 +664,17 @@ double BivariateSolver::numerical_likelihood_extended(const gsl_vector* input,
 double BivariateSolver::analytic_likelihood(const gsl_vector* input,
 					    int little_n)
 {
+  // std::cout << "## analytic_likelihood start ##" << std::endl;
+  // std::cout << "t_=" << t_ << ","
+  // 	    << "sigma_x_=" << sigma_x_ << ","
+  // 	    << "sigma_y_=" << sigma_y_ << "\n"
+  // 	    << "(a_=" << a_ << "," << "x_0_=" << x_0_ << "," << "x_t_=" << gsl_vector_get(input,0) << "," << "b_=" << b_ << ")\n"
+  //   	    << "(c_=" << c_ << "," << "y_0_=" << y_0_ << "," << "y_t_=" << gsl_vector_get(input,1) << "," << "d_=" << d_ << ")\n";
+  // std::cout << "## analytic_likelihood end ##" << std::endl;;
+    
   double d1x [2*little_n + 1];
   double d2x [2*little_n + 1];
-
+  
   double d1y [2*little_n + 1];
   double d2y [2*little_n + 1];
 
@@ -657,15 +689,6 @@ double BivariateSolver::analytic_likelihood(const gsl_vector* input,
       (2.0 * std::pow(sigma_y_, 2) * t_);
     d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_ - 2.0*c_ - 2.0*n*(d_-c_), 2) /
       (2.0 * std::pow(sigma_y_, 2) * t_);
-
-    // d1x[i] = std::pow(gsl_vector_get(scaled_input,0) - x_0_ - 2.0*n, 2) /
-    //   (2.0);
-    // d2x[i] = std::pow(gsl_vector_get(scaled_input,0) + x_0_ - 2.0*n, 2) /
-    //   (2.0);
-    // d1y[i] = std::pow(gsl_vector_get(scaled_input,1) - y_0_ - 2.0*n, 2) /
-    //   (2.0 * std::pow(sigma_y_, 2));
-    // d2x[i] = std::pow(gsl_vector_get(scaled_input,1) + y_0_ - 2.0*n, 2) /
-    //   (2.0 * std::pow(sigma_y_, 2));
   }
 
   double deriv_x = 0.0;
@@ -689,6 +712,62 @@ double BivariateSolver::analytic_likelihood(const gsl_vector* input,
 
   double out = deriv_x*deriv_y;
   return (out);
+}
+
+
+double BivariateSolver::analytic_likelihood_ax(const gsl_vector* input,
+					       int little_n)
+{
+  std::vector<double> d1x (2*little_n + 1);
+  std::vector<double> d2x (2*little_n + 1);
+
+  std::vector<double> d1y (2*little_n + 1);
+  std::vector<double> d2y (2*little_n + 1);
+
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+
+  for (int i=0; i<2*little_n+1; ++i) {
+    int n = i - little_n;
+
+    d1x[i] = std::pow(gsl_vector_get(input,0) - x_0_2_ - 2.0*n*(b_2_-a_2_), 2) /
+      (2.0 * std::pow(sigma_x_2_, 2) * t_2_);
+    d2x[i] = std::pow(gsl_vector_get(input,0) + x_0_2_ - 2.0*a_2_ - 2.0*n*(b_2_-a_2_), 2) /
+      (2.0 * std::pow(sigma_x_2_, 2) * t_2_);
+
+    d1y[i] = std::pow(gsl_vector_get(input,1) - y_0_2_ - 2.0*n*(d_2_-c_2_), 2) /
+      (2.0 * std::pow(sigma_y_2_, 2) * t_2_);
+    d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_2_ - 2.0*c_2_ - 2.0*n*(d_2_-c_2_), 2) /
+      (2.0 * std::pow(sigma_y_2_, 2) * t_2_);
+
+    sum_x = sum_x +
+      (-1.0*std::exp(-d1x[i])*(gsl_vector_get(input,0) - x_0_2_ - 2.0*n*(b_2_-a_2_))/(std::pow(sigma_x_2_, 2) * t_2_)*(2.0*n) -
+       //
+       -1.0*std::exp(-d2x[i])*(gsl_vector_get(input,0) + x_0_2_ - 2.0*a_2_ - 2.0*n*(b_2_-a_2_))/(std::pow(sigma_x_2_, 2) * t_2_)*(-2.0+2.0*n));
+
+    sum_y = sum_y +
+      (std::exp(-d1y[i]) - std::exp(-d2y[i]));
+
+    // std::cout << "d1x[" << n << "] = " << d1x[i] << " ";
+  }
+  // std::cout << std::endl;
+
+  double out_x = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_x_2_,2)*t_2_))*
+    sum_x;
+
+  double out_y = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_y_2_,2)*t_2_))*
+    sum_y;
+
+  double out = out_x*out_y;
+  // std::cout << "t = " << t_ << ";" << std::endl;
+  // std::cout << "ax = " << a_ << ";" << std::endl;
+  // std::cout << "bx = " << b_ << ";" << std::endl;
+  // std::cout << "x.ic = " << x_0_ << ";" << std::endl;
+  // std::cout << "x.fc = " << gsl_vector_get(input,0) << ";" << std::endl;
+  // std::cout << "sigma.2.x = " << std::pow(sigma_x_, 2) << ";" << std::endl;
+  // std::cout << "out_x = " << out_x << ";" << std::endl;
+
+  return out;
 }
 
 double BivariateSolver::numerical_likelihood(const gsl_vector* input,
@@ -820,8 +899,8 @@ double BivariateSolver::numerical_likelihood_first_order_small_t(const gsl_vecto
 								 double small_t,
 								 double h)
 {
-  printf("in numerical_likelihood_first_order_small_t\n");
-
+  printf("in NUMERICAL_likelihood_first_order_small_t\n");
+  // there are 16 solutions to be computed
   double current_a = a_;
   double current_b = b_;
   double current_c = c_;
@@ -829,7 +908,7 @@ double BivariateSolver::numerical_likelihood_first_order_small_t(const gsl_vecto
   double current_x_0 = x_0_;
   double current_y_0 = y_0_;
 
-  std::vector<int> a_indeces {0,-1};
+  std::vector<int> a_indeces {1,-1};
   std::vector<int> b_indeces {1, 0};
   std::vector<int> c_indeces {0,-1};
   std::vector<int> d_indeces {1, 0};
@@ -838,64 +917,120 @@ double BivariateSolver::numerical_likelihood_first_order_small_t(const gsl_vecto
   int b_power=1;
   int c_power=1;
   int d_power=1;
-  
+
   double derivative = 0;
+  double derivative_with_sol = 0;
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
 
-  gsl_matrix* cov_mat = gsl_matrix_alloc(2,2);
+  double log_CC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_));
+
+  gsl_matrix* cov_matrix = gsl_matrix_alloc(2,2);
+  gsl_matrix_set(cov_matrix, 0,0,
+		 sigma_x_*sigma_x_*t_);
+  gsl_matrix_set(cov_matrix, 0,1,
+		 rho_*sigma_x_*sigma_y_*t_);
+  gsl_matrix_set(cov_matrix, 1,0,
+		 rho_*sigma_x_*sigma_y_*t_);
+  gsl_matrix_set(cov_matrix, 1,1,
+		 sigma_y_*sigma_y_*t_);
+
+  std::vector<BivariateImageWithTime> positions = small_t_image_positions_ax();
+  std::cout << "positions.size()=" << positions.size() << std::endl;
+
+  MultivariateNormal mvtnorm = MultivariateNormal();
+  double before_small_t = mvtnorm.dmvnorm(2,
+					      positions[0].get_position(),
+					      raw_input,
+					      cov_matrix);
+  double log_before_small_t = mvtnorm.dmvnorm_log(2,
+					      positions[0].get_position(),
+					      raw_input,
+					      cov_matrix);
+  double log_before_small_t_2 =
+    -1.0*(log(2*M_PI) + log(sigma_x_) + log(sigma_y_) + log(t_) + 0.5*log(1-rho_*rho_))
+    -1.0/(t_*2*(1-rho_*rho_))*
+    (
+     std::pow((gsl_vector_get(raw_input,0)-gsl_vector_get(positions[0].get_position(),0)),2)/
+     std::pow(sigma_x_,2) +
+     // //
+     std::pow((gsl_vector_get(raw_input,1)-gsl_vector_get(positions[0].get_position(),1)),2)/
+     std::pow(sigma_y_,2) +
+     // //
+     -2.0*rho_*(gsl_vector_get(raw_input,0)-gsl_vector_get(positions[0].get_position(),0))*
+     (gsl_vector_get(raw_input,1)-gsl_vector_get(positions[0].get_position(),1))/
+     (sigma_x_*sigma_y_)
+     );
+      
+  std::cout << "before_small_t=" << before_small_t << std::endl;
+  std::cout << "log_before_small_t=" << log_before_small_t << std::endl;
+  std::cout << "log_before_small_t_2=" << log_before_small_t_2 << std::endl;
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
 
-    for (unsigned j=0; j<b_indeces.size(); ++j) {
-      if (j==0) { b_power=1; } else { b_power=0; };
+  	  set_data(current_a + a_indeces[i]*h_x,
+  		   current_x_0,
+  		   current_b,
+  		   current_c,
+  		   current_y_0,
+  		   current_d);
 
-      for (unsigned k=0; k<c_indeces.size(); ++k) {
-      	if (k==0) { c_power=1; } else { c_power=0; };
-
-    	for (unsigned l=0; l<d_indeces.size(); ++l) {
-    	  if (l==0) { d_power=1; } else { d_power=0; };
-
-	  set_data(current_a + a_indeces[i]*h_x,
-		   current_x_0,
-		   current_b + b_indeces[j]*h_x,
-		   current_c + c_indeces[k]*h_x,
-		   current_y_0,
-		   current_d + d_indeces[l]*h_x);
+  	  positions = small_t_image_positions_ax();
+	  double x_0_star = gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x;
+	  double y_0_star = gsl_vector_get(positions[0].get_position(),1)*(d_-c_);
+	  double x = gsl_vector_get(raw_input, 0);
+	  double y = gsl_vector_get(raw_input, 1);
+	  gsl_vector* original_scale_position = gsl_vector_alloc(2);
+	  gsl_vector_set(original_scale_position,0,x_0_star);
+	  gsl_vector_set(original_scale_position,1,y_0_star);
 	  gsl_vector* scaled_input = scale_input(raw_input);
+
+  	  gsl_matrix_set(cov_matrix, 0,0,
+  			 sigma_x_*sigma_x_*t_);
+  	  gsl_matrix_set(cov_matrix, 0,1,
+  			 rho_*sigma_x_*sigma_y_*t_);
+  	  gsl_matrix_set(cov_matrix, 1,0,
+  			 rho_*sigma_x_*sigma_y_*t_);
+  	  gsl_matrix_set(cov_matrix, 1,1,
+  			 sigma_y_*sigma_y_*t_);
+
+	  double polynomial = std::pow((x-x_0_star)/sigma_x_,2) +
+	    std::pow((y-y_0_star)/sigma_y_,2) -
+	    2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*(y-y_0_star);
+	  
+  	  double smallt = mvtnorm.dmvnorm_log(2,
+  					      original_scale_position,
+  					      raw_input,
+  					      cov_matrix);
+	  double analytic_sol = analytic_solution(scaled_input);
+
+	  std::cout << "a_=" << a_ << ", x_0_=" << x_0_ << ", x_0_reflected=" << (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)
+		    << ", (b_-a_)=" << b_-a_
+		    << ", a_2_=" << a_2_ << ", x_0_2_=" << x_0_2_ << ", (b_2_-a_2_)=" << b_2_-a_2_
+		    << ", t_2_min=" << positions[0].get_t()
+		    << ", t_min=" << scale_back_t(positions[0].get_t())
+		    << ", log_analytic_sol=" << log(analytic_sol) - log(b_-a_) - log(d_-c_)
+		    << ", analytic_sol=" << exp(log(analytic_sol) - log(b_-a_) - log(d_-c_))
+		    << "\n";
+
 	  derivative = derivative +
-	    analytic_solution(scaled_input)*
-	    std::pow(-1, a_power)*
-	    std::pow(-1, b_power)*
-	    std::pow(-1, c_power)*
-	    std::pow(-1, d_power) /
-	    ((b_-a_)*(d_-c_));
-	  // std::vector<BivariateImageWithTime> small_t_images = small_t_image_positions();
-	  // for (const BivariateImageWithTime& image : small_t_images) {
+	    // (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)*
+	    //std::exp(smallt-log_before_small_t-log_CC)*
+	    polynomial*
+  	    std::pow(-1, a_power);
 
-	  //   MultivariateNormal mvtnorm = MultivariateNormal();
-	  //   gsl_matrix_set(cov_mat, 0,0, sigma_x_2_*sigma_x_2_*image.get_t());
-	  //   gsl_matrix_set(cov_mat, 0,1, rho_*sigma_x_2_*sigma_y_2_*image.get_t());
-	  //   gsl_matrix_set(cov_mat, 1,0, rho_*sigma_x_2_*sigma_y_2_*image.get_t());
-	  //   gsl_matrix_set(cov_mat, 1,1, sigma_y_2_*sigma_y_2_*image.get_t());
+	  derivative_with_sol = derivative_with_sol +
+	    exp(log(analytic_solution(scaled_input)) - log(b_-a_) - log(d_-c_))*
+  	    std::pow(-1, a_power);
 
-	  //   derivative = derivative + (mvtnorm.dmvnorm(2,
-	  // 					      scaled_input,
-	  // 					      image.get_position(),
-	  // 					      cov_mat)*
-	  // 			       1.0*
-	  // 			       std::pow(-1, a_power)*
-	  // 			       std::pow(-1, b_power)*
-	  // 			       std::pow(-1, c_power)*
-	  // 			       std::pow(-1, d_power)) /
-	  //     (small_t_images.size()*(b_-a_)*(d_-c_));
-	  // }
+	  gsl_vector_free(original_scale_position);
 	  gsl_vector_free(scaled_input);
-    	}
-      }
-    }
   }
-  gsl_matrix_free(cov_mat);
+  std::cout << std::endl;
+  	// }
+   //   }
+   // }
+  gsl_matrix_free(cov_matrix);
   
   set_data(current_a,
   	   current_x_0,
@@ -903,20 +1038,23 @@ double BivariateSolver::numerical_likelihood_first_order_small_t(const gsl_vecto
   	   current_c,
   	   current_y_0,
   	   current_d);
+  positions = small_t_image_positions_ax();
 
-  // derivative = derivative / (16 * h^2 * h^2);
-  derivative = std::exp(std::log(std::abs(derivative)) - log(1) - 2*log(h_x) - log(1) - 2*log(h_y));
+  double x = gsl_vector_get(raw_input,0);
+  double y = gsl_vector_get(raw_input,1);
+  double x_0 = gsl_vector_get(positions[0].get_position(),0);
+  double y_0 = gsl_vector_get(positions[0].get_position(),1);
+  
+  std::cout << "The analytic deriv is = "
+	    << -1.0*std::exp(log_before_small_t + log_CC + log(std::abs(2*(x-x_0)/std::pow(sigma_x_,2)*(-2) - 2*rho_/(sigma_x_*sigma_y_)*(-2)*(y-y_0))))
+	    << std::endl;
+  derivative = derivative/(2*h_x)* exp(log_before_small_t + log_CC);
+  std::cout << "The solution with numerical polynomail deriv is = " << derivative << std::endl;
+  derivative_with_sol = derivative_with_sol/(2*h_x);
+  std::cout << "The deriv with solution is = "
+	    << derivative_with_sol << std::endl;
+  std::cout << "The analytic deriv from _ax() is = " << analytic_likelihood_ax(raw_input, 10000) << std::endl;
 
-  // if (std::signbit(derivative)) {
-  //   derivative =     
-  //     -std::exp(std::log(std::abs(derivative)) - log(16) - 2*log(h_x) - 2*log(h_y));
-  // } else {
-  //   derivative =
-  //     std::exp(std::log(std::abs(derivative)) - log(16) - 2*log(h_x) - 2*log(h_y));
-  // }
-
-  //  derivative = derivative/(std::pow(Lx, 3) * std::pow(Ly,3));
-  //  gsl_vector_free(raw_input);
   return derivative;
 }
 
@@ -1248,6 +1386,41 @@ void BivariateSolver::set_scaled_data()
   // 	 x_0_2_, y_0_2_, t_2_);
 }
 
+double BivariateSolver::scale_back_t(double t_2) const
+{
+  double t = 0;
+
+  // STEP 1 SHIFTING
+  double x_0_1 = x_0_ - a_;
+  double b_1 = b_ - a_;
+  double a_1 = a_ - a_;
+  
+  double y_0_1 = y_0_ - c_;
+  double c_1 = c_ - c_;
+  double d_1 = d_ - c_;
+  
+  // STEP 2 SCALING
+  double Lx_2 = b_1 - a_1;
+  double x_0_2 =  x_0_1 / Lx_2;
+  double a_2 = a_1 / Lx_2;
+  double b_2 = b_1 / Lx_2;
+  double sigma_x_2 = sigma_x_ / Lx_2;
+  
+  double Ly_2 = d_1 - c_1;
+  double y_0_2 =  y_0_1 / Ly_2;
+  double c_2 = c_1 / Ly_2;
+  double d_2 = d_1 / Ly_2;
+  double sigma_y_2 = sigma_y_ / Ly_2;
+
+  if (flipped_xy_flag_) {
+    t = t_2/(sigma_y_2*sigma_y_2);
+  } else {
+    t = t_2/(sigma_x_2*sigma_x_2);
+  }
+
+  return t;
+}
+
 double BivariateSolver::extrapolate_t_direction(const double likelihood_upper_bound,
 						const double t_lower_bound_in,
 						const double t_2_current,
@@ -1497,10 +1670,316 @@ void BivariateSolver::print_diffusion_params() const
   //	 b_-a_, d_-c_, sigma_x_, sigma_y_, t_);
 }
 
-// changes input and returns a good/bad flag
+std::vector<BivariateImageWithTime> BivariateSolver::
+small_t_image_positions_ax() const
+{
+  gsl_matrix* Rotation_matrix = gsl_matrix_alloc(2,2);
+  gsl_matrix_memcpy(Rotation_matrix, small_t_solution_->get_rotation_matrix());
+
+  double Rotation_matrix_inv [4];
+  gsl_matrix_view Rotation_matrix_inv_view =
+    gsl_matrix_view_array(Rotation_matrix_inv, 2, 2);
+
+  gsl_matrix_memcpy(&Rotation_matrix_inv_view.matrix,
+  		    small_t_solution_->get_rotation_matrix());
+
+  double cc = std::sin(M_PI/4.0);
+  gsl_matrix_set(&Rotation_matrix_inv_view.matrix, 0,0,
+		 0.5/cc * sigma_x_2_*std::sqrt(1-rho_));
+  gsl_matrix_set(&Rotation_matrix_inv_view.matrix, 0,1,
+		  0.5/cc * sigma_x_2_*std::sqrt(1+rho_));
+  gsl_matrix_set(&Rotation_matrix_inv_view.matrix, 1,0,
+		 -0.5/cc * sigma_y_2_*std::sqrt(1-rho_));
+  gsl_matrix_set(&Rotation_matrix_inv_view.matrix, 1,1,
+		 0.5/cc * sigma_y_2_*std::sqrt(1+rho_));
+  
+  // int s = 0;
+  // gsl_permutation * p = gsl_permutation_alloc(2);
+  // gsl_linalg_LU_decomp(Rotation_matrix, p, &s);
+  // gsl_linalg_LU_invert(Rotation_matrix, p, &Rotation_matrix_inv_view.matrix);
+  // gsl_permutation_free(p);
+  // gsl_matrix_free(Rotation_matrix);
+
+  // double product [4];
+  // gsl_matrix_view product_view =
+  //   gsl_matrix_view_array(product, 2,2);
+  // // C = alpha*op(A)*op(B) + beta*C
+  // gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+  // 		 CblasNoTrans, //op(B) = B
+  // 		 1.0, //alpha=1
+  // 		 small_t_solution_->get_rotation_matrix(), //A
+  // 		 &Rotation_matrix_inv_view.matrix, //B
+  // 		 0.0, //beta=0
+  // 		 &product_view.matrix); //C
+  // std::cout << gsl_matrix_get(&product_view.matrix,0,0) << " "
+  // 	    << gsl_matrix_get(&product_view.matrix,0,1) << "\n"
+  // 	    << gsl_matrix_get(&product_view.matrix,1,0) << " "
+  //   	    << gsl_matrix_get(&product_view.matrix,1,1) << std::endl;
+
+  double corner_points_array [10] = {get_a_2(),
+  				     get_b_2(),
+  				     get_b_2(),
+  				     get_a_2(),
+  				     get_x_0_2(),
+  				     // // //
+  				     get_c_2(),
+  				     get_c_2(),
+  				     get_d_2(),
+  				     get_d_2(),
+  				     get_y_0_2()};
+  
+  gsl_matrix_view corner_points_view = gsl_matrix_view_array(corner_points_array,
+  							     2, 5);
+
+  double corner_points_transformed_array [10];
+  gsl_matrix_view corner_points_transformed_view =
+    gsl_matrix_view_array(corner_points_transformed_array, 2, 5);
+	  
+  double images_array [4];
+  for (unsigned i=0; i<2; ++i) {
+    images_array[i] = get_x_0_2();
+    images_array[i+2] = get_y_0_2();
+  }
+  double images_transformed_array [4];
+
+  gsl_matrix_view images_view = gsl_matrix_view_array(images_array, 2, 2);
+  gsl_matrix_view images_transformed_view =
+    gsl_matrix_view_array(images_transformed_array, 2, 2);
+
+  // C = alpha*op(A)*op(B) + beta*C
+  gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+  		 CblasNoTrans, //op(B) = B
+  		 1.0, //alpha=1
+  		 small_t_solution_->get_rotation_matrix(), //A
+  		 &corner_points_view.matrix, //B
+  		 0.0, //beta=0
+  		 &corner_points_transformed_view.matrix); //C
+
+  // C = alpha*op(A)*op(B) + beta*C
+  gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+  		 CblasNoTrans, //op(B) = B
+  		 1.0, //alpha=1
+  		 small_t_solution_->get_rotation_matrix(), //A
+  		 &images_view.matrix, //B
+  		 0.0, //beta=0
+  		 &images_transformed_view.matrix); //C
+  
+  gsl_vector_view lower_left_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,0);
+  gsl_vector_view lower_right_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,1);
+  gsl_vector_view upper_right_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,2);
+  gsl_vector_view upper_left_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,3);
+  gsl_vector_view initial_condition_transformed_view =
+    gsl_matrix_column(&corner_points_transformed_view.matrix,4);
+
+  std::vector<std::vector<gsl_vector*>> lines {
+    std::vector<gsl_vector*> {&lower_left_transformed_view.vector,
+  	&lower_right_transformed_view.vector}, // line 1
+      std::vector<gsl_vector*> {&upper_right_transformed_view.vector,
+  	  &lower_right_transformed_view.vector}, // line 2
+  	std::vector<gsl_vector*> {&upper_left_transformed_view.vector,
+  	    &upper_right_transformed_view.vector}, // line 3
+  	  std::vector<gsl_vector*> {&upper_left_transformed_view.vector,
+  	      &lower_left_transformed_view.vector} // line 4
+  };
+
+  std::vector<double> distance_to_line {
+    small_t_solution_->
+      distance_from_point_to_axis_raw(lines[0][0],
+  				      lines[0][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector),
+      small_t_solution_->
+      distance_from_point_to_axis_raw(lines[1][0],
+  				      lines[1][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector),
+      small_t_solution_->
+      distance_from_point_to_axis_raw(lines[2][0],
+  				      lines[2][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector),
+      small_t_solution_->
+      distance_from_point_to_axis_raw(lines[3][0],
+  				      lines[3][1],
+  				      &initial_condition_transformed_view.vector,
+  				      &initial_condition_transformed_view.vector)};
+
+  std::vector<unsigned> distance_to_line_indeces (4);
+  unsigned n=0;
+  std::generate(distance_to_line_indeces.begin(),
+  		distance_to_line_indeces.end(),
+  		[&n]{ return n++; });
+
+  std::sort(distance_to_line_indeces.begin(), distance_to_line_indeces.end(),
+  	    [&distance_to_line] (unsigned i1, unsigned i2) -> bool
+  	    {
+  	      return distance_to_line[i1] < distance_to_line[i2];
+  	    });
+
+  std::vector<gsl_vector_view> images_vector (2);
+  for (unsigned i=0; i<2; ++i) {
+    images_vector[i] =
+      gsl_matrix_column(&images_transformed_view.matrix,i);
+  }
+
+  std::vector<std::vector<double>> distance_from_image_to_line (2, std::vector<double> (4));
+  std::vector<double> max_admissible_times (1);
+  std::vector<BivariateImageWithTime> final_images (1);
+  std::vector<double> signs_vector = std::vector<double> (2,1.0);
+
+  unsigned image_counter = 0;
+  unsigned p = 3;
+  // C = alpha*op(A)*op(B) + beta*C
+  gsl_blas_dgemm(CblasNoTrans, //op(A) = A
+		 CblasNoTrans, //op(B) = B
+		 1.0, //alpha=1
+		 small_t_solution_->get_rotation_matrix(), //A
+		 &images_view.matrix, //B
+		 0.0, //beta=0
+		 &images_transformed_view.matrix); //C
+    
+  signs_vector = std::vector<double> (2,1.0);
+  unsigned counter = 0;
+  for (unsigned i=0; i<2; ++i) {
+    gsl_vector* current_image = &images_vector[counter].vector;
+    if (i==1) {
+      small_t_solution_->reflect_point_raw(lines[p][0],
+					   lines[p][1],
+					   current_image);
+      signs_vector[counter] = signs_vector[counter]*(-1.0);
+    }
+
+    double d1 = small_t_solution_->
+      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+				      lines[distance_to_line_indeces[0]][1],
+				      &initial_condition_transformed_view.vector,
+				      current_image);
+    double d2 = small_t_solution_->
+      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+				      lines[distance_to_line_indeces[1]][1],
+				      &initial_condition_transformed_view.vector,
+				      current_image);
+    double d3 = small_t_solution_->
+      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+				      lines[distance_to_line_indeces[2]][1],
+				      &initial_condition_transformed_view.vector,
+				      current_image);
+    double d4 = small_t_solution_->
+      distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+				      lines[distance_to_line_indeces[3]][1],
+				      &initial_condition_transformed_view.vector,
+				      current_image);
+    // printf("%g %g %g %g\n", d1,d2,d3,d4);
+	  
+    distance_from_image_to_line[counter][0] = d1;
+    distance_from_image_to_line[counter][1] = d2;
+    distance_from_image_to_line[counter][2] = d3;
+    distance_from_image_to_line[counter][3] = d4;
+
+    // printf("image.%i = c(%g,%g);\n",
+    // 	   counter,
+    // 	   gsl_vector_get(current_image, 0),
+    // 	   gsl_vector_get(current_image, 1));
+    counter = counter + 1;
+  }
+		
+  int sign = 1;
+  for (unsigned i=1; i<2; ++i) {
+    std::vector<double>::iterator result = std::min_element(distance_from_image_to_line[i].begin(),
+							    distance_from_image_to_line[i].end());
+    if (!std::signbit(*result)) {
+      sign = -1;
+      break;
+    }
+  }
+
+  // calculating max admissible time
+  double mmax = 1.0;
+  double max_admissible_t = 1.0; //(1.0/0.9) * std::pow(distance_from_image_to_line[0][1]/6.0, 2);
+
+  while (mmax > 1e-8) {
+    max_admissible_t = 0.9*max_admissible_t;
+    mmax = 0.0;
+    for (unsigned k=0; k<4; ++k) { // iterating over boundaries
+      unsigned M = 50;
+      double t_max = 1.0;
+      double t=0.0;
+      double dt=t_max/M;
+      std::vector<double> ts(M);
+      std::vector<double> ls = std::vector<double>(M, 0.0);
+      std::generate(ts.begin(), ts.end(), [&] () mutable {t = t + dt; return t; });
+    
+      for (unsigned j=0; j<M; ++j) { // iterating over points on boundaries
+	double tt = ts[j];
+    
+	double x_current = gsl_vector_get(lines[k][0], 0) +
+	  tt*( gsl_vector_get(lines[k][1], 0) - gsl_vector_get(lines[k][0], 0) );
+
+	double y_current = gsl_vector_get(lines[k][0], 1) +
+	  tt*( gsl_vector_get(lines[k][1], 1) - gsl_vector_get(lines[k][0], 1) );
+    
+	for (unsigned i=0; i<2; ++i) { // iterating over images
+	  gsl_vector* current_image = &images_vector[i].vector;
+	  double x_not = gsl_vector_get(current_image, 0);
+	  double y_not = gsl_vector_get(current_image, 1);
+
+	  ls[j] = ls[j] +
+	    signs_vector[i]*
+	    gsl_ran_gaussian_pdf(x_current-x_not, std::sqrt(max_admissible_t))*
+	    gsl_ran_gaussian_pdf(y_current-y_not, std::sqrt(max_admissible_t))*
+	    1.0/(sigma_x_2_*sigma_y_2_*sqrt(1-rho_)*sqrt(1+rho_));
+	}
+      }
+      
+      for (double ll : ls) {
+	if (std::abs(ll) > mmax) {
+	  mmax = std::abs(ll);
+	}
+      }
+    }
+  }
+
+  max_admissible_times[image_counter] = sign*max_admissible_t;
+	  
+  gsl_vector* current_image = gsl_vector_alloc(2);
+  // C = alpha*op(A)*x + beta*C
+  gsl_blas_dgemv(CblasNoTrans, //op(A) = A
+		 1.0, //alpha=1
+		 &Rotation_matrix_inv_view.matrix, //A
+		 &images_vector[1].vector, //x
+		 0.0, //beta=0
+		 current_image); //C
+	  
+  final_images[image_counter] = BivariateImageWithTime(current_image,
+						       sign*max_admissible_t,
+						       1.0);
+  gsl_vector_free(current_image);
+	  
+  image_counter = image_counter + 1;
+	  
+  std::vector<double>::iterator result = std::max_element(max_admissible_times.begin(),
+  							  max_admissible_times.end());
+  double biggest_time = *result;
+  result = std::min_element(max_admissible_times.begin(),
+  			    max_admissible_times.end());
+  double smallest_time = *result;
+
+  std::vector<BivariateImageWithTime> max_t_images;
+  for (const BivariateImageWithTime& current_image : final_images) {
+    if (std::abs( current_image.get_t() - biggest_time) <= std::numeric_limits<double>::epsilon()) {
+      max_t_images.push_back( current_image );
+    }
+  }
+  
+  return max_t_images;
+}
+
 std::vector<BivariateImageWithTime> BivariateSolver::small_t_image_positions() const
 {
-  printf("in small_t_image_positions()\n");
   gsl_matrix* Rotation_matrix = gsl_matrix_alloc(2,2);
   gsl_matrix_memcpy(Rotation_matrix, small_t_solution_->get_rotation_matrix());
 
@@ -1660,8 +2139,6 @@ std::vector<BivariateImageWithTime> BivariateSolver::small_t_image_positions() c
   std::vector<BivariateImageWithTime> final_images (24);
   std::vector<double> signs_vector = std::vector<double> (16,1.0);
 
-  std::cout << "before images" << std::endl;
-  
   // printf("pdf(\"./src/kernel-expansion/documentation/chapter-3/illustration-rho-0-all-configurations.pdf\", 8, 8);\n");
   // printf("par(mfrow=c(5,5), mar=c(1,1,1,1));\n");
   unsigned image_counter = 0;
@@ -1710,180 +2187,177 @@ std::vector<BivariateImageWithTime> BivariateSolver::small_t_image_positions() c
   	  		 0.0, //beta=0
   	  		 &images_transformed_view.matrix); //C
 
-	  signs_vector = std::vector<double> (16,1.0);
-	  unsigned counter = 0;
-	  for (unsigned l=0; l<2; ++l) {
-	    for (unsigned k=0; k<2; ++k) {
-	      for (unsigned j=0; j<2; ++j) {
-		for (unsigned i=0; i<2; ++i) {
-		  gsl_vector* current_image = &images_vector[counter].vector;
-		  if (i==1) {
-		    small_t_solution_->reflect_point_raw(lines[p][0],
-							 lines[p][1],
-							 current_image);
-		    signs_vector[counter] = signs_vector[counter]*(-1.0);
-		  }
-		  if (j==1) {
-		    small_t_solution_->reflect_point_raw(lines[o][0],
-							 lines[o][1],
-							 current_image);
-		    signs_vector[counter] = signs_vector[counter]*(-1.0);
-		  }
-		  if (k==1) {
-		    small_t_solution_->reflect_point_raw(lines[n][0],
-							 lines[n][1],
-							 current_image);
-		    signs_vector[counter] = signs_vector[counter]*(-1.0);
-		  }
-		  if (l==1) {
-		    small_t_solution_->reflect_point_raw(lines[m][0],
-							 lines[m][1],
-							 current_image);
-		    signs_vector[counter] = signs_vector[counter]*(-1.0);
-		  }
-		  // printf("## image %i distances: ", counter);
+  	  signs_vector = std::vector<double> (16,1.0);
+  	  unsigned counter = 0;
+  	  for (unsigned l=0; l<2; ++l) {
+  	    for (unsigned k=0; k<2; ++k) {
+  	      for (unsigned j=0; j<2; ++j) {
+  		for (unsigned i=0; i<2; ++i) {
+  		  gsl_vector* current_image = &images_vector[counter].vector;
+  		  if (i==1) {
+  		    small_t_solution_->reflect_point_raw(lines[p][0],
+  							 lines[p][1],
+  							 current_image);
+  		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+  		  }
+  		  if (j==1) {
+  		    small_t_solution_->reflect_point_raw(lines[o][0],
+  							 lines[o][1],
+  							 current_image);
+  		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+  		  }
+  		  if (k==1) {
+  		    small_t_solution_->reflect_point_raw(lines[n][0],
+  							 lines[n][1],
+  							 current_image);
+  		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+  		  }
+  		  if (l==1) {
+  		    small_t_solution_->reflect_point_raw(lines[m][0],
+  							 lines[m][1],
+  							 current_image);
+  		    signs_vector[counter] = signs_vector[counter]*(-1.0);
+  		  }
+  		  // printf("## image %i distances: ", counter);
 
-		  double d1 = small_t_solution_->
-		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
-						    lines[distance_to_line_indeces[0]][1],
-						    &initial_condition_transformed_view.vector,
-						    current_image);
-		  double d2 = small_t_solution_->
-		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
-						    lines[distance_to_line_indeces[1]][1],
-						    &initial_condition_transformed_view.vector,
-						    current_image);
-		  double d3 = small_t_solution_->
-		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
-						    lines[distance_to_line_indeces[2]][1],
-						    &initial_condition_transformed_view.vector,
-						    current_image);
-		  double d4 = small_t_solution_->
-		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
-						    lines[distance_to_line_indeces[3]][1],
-						    &initial_condition_transformed_view.vector,
-						    current_image);
-		  // printf("%g %g %g %g\n", d1,d2,d3,d4);
+  		  double d1 = small_t_solution_->
+  		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[0]][0],
+  						    lines[distance_to_line_indeces[0]][1],
+  						    &initial_condition_transformed_view.vector,
+  						    current_image);
+  		  double d2 = small_t_solution_->
+  		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[1]][0],
+  						    lines[distance_to_line_indeces[1]][1],
+  						    &initial_condition_transformed_view.vector,
+  						    current_image);
+  		  double d3 = small_t_solution_->
+  		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[2]][0],
+  						    lines[distance_to_line_indeces[2]][1],
+  						    &initial_condition_transformed_view.vector,
+  						    current_image);
+  		  double d4 = small_t_solution_->
+  		    distance_from_point_to_axis_raw(lines[distance_to_line_indeces[3]][0],
+  						    lines[distance_to_line_indeces[3]][1],
+  						    &initial_condition_transformed_view.vector,
+  						    current_image);
+  		  // printf("%g %g %g %g\n", d1,d2,d3,d4);
 	  
-		  distance_from_image_to_line[counter][0] = d1;
-		  distance_from_image_to_line[counter][1] = d2;
-		  distance_from_image_to_line[counter][2] = d3;
-		  distance_from_image_to_line[counter][3] = d4;
+  		  distance_from_image_to_line[counter][0] = d1;
+  		  distance_from_image_to_line[counter][1] = d2;
+  		  distance_from_image_to_line[counter][2] = d3;
+  		  distance_from_image_to_line[counter][3] = d4;
 
-		  // printf("image.%i = c(%g,%g);\n",
-			 // counter,
-			 // gsl_vector_get(current_image, 0),
-			 // gsl_vector_get(current_image, 1));
+  		  // printf("image.%i = c(%g,%g);\n",
+  			 // counter,
+  			 // gsl_vector_get(current_image, 0),
+  			 // gsl_vector_get(current_image, 1));
 	  
-		  counter = counter + 1;
-		}
-	      }
-	    }
-	  }
-	  // printf("lower.left.corner=c(%g,%g);\n",
-	  // 	 gsl_vector_get(&lower_left_transformed_view.vector, 0),
-	  // 	 gsl_vector_get(&lower_left_transformed_view.vector, 1));
-	  // printf("lower.right.corner=c(%g,%g);\n",
-	  // 	 gsl_vector_get(&lower_right_transformed_view.vector, 0),
-	  // 	 gsl_vector_get(&lower_right_transformed_view.vector, 1));
-	  // printf("upper.left.corner=c(%g,%g);\n",
-	  // 	 gsl_vector_get(&upper_left_transformed_view.vector, 0),
-	  // 	 gsl_vector_get(&upper_left_transformed_view.vector, 1));
-	  // printf("upper.right.corner=c(%g,%g);\n",
-	  // 	 gsl_vector_get(&upper_right_transformed_view.vector, 0),
-	  // 	 gsl_vector_get(&upper_right_transformed_view.vector, 1));
-	  int sign = 1;
-	  for (unsigned i=1; i<16; ++i) {
-	    std::vector<double>::iterator result = std::min_element(distance_from_image_to_line[i].begin(),
-								    distance_from_image_to_line[i].end());
-	    if (!std::signbit(*result)) {
-	      sign = -1;
-	      break;
-	    }
-	  }
+  		  counter = counter + 1;
+  		}
+  	      }
+  	    }
+  	  }
+  	  // printf("lower.left.corner=c(%g,%g);\n",
+  	  // 	 gsl_vector_get(&lower_left_transformed_view.vector, 0),
+  	  // 	 gsl_vector_get(&lower_left_transformed_view.vector, 1));
+  	  // printf("lower.right.corner=c(%g,%g);\n",
+  	  // 	 gsl_vector_get(&lower_right_transformed_view.vector, 0),
+  	  // 	 gsl_vector_get(&lower_right_transformed_view.vector, 1));
+  	  // printf("upper.left.corner=c(%g,%g);\n",
+  	  // 	 gsl_vector_get(&upper_left_transformed_view.vector, 0),
+  	  // 	 gsl_vector_get(&upper_left_transformed_view.vector, 1));
+  	  // printf("upper.right.corner=c(%g,%g);\n",
+  	  // 	 gsl_vector_get(&upper_right_transformed_view.vector, 0),
+  	  // 	 gsl_vector_get(&upper_right_transformed_view.vector, 1));
+  	  int sign = 1;
+  	  for (unsigned i=1; i<16; ++i) {
+  	    std::vector<double>::iterator result = std::min_element(distance_from_image_to_line[i].begin(),
+  								    distance_from_image_to_line[i].end());
+  	    if (!std::signbit(*result)) {
+  	      sign = -1;
+  	      break;
+  	    }
+  	  }
 
-	  // calculating max admissible time
-	  double mmax = 1.0;
-	  double max_admissible_t = 1.0; //(1.0/0.9) * std::pow(distance_from_image_to_line[0][1]/6.0, 2);
+  	  // calculating max admissible time
+  	  double mmax = 1.0;
+  	  double max_admissible_t = 1.0; //(1.0/0.9) * std::pow(distance_from_image_to_line[0][1]/6.0, 2);
 
-	  while (mmax > 1e-8) {
-	    max_admissible_t = 0.9*max_admissible_t;
-	    mmax = 0.0;
-	    for (unsigned k=0; k<4; ++k) { // iterating over boundaries
-	      unsigned M = 100;
-	      double t_max = 1.0;
-	      std::vector<double> ts(M);
-	      std::vector<double> ls = std::vector<double>(M, 0.0);
-	      std::generate(ts.begin(), ts.end(), [t=0.0, dt = t_max/M] () mutable {t = t + dt; return t; });
+  	  while (mmax > 1e-8) {
+  	    max_admissible_t = 0.9*max_admissible_t;
+  	    mmax = 0.0;
+  	    for (unsigned k=0; k<4; ++k) { // iterating over boundaries
+  	      unsigned M = 50;
+  	      double t_max = 1.0;
+  	      std::vector<double> ts(M);
+  	      std::vector<double> ls = std::vector<double>(M, 0.0);
+  	      std::generate(ts.begin(), ts.end(), [t=0.0, dt = t_max/M] () mutable {t = t + dt; return t; });
     
-	      for (unsigned j=0; j<M; ++j) { // iterating over points on boundaries
-		double tt = ts[j];
+  	      for (unsigned j=0; j<M; ++j) { // iterating over points on boundaries
+  		double tt = ts[j];
     
-		double x_current = gsl_vector_get(lines[k][0], 0) +
-		  tt*( gsl_vector_get(lines[k][1], 0) - gsl_vector_get(lines[k][0], 0) );
+  		double x_current = gsl_vector_get(lines[k][0], 0) +
+  		  tt*( gsl_vector_get(lines[k][1], 0) - gsl_vector_get(lines[k][0], 0) );
 
-		double y_current = gsl_vector_get(lines[k][0], 1) +
-		  tt*( gsl_vector_get(lines[k][1], 1) - gsl_vector_get(lines[k][0], 1) );
+  		double y_current = gsl_vector_get(lines[k][0], 1) +
+  		  tt*( gsl_vector_get(lines[k][1], 1) - gsl_vector_get(lines[k][0], 1) );
     
-		for (unsigned i=0; i<16; ++i) { // iterating over images
-		  gsl_vector* current_image = &images_vector[i].vector;
-		  double x_not = gsl_vector_get(current_image, 0);
-		  double y_not = gsl_vector_get(current_image, 1);
+  		for (unsigned i=0; i<16; ++i) { // iterating over images
+  		  gsl_vector* current_image = &images_vector[i].vector;
+  		  double x_not = gsl_vector_get(current_image, 0);
+  		  double y_not = gsl_vector_get(current_image, 1);
 
-		  ls[j] = ls[j] +
-		    signs_vector[i]*
-		    gsl_ran_gaussian_pdf(x_current-x_not, std::sqrt(max_admissible_t))*
-		    gsl_ran_gaussian_pdf(y_current-y_not, std::sqrt(max_admissible_t))*
-		    1.0/(sigma_x_2_*sigma_y_2_*sqrt(1-rho_)*sqrt(1+rho_));
-		}
-	      }
+  		  ls[j] = ls[j] +
+  		    signs_vector[i]*
+  		    gsl_ran_gaussian_pdf(x_current-x_not, std::sqrt(max_admissible_t))*
+  		    gsl_ran_gaussian_pdf(y_current-y_not, std::sqrt(max_admissible_t))*
+  		    1.0/(sigma_x_2_*sigma_y_2_*sqrt(1-rho_)*sqrt(1+rho_));
+  		}
+  	      }
       
-	      for (double ll : ls) {
-		if (std::abs(ll) > mmax) {
-		  mmax = std::abs(ll);
-		}
-	      }
-	    }
-	  }
+  	      for (double ll : ls) {
+  		if (std::abs(ll) > mmax) {
+  		  mmax = std::abs(ll);
+  		}
+  	      }
+  	    }
+  	  }
 
-	  // printf("rect(par(\"usr\")[1], par(\"usr\")[2], par(\"usr\")[3], par(\"usr\")[4], col=\"grey\");\n");
-	  // printf("plot(x=0, type=\"n\", xlim = 3*c(-max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner))), max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner)))), ylim = 3*c(-max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner))), max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner)))), xlab=\"x\", ylab=\"y\");\n");
-	  // printf("lines(x=c(lower.left.corner[1],lower.right.corner[1]), y=c(lower.left.corner[2],lower.right.corner[2]), lwd=2, col=\"black\");\n"); // border 1
-	  // printf("lines(x=c(lower.right.corner[1],upper.right.corner[1]), y=c(lower.right.corner[2],upper.right.corner[2]), lwd=2, col=\"black\");\n"); // border 2
-	  // printf("lines(x=c(upper.right.corner[1],upper.left.corner[1]), y=c(upper.right.corner[2],upper.left.corner[2]), lwd=2, col=\"black\");\n"); // border 3
-	  // printf("lines(x=c(upper.left.corner[1],lower.left.corner[1]), y=c(upper.left.corner[2],lower.left.corner[2]), lwd=2, col=\"black\");\n"); // border 4
+  	  // printf("rect(par(\"usr\")[1], par(\"usr\")[2], par(\"usr\")[3], par(\"usr\")[4], col=\"grey\");\n");
+  	  // printf("plot(x=0, type=\"n\", xlim = 3*c(-max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner))), max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner)))), ylim = 3*c(-max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner))), max(abs(c(lower.left.corner, lower.right.corner, upper.left.corner, upper.right.corner)))), xlab=\"x\", ylab=\"y\");\n");
+  	  // printf("lines(x=c(lower.left.corner[1],lower.right.corner[1]), y=c(lower.left.corner[2],lower.right.corner[2]), lwd=2, col=\"black\");\n"); // border 1
+  	  // printf("lines(x=c(lower.right.corner[1],upper.right.corner[1]), y=c(lower.right.corner[2],upper.right.corner[2]), lwd=2, col=\"black\");\n"); // border 2
+  	  // printf("lines(x=c(upper.right.corner[1],upper.left.corner[1]), y=c(upper.right.corner[2],upper.left.corner[2]), lwd=2, col=\"black\");\n"); // border 3
+  	  // printf("lines(x=c(upper.left.corner[1],lower.left.corner[1]), y=c(upper.left.corner[2],lower.left.corner[2]), lwd=2, col=\"black\");\n"); // border 4
 
-	  // for (unsigned ii=0; ii<16; ++ii) {
-	  //   if (std::signbit(signs_vector[ii])) {
-	  //     printf("points(x=image.%i[1],y=image.%i[2],pch=20,lwd=2,col=\"blue\");\n", ii, ii);	      
-	  //   } else {
-	  //     printf("points(x=image.%i[1],y=image.%i[2],pch=20,lwd=2,col=\"green\");\n", ii, ii);	      
-	  //   }
-	  //   // printf("text(x=image.%i[1],y=image.%i[2],%f);\n", ii, ii, signs_vector[ii]);
-	  // }
-	  // printf("points(x=image.%i[1],y=image.%i[2],lwd=2,pch=20,col=\"red\");\n", 15, 15);
-	  // std::cout << "## max_admissible_t=" << max_admissible_t << std::endl;
-	  max_admissible_times[image_counter] = sign*max_admissible_t;
+  	  // for (unsigned ii=0; ii<16; ++ii) {
+  	  //   if (std::signbit(signs_vector[ii])) {
+  	  //     printf("points(x=image.%i[1],y=image.%i[2],pch=20,lwd=2,col=\"blue\");\n", ii, ii);	      
+  	  //   } else {
+  	  //     printf("points(x=image.%i[1],y=image.%i[2],pch=20,lwd=2,col=\"green\");\n", ii, ii);	      
+  	  //   }
+  	  //   // printf("text(x=image.%i[1],y=image.%i[2],%f);\n", ii, ii, signs_vector[ii]);
+  	  // }
+  	  // printf("points(x=image.%i[1],y=image.%i[2],lwd=2,pch=20,col=\"red\");\n", 15, 15);
+  	  // std::cout << "## max_admissible_t=" << max_admissible_t << std::endl;
+  	  max_admissible_times[image_counter] = sign*max_admissible_t;
 	  
-	  gsl_vector* current_image = gsl_vector_alloc(2);
-	  // C = alpha*op(A)*x + beta*C
-	  gsl_blas_dgemv(CblasNoTrans, //op(A) = A
-			 1.0, //alpha=1
-			 &Rotation_matrix_inv_view.matrix, //A
-			 &images_vector[15].vector, //x
-			 0.0, //beta=0
-			 current_image); //C
+  	  gsl_vector* current_image = gsl_vector_alloc(2);
+  	  // C = alpha*op(A)*x + beta*C
+  	  gsl_blas_dgemv(CblasNoTrans, //op(A) = A
+  			 1.0, //alpha=1
+  			 &Rotation_matrix_inv_view.matrix, //A
+  			 &images_vector[15].vector, //x
+  			 0.0, //beta=0
+  			 current_image); //C
 	  
-	  final_images[image_counter] = BivariateImageWithTime(current_image,
-							       sign*max_admissible_t,
-							       1.0/(sigma_x_2_*
-								    sigma_y_2_*
-								    sqrt(1-rho_)*
-								    sqrt(1+rho_)));
-	  gsl_vector_free(current_image);
+  	  final_images[image_counter] = BivariateImageWithTime(current_image,
+  							       sign*max_admissible_t,
+  							       1.0);
+  	  gsl_vector_free(current_image);
 	  
-	  image_counter = image_counter + 1;
-	}
+  	  image_counter = image_counter + 1;
+  	}
       }
     }
   }
@@ -1897,10 +2371,10 @@ std::vector<BivariateImageWithTime> BivariateSolver::small_t_image_positions() c
   // }
   
   std::vector<double>::iterator result = std::max_element(max_admissible_times.begin(),
-							  max_admissible_times.end());
+  							  max_admissible_times.end());
   double biggest_time = *result;
   result = std::min_element(max_admissible_times.begin(),
-			    max_admissible_times.end());
+  			    max_admissible_times.end());
   double smallest_time = *result;
 
   std::vector<BivariateImageWithTime> max_t_images;
@@ -2257,26 +2731,25 @@ double BivariateSolver::analytic_solution_small_t(const gsl_vector* input) const
     }
   }
 
+  biggest_time = std::min(biggest_time, t_2_);
   gsl_matrix* cov_mat = gsl_matrix_alloc(2,2);
   double out = 0;
-  gsl_vector* scaled_input = scale_input(input);
   for (unsigned i=0; i<max_t_images.size(); ++i) {
     MultivariateNormal mvtnorm = MultivariateNormal();
-    gsl_matrix_set(cov_mat, 0,0, sigma_x_2_*sigma_x_2_*biggest_time);
-    gsl_matrix_set(cov_mat, 0,1, rho_*sigma_x_2_*sigma_y_2_*biggest_time);
-    gsl_matrix_set(cov_mat, 1,0, rho_*sigma_x_2_*sigma_y_2_*biggest_time);
-    gsl_matrix_set(cov_mat, 1,1, sigma_y_2_*sigma_y_2_*biggest_time);
+    gsl_matrix_set(cov_mat, 0,0, sigma_x_2_*sigma_x_2_*t_2_);
+    gsl_matrix_set(cov_mat, 0,1, rho_*sigma_x_2_*sigma_y_2_*t_2_);
+    gsl_matrix_set(cov_mat, 1,0, rho_*sigma_x_2_*sigma_y_2_*t_2_);
+    gsl_matrix_set(cov_mat, 1,1, sigma_y_2_*sigma_y_2_*t_2_);
 
     for (unsigned j=0; j<max_t_images[i].size(); ++j) {
       out = out + mvtnorm.dmvnorm(2,
-				  scaled_input,
+				  input,
 				  max_t_images[i][j].get_position(),
 				  cov_mat)*max_t_images[i][j].get_mult_factor()/max_t_images.size();
     }
     
   }
   gsl_matrix_free(cov_mat);
-  gsl_vector_free(scaled_input);
-  
+  printf("in analytic_solution_small_t, biggest_time = %g\n", biggest_time);
   return out;
 }
