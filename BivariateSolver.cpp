@@ -1126,7 +1126,7 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax(const gsl_ve
   double current_x_0 = x_0_;
   double current_y_0 = y_0_;
 
-  std::vector<int> a_indeces {1,-1};
+  std::vector<int> a_indeces {0,-1};
   std::vector<int> b_indeces {1, 0};
   std::vector<int> c_indeces {0,-1};
   std::vector<int> d_indeces {1, 0};
@@ -1179,7 +1179,41 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax(const gsl_ve
      (gsl_vector_get(raw_input,1)-gsl_vector_get(positions[0].get_position(),1))/
      (sigma_x_*sigma_y_)
      );
-      
+
+  double dPdax = 0;
+  double log_CCC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_)+2.0*log(sigma_y_));
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=1; } else { a_power=0; };
+
+    set_data(current_a + a_indeces[i]*h_x,
+	     current_x_0,
+	     current_b,
+	     current_c,
+	     current_y_0,
+	     current_d);
+
+    positions = small_t_image_positions_ax();
+    
+    double x_0 = gsl_vector_get(positions[0].get_position(),0)*(b_-a_) +
+      a_indeces[i]*h_x;
+    double y_0 = gsl_vector_get(positions[0].get_position(),1)*(d_-c_);
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+
+    double polynomial = std::pow((x-x_0)/sigma_x_,2) +
+	    std::pow((y-y_0)/sigma_y_,2) -
+	    2*rho_/(sigma_x_*sigma_y_)*(x-x_0)*(y-y_0);
+    
+    dPdax = dPdax +
+      polynomial*
+      std::pow(-1, a_power);
+  }
+  dPdax = dPdax / h_x;
+  std::cout << "G*C*dPdax = "
+	    << exp(log_before_small_t + log_CC)*dPdax << "\n  "
+	    << std::exp(log_before_small_t + log_CC + log(dPdax)) << std::endl;
+    
+  
   std::cout << "before_small_t=" << before_small_t << std::endl;
   std::cout << "log_before_small_t=" << log_before_small_t << std::endl;
   std::cout << "log_before_small_t_2=" << log_before_small_t_2 << std::endl;
@@ -1233,8 +1267,8 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax(const gsl_ve
 
 	  derivative = derivative +
 	    // (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)*
-	    std::exp(smallt-log_before_small_t-log_CC)*
-	    //polynomial*
+	    //std::exp(smallt-log_before_small_t-log_CC)*
+	    polynomial*
   	    std::pow(-1, a_power);
 
 	  derivative_with_sol = derivative_with_sol +
@@ -1266,9 +1300,9 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax(const gsl_ve
   std::cout << "The analytic deriv is = "
 	    << -1.0*std::exp(log_before_small_t + log_CC + log(std::abs(2*(x-x_0)/std::pow(sigma_x_,2)*(-2) - 2*rho_/(sigma_x_*sigma_y_)*(-2)*(y-y_0))))
 	    << std::endl;
-  derivative = derivative/(2*h_x)* exp(log_before_small_t + log_CC);
+  derivative = derivative/(h_x)* exp(log_before_small_t + log_CC);
   std::cout << "The solution with numerical polynomail deriv is = " << derivative << std::endl;
-  derivative_with_sol = derivative_with_sol/(2*h_x);
+  derivative_with_sol = derivative_with_sol/(h_x);
   std::cout << "The deriv with solution is = "
 	    << derivative_with_sol << std::endl;
   std::cout << "The analytic deriv from _ax() is = " << analytic_likelihood_ax(raw_input, 10000) << std::endl;
@@ -1289,8 +1323,8 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
   double current_x_0 = x_0_;
   double current_y_0 = y_0_;
 
-  std::vector<int> a_indeces {0,-1};
-  std::vector<int> b_indeces {1, 0};
+  std::vector<int> a_indeces {1,-1};
+  std::vector<int> b_indeces {1,-1};
   std::vector<int> c_indeces {0,-1};
   std::vector<int> d_indeces {1, 0};
 
@@ -1304,142 +1338,295 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
 
-  double log_CC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_)+2*log(sigma_y_));
+  double log_CC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_));
+  double CC = -1.0/(2.0*t_*(1-rho_*rho_));
 
   gsl_matrix* cov_matrix = gsl_matrix_alloc(2,2);
   gsl_matrix_set(cov_matrix, 0,0,
-		 sigma_x_*sigma_x_*t_);
+  		 sigma_x_*sigma_x_*t_);
   gsl_matrix_set(cov_matrix, 0,1,
-		 rho_*sigma_x_*sigma_y_*t_);
+  		 rho_*sigma_x_*sigma_y_*t_);
   gsl_matrix_set(cov_matrix, 1,0,
-		 rho_*sigma_x_*sigma_y_*t_);
+  		 rho_*sigma_x_*sigma_y_*t_);
   gsl_matrix_set(cov_matrix, 1,1,
-		 sigma_y_*sigma_y_*t_);
+  		 sigma_y_*sigma_y_*t_);
 
   std::vector<BivariateImageWithTime> positions = small_t_image_positions_ax_bx();
+  for (const BivariateImageWithTime& position : positions) {
+    printf("(%g, %g), (%g,%g), t=%g\n",
+	   x_0_,
+	   y_0_,
+	   gsl_vector_get(position.get_position(),0),
+	   gsl_vector_get(position.get_position(),1),
+	   position.get_t());
+  }
   std::cout << "positions.size()=" << positions.size() << std::endl;
 
   MultivariateNormal mvtnorm = MultivariateNormal();
   double before_small_t = mvtnorm.dmvnorm(2,
-					  positions[1].get_position(),
-					  raw_input,
-					  cov_matrix);
+  					  positions[1].get_position(),
+  					  raw_input,
+  					  cov_matrix);
   double log_before_small_t = mvtnorm.dmvnorm_log(2,
-						  positions[0].get_position(),
-						  raw_input,
-						  cov_matrix);
+  						  positions[1].get_position(),
+  						  raw_input,
+  						  cov_matrix);
   std::cout << "before_small_t=" << before_small_t << std::endl;
   std::cout << "log_before_small_t=" << log_before_small_t << std::endl;
 
-  // double dPdax = 0;
+  double dx0dax = 0;
+  double dy0dax = 0;
+  double dPdax = 0;
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    set_data(current_a + a_indeces[i]*h_x,
+  	     current_x_0,
+  	     current_b,
+  	     current_c,
+  	     current_y_0,
+  	     current_d);
+    positions = small_t_image_positions_ax_bx();
+
+    double x_0 = gsl_vector_get(positions[1].get_position(),0)*(b_-a_) + a_indeces[i]*h_x;
+    double y_0 = gsl_vector_get(positions[1].get_position(),1)*(d_-c_);
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+
+    dx0dax = dx0dax + x_0*std::pow(-1, a_power);
+    dy0dax = dy0dax + y_0*std::pow(-1, a_power);
+
+    dPdax = dPdax + (std::pow((x-x_0)/sigma_x_,2.0) +
+		     std::pow((y-y_0)/sigma_y_,2.0) +
+		     -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+      std::pow(-1, a_power);
+  }
+  dx0dax = dx0dax/(2*h_x);
+  dy0dax = dy0dax/(2*h_x);
+  dPdax = dPdax/(2*h_x);
+  std::cout << "dx0dax = " << dx0dax << std::endl;
+  std::cout << "dy0dax = " << dy0dax << std::endl;  
+
+  double dx0dbx = 0;
+  double dy0dbx = 0;
+  double dPdbx = 0;
+  for (unsigned j=0; j<b_indeces.size(); ++j) {
+    if (j==0) { b_power=1; } else { b_power=0; };
+
+    set_data(current_a,
+  	     current_x_0,
+  	     current_b + b_indeces[j]*h_x,
+  	     current_c,
+  	     current_y_0,
+  	     current_d);
+    positions = small_t_image_positions_ax_bx();
+
+    double x_0 = gsl_vector_get(positions[1].get_position(),0)*(b_-a_);
+    double y_0 = gsl_vector_get(positions[1].get_position(),1)*(d_-c_);
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+
+    dx0dbx = dx0dbx + x_0*std::pow(-1, b_power);
+    dy0dbx = dy0dbx + y_0*std::pow(-1, b_power);
+
+    dPdbx = dPdbx + (std::pow((x-x_0)/sigma_x_,2.0) +
+		     std::pow((y-y_0)/sigma_y_,2.0) +
+		     -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+      std::pow(-1, b_power);
+  }
+  dx0dbx = dx0dbx/(2*h_x);
+  dy0dbx = dy0dbx/(2*h_x);
+  dPdbx = dPdbx/(2*h_x);
+  std::cout << "dx0dbx = " << dx0dbx << std::endl;
+  std::cout << "dy0dbx = " << dy0dbx << std::endl;
+
+  double ddx0daxdbx = 0;
+  double ddy0daxdbx = 0;
+  double ddPdaxdbx = 0;
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=1; } else { b_power=0; };
+
+      set_data(current_a + a_indeces[i]*h_x,
+  	       current_x_0,
+  	       current_b + b_indeces[j]*h_x,
+  	       current_c,
+  	       current_y_0,
+  	       current_d);
+      positions = small_t_image_positions_ax_bx();
+
+      double x_0 = gsl_vector_get(positions[1].get_position(),0)*(b_-a_) +
+	a_indeces[i]*h_x;
+      double y_0 = gsl_vector_get(positions[1].get_position(),1)*(d_-c_);
+      double x = gsl_vector_get(raw_input,0);
+      double y = gsl_vector_get(raw_input,1);
+
+      ddx0daxdbx = ddx0daxdbx +
+	x_0*
+	std::pow(-1, a_power)*
+  	std::pow(-1, b_power);
+
+      ddy0daxdbx = ddy0daxdbx +
+	y_0*
+	std::pow(-1, a_power)*
+  	std::pow(-1, b_power);
+
+      ddPdaxdbx = ddPdaxdbx +
+	(std::pow((x-x_0)/sigma_x_,2.0) +
+	 std::pow((y-y_0)/sigma_y_,2.0) +
+	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+	std::pow(-1, a_power)*
+  	std::pow(-1, b_power);
+    }
+  }
+  ddx0daxdbx = ddx0daxdbx / (4*h_x*h_x);
+  ddy0daxdbx = ddy0daxdbx / (4*h_x*h_x);
+  ddPdaxdbx = ddPdaxdbx / (4*h_x*h_x);
+  std::cout << "ddx0daxdbx = " << ddx0daxdbx << std::endl;
+  std::cout << "ddy0daxdbx = " << ddy0daxdbx << std::endl;
+    
+  set_data(current_a,
+	   current_x_0,
+  	   current_b,
+	   current_c,
+	   current_y_0,
+	   current_d);
+  positions = small_t_image_positions_ax_bx();
+  double x_0 = gsl_vector_get(positions[1].get_position(),0)*(b_-a_);
+  double y_0 = gsl_vector_get(positions[1].get_position(),1)*(d_-c_);
+  double x = gsl_vector_get(raw_input, 0);
+  double y = gsl_vector_get(raw_input, 1);
+
+  double dPdax_analytic = 2.0*(x-x_0)*dx0dax/std::pow(sigma_x_,2) +
+    2.0*(y-y_0)*dy0dax/std::pow(sigma_y_,2) -
+    2*rho_/(sigma_x_*sigma_y_)*-1.0*dx0dax*(y-y_0) -
+    2*rho_/(sigma_x_*sigma_y_)*-1.0*dy0dax*(x-x_0);
+  std::cout << "dPdax_analytic = " << dPdax_analytic << std::endl;
+
+  double dPdbx_analytic = 2.0*(x-x_0)*dx0dbx/std::pow(sigma_x_,2) +
+    2.0*(y-y_0)*dy0dbx/std::pow(sigma_y_,2) -
+    2*rho_/(sigma_x_*sigma_y_)*-1.0*dx0dbx*(y-y_0) -
+    2*rho_/(sigma_x_*sigma_y_)*-1.0*dy0dbx*(x-x_0);
+  std::cout << "dPdbx_analytic = " << dPdbx_analytic << std::endl;
+
+  double ddPdaxdbx_analytic =
+    2.0*(-dx0dbx*dx0dax + (x-x_0)*ddx0daxdbx)/std::pow(sigma_x_,2) +
+    2.0*(-dy0dbx*dy0dax + (y-y_0)*ddy0daxdbx)/std::pow(sigma_y_,2) -
+    2*rho_/(sigma_x_*sigma_y_)*-1.0*(ddx0daxdbx*(y-y_0) + dx0dax*-1.0*dy0dbx) -
+    2*rho_/(sigma_x_*sigma_y_)*-1.0*(ddy0daxdbx*(x-x_0) + dy0dax*-1.0*dx0dbx);
+  std::cout << "ddPdaxdbx_analytic = " << ddPdaxdbx_analytic << std::endl;
+
+  std::cout << "dPdax = " << dPdax << "\n";
+  std::cout << "dPdbx = " << dPdbx << "\n";
+  std::cout << "ddPdaxdbx = " << ddPdaxdbx << "\n";
+  std::cout << "G*C^2*dPdax*dPdbx + G*C*ddPdaxdbx = "
+  	    << std::exp(log_before_small_t + 2*log_CC)*dPdax*dPdbx +
+    std::exp(log_before_small_t + log_CC)*ddPdaxdbx
+  	    << std::endl;
+
+  std::cout << "G*C^2*dPdax_analytic*dPdbx_analytic + G*C*ddPdaxdbx_analytic = "
+	    << -exp(log_before_small_t + 2*log_CC)*dPdax_analytic*dPdbx_analytic + exp(log_before_small_t + log_CC)*ddPdaxdbx_analytic
+	    << std::endl;
+  std::cout << "analytic _ax_bx() = "
+	    << analytic_likelihood_ax_bx(raw_input, 10000)
+	    << std::endl;
+    
+  
   // for (unsigned i=0; i<a_indeces.size(); ++i) {
   //   if (i==0) { a_power=1; } else { a_power=0; };
 
+  //   for (unsigned j=0; j<b_indeces.size(); ++j) {
+  //     if (j==0) { b_power=1; } else { b_power=0; };
+      
   //     set_data(current_a + a_indeces[i]*h_x,
   // 	       current_x_0,
-  // 	       current_b,
+  // 	       current_b + b_indeces[j]*h_x,
   // 	       current_c,
   // 	       current_y_0,
   // 	       current_d);
 
-  //     double x_0 = 
-      
-  //     dPdax = dPdax + 
-  // }
-  
-  for (unsigned i=0; i<a_indeces.size(); ++i) {
-    if (i==0) { a_power=1; } else { a_power=0; };
+  //     positions = small_t_image_positions_ax_bx();
+  //     double x_0_star = gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x;
+  //     double y_0_star = gsl_vector_get(positions[0].get_position(),1)*(d_-c_);
+  //     double x = gsl_vector_get(raw_input, 0);
+  //     double y = gsl_vector_get(raw_input, 1);
+  //     gsl_vector* original_scale_position = gsl_vector_alloc(2);
+  //     gsl_vector_set(original_scale_position,0,x_0_star);
+  //     gsl_vector_set(original_scale_position,1,y_0_star);
+  //     gsl_vector* scaled_input = scale_input(raw_input);
 
-    for (unsigned j=0; j<b_indeces.size(); ++j) {
-      if (j==0) { b_power=1; } else { b_power=0; };
-      
-      set_data(current_a + a_indeces[i]*h_x,
-	       current_x_0,
-	       current_b + b_indeces[j]*h_x,
-	       current_c,
-	       current_y_0,
-	       current_d);
+  //     gsl_matrix_set(cov_matrix, 0,0,
+  // 		     sigma_x_*sigma_x_*t_);
+  //     gsl_matrix_set(cov_matrix, 0,1,
+  // 		     rho_*sigma_x_*sigma_y_*t_);
+  //     gsl_matrix_set(cov_matrix, 1,0,
+  // 		     rho_*sigma_x_*sigma_y_*t_);
+  //     gsl_matrix_set(cov_matrix, 1,1,
+  // 		     sigma_y_*sigma_y_*t_);
 
-      positions = small_t_image_positions_ax_bx();
-      double x_0_star = gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x + b_indeces[j]*h_x;
-      double y_0_star = gsl_vector_get(positions[0].get_position(),1)*(d_-c_);
-      double x = gsl_vector_get(raw_input, 0);
-      double y = gsl_vector_get(raw_input, 1);
-      gsl_vector* original_scale_position = gsl_vector_alloc(2);
-      gsl_vector_set(original_scale_position,0,x_0_star);
-      gsl_vector_set(original_scale_position,1,y_0_star);
-      gsl_vector* scaled_input = scale_input(raw_input);
-
-      gsl_matrix_set(cov_matrix, 0,0,
-		     sigma_x_*sigma_x_*t_);
-      gsl_matrix_set(cov_matrix, 0,1,
-		     rho_*sigma_x_*sigma_y_*t_);
-      gsl_matrix_set(cov_matrix, 1,0,
-		     rho_*sigma_x_*sigma_y_*t_);
-      gsl_matrix_set(cov_matrix, 1,1,
-		     sigma_y_*sigma_y_*t_);
-
-      double polynomial = std::pow((x-x_0_star)/sigma_x_,2) +
-	std::pow((y-y_0_star)/sigma_y_,2) -
-	2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*(y-y_0_star);
+  //     double polynomial = std::pow((x-x_0_star)/sigma_x_,2) +
+  // 	std::pow((y-y_0_star)/sigma_y_,2) -
+  // 	2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*(y-y_0_star);
 	  
-      double smallt = mvtnorm.dmvnorm_log(2,
-					  original_scale_position,
-					  raw_input,
-					  cov_matrix);
-      double analytic_sol = analytic_solution(scaled_input);
+  //     double smallt = mvtnorm.dmvnorm_log(2,
+  // 					  original_scale_position,
+  // 					  raw_input,
+  // 					  cov_matrix);
+  //     double analytic_sol = analytic_solution(scaled_input);
 
-      std::cout << "a_=" << a_ << ", x_0_=" << x_0_ << ", x_0_reflected=" << (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)
-		<< ", (b_-a_)=" << b_-a_
-		<< ", a_2_=" << a_2_ << ", x_0_2_=" << x_0_2_ << ", (b_2_-a_2_)=" << b_2_-a_2_
-		<< ", t_2_min=" << positions[0].get_t()
-		<< ", t_min=" << scale_back_t(positions[0].get_t())
-		<< ", log_analytic_sol=" << log(analytic_sol) - log(b_-a_) - log(d_-c_)
-		<< ", analytic_sol=" << exp(log(analytic_sol) - log(b_-a_) - log(d_-c_))
-		<< ", smallt-log_before_small_t-log_CC=" << smallt - log_before_small_t - log_CC
-		<< ", exp(log_before_small_t+log_CC)=" << std::exp(log_before_small_t + 2*log_CC)
-		<< "\n";
+  //     std::cout << "a_=" << a_ << ", x_0_=" << x_0_ << ", x_0_reflected=" << (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)
+  // 		<< ", (b_-a_)=" << b_-a_
+  // 		<< ", a_2_=" << a_2_ << ", x_0_2_=" << x_0_2_ << ", (b_2_-a_2_)=" << b_2_-a_2_
+  // 		<< ", t_2_min=" << positions[0].get_t()
+  // 		<< ", t_min=" << scale_back_t(positions[0].get_t())
+  // 		<< ", log_analytic_sol=" << log(analytic_sol) - log(b_-a_) - log(d_-c_)
+  // 		<< ", analytic_sol=" << exp(log(analytic_sol) - log(b_-a_) - log(d_-c_))
+  // 		<< ", smallt-log_before_small_t-2*log_CC=" << smallt - log_before_small_t - 2*log_CC
+  // 		<< ", log_before_small_t+2*log_CC=" << log_before_small_t + 2*log_CC
+  // 		<< "\n";
 
-      derivative = derivative +
-	// (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)*
-	std::exp(smallt-log_before_small_t-2*log_CC-2*log(h_x))*
-	//polynomial*
-	std::pow(-1, a_power)*
-	std::pow(-1, b_power);
+  //     derivative = derivative +
+  // 	// (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)*
+  // 	std::exp(smallt-log_before_small_t-2*log_CC-2*log(h_x))*
+  // 	//polynomial*
+  // 	std::pow(-1, a_power)*
+  // 	std::pow(-1, b_power);
 
-      derivative_with_sol = derivative_with_sol +
-	exp(log(analytic_solution(scaled_input)) - log(b_-a_) - log(d_-c_))*
-	std::pow(-1, a_power)*
-	std::pow(-1, b_power);
+  //     derivative_with_sol = derivative_with_sol +
+  // 	exp(log(analytic_solution(scaled_input)) - log(b_-a_) - log(d_-c_))*
+  // 	std::pow(-1, a_power)*
+  // 	std::pow(-1, b_power);
 
-      gsl_vector_free(original_scale_position);
-      gsl_vector_free(scaled_input);
-      std::cout << std::endl;
-    }
-  }
+  //     gsl_vector_free(original_scale_position);
+  //     gsl_vector_free(scaled_input);
+  //     std::cout << std::endl;
   //   }
   // }
-  gsl_matrix_free(cov_matrix);
+  // //   }
+  // // }
+  // gsl_matrix_free(cov_matrix);
   
-  set_data(current_a,
-  	   current_x_0,
-  	   current_b,
-  	   current_c,
-  	   current_y_0,
-  	   current_d);
-  positions = small_t_image_positions_ax_bx();
+  // set_data(current_a,
+  // 	   current_x_0,
+  // 	   current_b,
+  // 	   current_c,
+  // 	   current_y_0,
+  // 	   current_d);
+  // positions = small_t_image_positions_ax_bx();
 
-  double x = gsl_vector_get(raw_input,0);
-  double y = gsl_vector_get(raw_input,1);
-  double x_0 = gsl_vector_get(positions[0].get_position(),0);
-  double y_0 = gsl_vector_get(positions[0].get_position(),1);
+  // double x = gsl_vector_get(raw_input,0);
+  // double y = gsl_vector_get(raw_input,1);
+  // double x_0 = gsl_vector_get(positions[0].get_position(),0);
+  // double y_0 = gsl_vector_get(positions[0].get_position(),1);
   
-  derivative = derivative * std::exp(log_before_small_t + 2*log_CC);
-  std::cout << "The solution with numerical polynomail deriv is = " << derivative << std::endl;
-  derivative_with_sol = derivative_with_sol/(h_x*h_x);
-  std::cout << "The deriv with solution is = "
-	    << derivative_with_sol << std::endl;
-  std::cout << "The analytic deriv from _ax_bx() is = " << analytic_likelihood_ax_bx(raw_input, 10000) << std::endl;
+  // derivative = derivative * std::exp(log_before_small_t + 2*log_CC);
+  // std::cout << "The solution with numerical polynomail deriv is = " << derivative << std::endl;
+  // derivative_with_sol = derivative_with_sol/(h_x*h_x);
+  // std::cout << "The deriv with solution is = "
+  // 	    << derivative_with_sol << std::endl;
+  // std::cout << "The analytic deriv from _ax_bx() is = " << analytic_likelihood_ax_bx(raw_input, 10000) << std::endl;
 
   return derivative;
 }
@@ -2410,7 +2597,7 @@ small_t_image_positions_ax_bx() const
   double images_array [8];
   for (unsigned i=0; i<4; ++i) {
     images_array[i] = get_x_0_2();
-    images_array[i+2] = get_y_0_2();
+    images_array[i+4] = get_y_0_2();
   }
   double images_transformed_array [8];
 
@@ -2512,7 +2699,7 @@ small_t_image_positions_ax_bx() const
     o_indeces.erase(it);
 
     for (unsigned o : o_indeces) {
-
+            
       // C = alpha*op(A)*op(B) + beta*C
       gsl_blas_dgemm(CblasNoTrans, //op(A) = A
 		     CblasNoTrans, //op(B) = B
