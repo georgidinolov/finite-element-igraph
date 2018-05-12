@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
 	      solver.set_diffusion_parameters(1.0,
 					      sigma_tilde,
 					      rho);
-	      double out_analytic = solver.analytic_likelihood_ax(&raw_input.vector, 10000);
+	      double out_analytic = solver.analytic_likelihood_ax_bx(&raw_input.vector, 10000);
 	      double out_numeric = solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
 											 1,
 											 dx_likelihood);

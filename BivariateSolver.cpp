@@ -770,6 +770,61 @@ double BivariateSolver::analytic_likelihood_ax(const gsl_vector* input,
   return out;
 }
 
+double BivariateSolver::analytic_likelihood_ax_bx(const gsl_vector* input,
+						  int little_n)
+{
+  std::vector<double> d1x (2*little_n + 1);
+  std::vector<double> d2x (2*little_n + 1);
+
+  std::vector<double> d1y (2*little_n + 1);
+  std::vector<double> d2y (2*little_n + 1);
+
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+
+  for (int i=0; i<2*little_n+1; ++i) {
+    int n = i - little_n;
+
+    d1x[i] = std::pow(gsl_vector_get(input,0) - x_0_2_ - 2.0*n*(b_2_-a_2_), 2) /
+      (2.0 * std::pow(sigma_x_2_, 2) * t_2_);
+    d2x[i] = std::pow(gsl_vector_get(input,0) + x_0_2_ - 2.0*a_2_ - 2.0*n*(b_2_-a_2_), 2) /
+      (2.0 * std::pow(sigma_x_2_, 2) * t_2_);
+
+    d1y[i] = std::pow(gsl_vector_get(input,1) - y_0_2_ - 2.0*n*(d_2_-c_2_), 2) /
+      (2.0 * std::pow(sigma_y_2_, 2) * t_2_);
+    d2y[i] = std::pow(gsl_vector_get(input,1) + y_0_2_ - 2.0*c_2_ - 2.0*n*(d_2_-c_2_), 2) /
+      (2.0 * std::pow(sigma_y_2_, 2) * t_2_);
+
+    sum_x = sum_x +
+      (std::exp(-d1x[i])*(4.0*n*n)*(2*d1x[i]-1) - 
+       //
+       std::exp(-d2x[i])*4.0*n*(n-1)*(2*d2x[i]-1));
+
+    sum_y = sum_y +
+      (std::exp(-d1y[i]) - std::exp(-d2y[i]));
+
+    // std::cout << "d1x[" << n << "] = " << d1x[i] << " ";
+  }
+  // std::cout << std::endl;
+
+  double out_x = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_x_2_,2)*t_2_))*
+    sum_x;
+
+  double out_y = (1.0/std::sqrt(2.0*M_PI*std::pow(sigma_y_2_,2)*t_2_))*
+    sum_y;
+
+  double out = out_x*out_y;
+  // std::cout << "t = " << t_ << ";" << std::endl;
+  // std::cout << "ax = " << a_ << ";" << std::endl;
+  // std::cout << "bx = " << b_ << ";" << std::endl;
+  // std::cout << "x.ic = " << x_0_ << ";" << std::endl;
+  // std::cout << "x.fc = " << gsl_vector_get(input,0) << ";" << std::endl;
+  // std::cout << "sigma.2.x = " << std::pow(sigma_x_, 2) << ";" << std::endl;
+  // std::cout << "out_x = " << out_x << ";" << std::endl;
+
+  return out;
+}
+
 double BivariateSolver::numerical_likelihood(const gsl_vector* input,
 					     double h)
 {
@@ -1249,7 +1304,7 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
 
-  double log_CC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_));
+  double log_CC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_)+2*log(sigma_y_));
 
   gsl_matrix* cov_matrix = gsl_matrix_alloc(2,2);
   gsl_matrix_set(cov_matrix, 0,0,
@@ -1276,13 +1331,28 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
   std::cout << "before_small_t=" << before_small_t << std::endl;
   std::cout << "log_before_small_t=" << log_before_small_t << std::endl;
 
+  // double dPdax = 0;
+  // for (unsigned i=0; i<a_indeces.size(); ++i) {
+  //   if (i==0) { a_power=1; } else { a_power=0; };
+
+  //     set_data(current_a + a_indeces[i]*h_x,
+  // 	       current_x_0,
+  // 	       current_b,
+  // 	       current_c,
+  // 	       current_y_0,
+  // 	       current_d);
+
+  //     double x_0 = 
+      
+  //     dPdax = dPdax + 
+  // }
+  
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
 
     for (unsigned j=0; j<b_indeces.size(); ++j) {
       if (j==0) { b_power=1; } else { b_power=0; };
-
-
+      
       set_data(current_a + a_indeces[i]*h_x,
 	       current_x_0,
 	       current_b + b_indeces[j]*h_x,
@@ -1291,7 +1361,7 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
 	       current_d);
 
       positions = small_t_image_positions_ax_bx();
-      double x_0_star = gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x;
+      double x_0_star = gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x + b_indeces[j]*h_x;
       double y_0_star = gsl_vector_get(positions[0].get_position(),1)*(d_-c_);
       double x = gsl_vector_get(raw_input, 0);
       double y = gsl_vector_get(raw_input, 1);
@@ -1326,11 +1396,13 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
 		<< ", t_min=" << scale_back_t(positions[0].get_t())
 		<< ", log_analytic_sol=" << log(analytic_sol) - log(b_-a_) - log(d_-c_)
 		<< ", analytic_sol=" << exp(log(analytic_sol) - log(b_-a_) - log(d_-c_))
+		<< ", smallt-log_before_small_t-log_CC=" << smallt - log_before_small_t - log_CC
+		<< ", exp(log_before_small_t+log_CC)=" << std::exp(log_before_small_t + 2*log_CC)
 		<< "\n";
 
       derivative = derivative +
 	// (gsl_vector_get(positions[0].get_position(),0)*(b_-a_) + a_indeces[i]*h_x)*
-	std::exp(smallt-log_before_small_t-log_CC - 2.0*log(h_x))*
+	std::exp(smallt-log_before_small_t-2*log_CC-2*log(h_x))*
 	//polynomial*
 	std::pow(-1, a_power)*
 	std::pow(-1, b_power);
@@ -1362,15 +1434,12 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
   double x_0 = gsl_vector_get(positions[0].get_position(),0);
   double y_0 = gsl_vector_get(positions[0].get_position(),1);
   
-  std::cout << "The analytic deriv is = "
-	    << -1.0*std::exp(log_before_small_t + log_CC + log(std::abs(2*(x-x_0)/std::pow(sigma_x_,2)*(-2) - 2*rho_/(sigma_x_*sigma_y_)*(-2)*(y-y_0))))
-	    << std::endl;
-  derivative = derivative* exp(log_before_small_t + log_CC);
+  derivative = derivative * std::exp(log_before_small_t + 2*log_CC);
   std::cout << "The solution with numerical polynomail deriv is = " << derivative << std::endl;
   derivative_with_sol = derivative_with_sol/(h_x*h_x);
   std::cout << "The deriv with solution is = "
 	    << derivative_with_sol << std::endl;
-  std::cout << "The analytic deriv from _ax() is = " << analytic_likelihood_ax(raw_input, 10000) << std::endl;
+  std::cout << "The analytic deriv from _ax_bx() is = " << analytic_likelihood_ax_bx(raw_input, 10000) << std::endl;
 
   return derivative;
 }

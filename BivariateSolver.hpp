@@ -169,6 +169,7 @@ public:
   // only valid for rho = 0
   virtual double analytic_likelihood(const gsl_vector* input, int little_n);
   virtual double analytic_likelihood_ax(const gsl_vector* input, int little_n);
+  virtual double analytic_likelihood_ax_bx(const gsl_vector* input, int little_n);
   inline const BivariateSolverClassical* get_small_t_solution() const
   {
     return small_t_solution_;
