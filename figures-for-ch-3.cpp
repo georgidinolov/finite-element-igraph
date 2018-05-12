@@ -83,8 +83,8 @@ int main(int argc, char *argv[]) {
   points_for_kriging[0].y_0_tilde=5.01119804763752e-01;
   points_for_kriging[1].x_t_tilde=2.85135596642142e-01;
   points_for_kriging[0].y_t_tilde=3.19775518059827e-01;
-  points_for_kriging[0].sigma_y_tilde=0.5;
-  points_for_kriging[0].t_tilde=0.00510;
+  points_for_kriging[0].sigma_y_tilde=0.9;
+  points_for_kriging[0].t_tilde=0.00500;
   points_for_kriging[0].rho=0.0;
   points_for_kriging[0].log_likelihood=-4.32267567159303e+00;
   points_for_kriging[0].FLIPPED=0;
@@ -432,9 +432,9 @@ int main(int argc, char *argv[]) {
 					      sigma_tilde,
 					      rho);
 	      double out_analytic = solver.analytic_likelihood_ax(&raw_input.vector, 10000);
-	      double out_numeric = solver.numerical_likelihood_first_order_small_t(&raw_input.vector,
-										   1,
-										   dx_likelihood);
+	      double out_numeric = solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
+											 1,
+											 dx_likelihood);
 	      double before = solver.analytic_solution(scaled_input);
 	      double CC = 1.0/( 2.0*(1-solver.get_rho()*solver.get_rho())*
 				solver.get_t()*solver.get_sigma_y()*solver.get_sigma_y() );
