@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   points_for_kriging[1].x_t_tilde=2.85135596642142e-01;
   points_for_kriging[0].y_t_tilde=3.19775518059827e-01;
   points_for_kriging[0].sigma_y_tilde=0.9;
-  points_for_kriging[0].t_tilde=0.00500;
+  points_for_kriging[0].t_tilde=0.015;
   points_for_kriging[0].rho=0.0;
   points_for_kriging[0].log_likelihood=-4.32267567159303e+00;
   points_for_kriging[0].FLIPPED=0;

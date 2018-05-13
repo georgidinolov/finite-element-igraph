@@ -162,6 +162,7 @@ public:
   std::vector<BivariateImageWithTime> small_t_image_positions() const;
   std::vector<BivariateImageWithTime> small_t_image_positions_ax() const;
   std::vector<BivariateImageWithTime> small_t_image_positions_ax_bx() const;
+  std::vector<BivariateImageWithTime> small_t_image_positions_ax_bx_ay() const;
   
   virtual double numerical_likelihood_first_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood(const gsl_vector* input, double h);
