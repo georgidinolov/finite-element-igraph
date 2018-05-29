@@ -19,6 +19,11 @@ public:
 			 double time,
 			 double mult_factor);
 
+  BivariateImageWithTime(const gsl_vector* position,
+			 double time,
+			 double mult_factor,
+			 const std::vector<unsigned>& refl);
+
   virtual ~BivariateImageWithTime();
 
   inline const gsl_vector * get_position() const {
@@ -27,20 +32,30 @@ public:
   inline void set_position(const gsl_vector* position) {
     gsl_vector_memcpy(position_, position);
   }
+  
   inline double get_t() const {
     return t_;
   }
   inline void set_t(double t) {
     t_ = t;
   }
+
   inline double get_mult_factor() const {
     return mult_factor_;
+  }
+
+  inline std::vector<unsigned> get_reflection_sequence() const {
+    return reflection_sequence_;
+  }
+  inline void set_reflection_sequence(const std::vector<unsigned>& refl) {
+    reflection_sequence_ = refl;
   }
   
 private:
   gsl_vector * position_;
   double t_;
   double mult_factor_;
+  std::vector<unsigned> reflection_sequence_;
 };
 
 class BivariateSolver
@@ -146,7 +161,7 @@ public:
   
   virtual double operator()(const gsl_vector* input) const;
   double analytic_solution(const gsl_vector* input) const;
-  double analytic_solution_small_t(const gsl_vector* input) const;
+  double numerical_solution_small_t(const gsl_vector* input) const;
   
   virtual double numerical_likelihood_second_order(const gsl_vector* input, double h);
   virtual double numerical_likelihood_first_order_small_t(const gsl_vector* input,
@@ -158,8 +173,28 @@ public:
   virtual double numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* input,
 								double small_t,
 								double h);
+  virtual double numerical_likelihood_first_order_small_t_ax_bx_ay(const gsl_vector* input,
+								double small_t,
+								double h);
+  virtual double numerical_likelihood_first_order_small_t_ax_bx_ay_by_type_41(const gsl_vector* input,
+								double small_t,
+								double h);
   
   std::vector<BivariateImageWithTime> small_t_image_positions() const;
+  // 202 131
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_1(bool PRINT) const;
+  // 202 313
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_2(bool PRINT) const;
+  // 131 020
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_3(bool PRINT) const;
+  // 131 202
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_4(bool PRINT) const;
+  // 313 020
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_31(bool PRINT) const;
+  // 313 202
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_41(bool PRINT) const;
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_41_all(bool PRINT) const;
+  
   std::vector<BivariateImageWithTime> small_t_image_positions_ax() const;
   std::vector<BivariateImageWithTime> small_t_image_positions_ax_bx() const;
   std::vector<BivariateImageWithTime> small_t_image_positions_ax_bx_ay() const;
@@ -171,10 +206,15 @@ public:
   virtual double analytic_likelihood(const gsl_vector* input, int little_n);
   virtual double analytic_likelihood_ax(const gsl_vector* input, int little_n);
   virtual double analytic_likelihood_ax_bx(const gsl_vector* input, int little_n);
+  virtual double analytic_likelihood_ax_bx_ay(const gsl_vector* input,
+					      int little_n);
   inline const BivariateSolverClassical* get_small_t_solution() const
   {
     return small_t_solution_;
   }
+
+  void figure_chapter_3_proof_1() const;
+  void figure_chapter_3_illustration_1() const;
   
 private:
   double a_;

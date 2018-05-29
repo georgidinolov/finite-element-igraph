@@ -79,13 +79,13 @@ int main(int argc, char *argv[]) {
 
   
   std::vector<likelihood_point> points_for_kriging (1);
-  points_for_kriging[1].x_0_tilde=5.00160070618248e-01;
-  points_for_kriging[0].y_0_tilde=5.01119804763752e-01;
-  points_for_kriging[1].x_t_tilde=2.85135596642142e-01;
-  points_for_kriging[0].y_t_tilde=3.19775518059827e-01;
+  points_for_kriging[0].x_0_tilde=1.00e-01;
+  points_for_kriging[0].y_0_tilde=3.00e-01;
+  points_for_kriging[0].x_t_tilde=3.00e-01;
+  points_for_kriging[0].y_t_tilde=5.00e-01;
   points_for_kriging[0].sigma_y_tilde=0.9;
-  points_for_kriging[0].t_tilde=0.015;
-  points_for_kriging[0].rho=0.0;
+  points_for_kriging[0].t_tilde=0.058;
+  points_for_kriging[0].rho=0.1;
   points_for_kriging[0].log_likelihood=-4.32267567159303e+00;
   points_for_kriging[0].FLIPPED=0;
 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 	
 	long unsigned seed = seed_init + i;
 	double likelihood = 0.0;
-	double rho = 0.0; //points_for_kriging[i].rho;
+	double rho = points_for_kriging[i].rho;
 	double x [2] = {points_for_kriging[i].x_t_tilde,
 			points_for_kriging[i].y_t_tilde};
 	
@@ -420,34 +420,53 @@ int main(int argc, char *argv[]) {
 	    // printf("points(image.16[1], image.16[2],lwd=10, pch=20,col=\"red\");\n");
 	    printf("dev.off();\n");
 
-	    unsigned M = 10;
+	    unsigned M = 7;
 	    double sigma_max = 1.0;
 	    std::vector<double> sigma_tildes(M);
 	    double sigma = 0.0;
-	    double dsigma = sigma_max/M;
+	    double dsigma = 0.1; //sigma_max/M;
 	    std::generate(sigma_tildes.begin(), sigma_tildes.end(), [&] ()->double {sigma = sigma + dsigma; return sigma; });
+	    std::vector<double> lls_approx = std::vector<double> (M);
+	    std::vector<double> lls_exact = std::vector<double> (M);
 
-	    for (double sigma_tilde : sigma_tildes) {
+	    for (unsigned ii=0; ii<M; ++ii) {
+	      double sigma_tilde = sigma_tildes[ii];
 	      solver.set_diffusion_parameters(1.0,
 					      sigma_tilde,
 					      rho);
-	      double out_analytic = solver.analytic_likelihood_ax_bx(&raw_input.vector, 10000);
-	      double out_numeric = solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
-											 1,
-											 dx_likelihood);
+	      double out_analytic = solver.analytic_likelihood(&raw_input.vector, 10000);
+	      double out_numeric = solver.numerical_likelihood_first_order_small_t_ax_bx_ay_by_type_41(&raw_input.vector,
+												       1,
+												       dx_likelihood);
+
+	      double numerical_sol_small_t = solver.numerical_solution_small_t(&raw_input.vector);
+	      lls_approx[ii] = out_numeric;
+	      lls_exact[ii] = out_analytic;
 	      double before = solver.analytic_solution(scaled_input);
 	      double CC = 1.0/( 2.0*(1-solver.get_rho()*solver.get_rho())*
 				solver.get_t()*solver.get_sigma_y()*solver.get_sigma_y() );
-	      printf("\n## (%g,%g,%g)\n\n",
+	      printf("\n## (%g,%g,%g,|%g,%g)\n\n",
 	      	     sigma_tilde,
 		     out_analytic,
-		     out_numeric);
+		     out_numeric,
+		     numerical_sol_small_t,
+		     solver.analytic_solution(&raw_input.vector));
 		     
 	    }
 	    printf("\n");
 
+	    printf("lls_approx = c(");
+	    for (double ll : lls_approx) {
+	      printf("%g,", ll);
+	    }
+	    printf(");\n");
 
-
+	    printf("lls_exact = c(");
+	    for (double ll : lls_exact) {
+	      printf("%g,", ll);
+	    }
+	    printf(");\n");
+	    
 	}
 	points_for_kriging[i].log_likelihood = log(likelihood);
 	printf("Thread %d with address %p produces likelihood %g\n",
@@ -458,8 +477,6 @@ int main(int argc, char *argv[]) {
       }
     }
     auto t2 = std::chrono::high_resolution_clock::now();
-
-
 
     gsl_rng_free(r_ptr_local);
     return 0;
