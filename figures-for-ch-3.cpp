@@ -425,7 +425,9 @@ int main(int argc, char *argv[]) {
 	    std::vector<double> sigma_tildes(M);
 	    double sigma = 0.0;
 	    double dsigma = 0.1; //sigma_max/M;
-	    std::generate(sigma_tildes.begin(), sigma_tildes.end(), [&] ()->double {sigma = sigma + dsigma; return sigma; });
+	    std::generate(sigma_tildes.begin(),
+			  sigma_tildes.end(),
+			  [&] ()->double {sigma = sigma + dsigma; return sigma; });
 	    std::vector<double> lls_approx = std::vector<double> (M);
 	    std::vector<double> lls_exact = std::vector<double> (M);
 
