@@ -43,6 +43,9 @@ public:
   inline double get_mult_factor() const {
     return mult_factor_;
   }
+  inline void set_mult_factor(double mm) {
+    mult_factor_ = mm;
+  }
 
   inline std::vector<unsigned> get_reflection_sequence() const {
     return reflection_sequence_;
@@ -180,9 +183,21 @@ public:
 									      double small_t,
 									      double h);
 
-  virtual double numerical_likelihood_first_order_small_t_ax_bx_ay_by_type_41_truncated(const gsl_vector* input,
-									      double small_t,
-									      double h);
+  virtual double likelihood_small_t_type_41_truncated(const gsl_vector* input,
+						      double small_t,
+						      double h);
+  virtual double likelihood_small_t_type_31_truncated(const gsl_vector* input,
+						      double small_t,
+						      double h);
+  
+  
+  virtual double likelihood_small_t_41_truncated_symmetric(const gsl_vector* input,
+							   double small_t,
+							   double h);
+
+  virtual double likelihood_small_t_type_4_truncated(const gsl_vector* input,
+						     double small_t,
+						     double h);
   
   std::vector<BivariateImageWithTime> small_t_image_positions() const;
   // 202 131
@@ -195,9 +210,11 @@ public:
   std::vector<BivariateImageWithTime> small_t_image_positions_type_4(bool PRINT) const;
   // 313 020
   std::vector<BivariateImageWithTime> small_t_image_positions_type_31(bool PRINT) const;
-  // 313 202
+  // 313 202 
   std::vector<BivariateImageWithTime> small_t_image_positions_type_41(bool PRINT) const;
   std::vector<BivariateImageWithTime> small_t_image_positions_type_41_all(bool PRINT) const;
+  std::vector<BivariateImageWithTime> small_t_image_positions_type_41_symmetric(bool PRINT) const;
+  std::vector<BivariateImageWithTime> small_t_image_positions_1_3(bool PRINT) const;
   
   std::vector<BivariateImageWithTime> small_t_image_positions_ax() const;
   std::vector<BivariateImageWithTime> small_t_image_positions_ax_bx() const;
@@ -218,6 +235,7 @@ public:
   }
 
   void figure_chapter_3_proof_1() const;
+  void figure_chapter_3_proof_2() const;
   void figure_chapter_3_illustration_1() const;
   
 private:
