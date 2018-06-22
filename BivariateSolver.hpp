@@ -108,12 +108,12 @@ public:
 		double y_0,
 		double d);
 
-    void set_data_for_small_t(double a,
-			      double x_0,
-			      double b,
-			      double c,
-			      double y_0,
-			      double d);
+  void set_data_for_small_t(double a,
+			    double x_0,
+			    double b,
+			    double c,
+			    double y_0,
+			    double d);
 
   void set_diffusion_parameters_and_data(double sigma_x,
 					 double sigma_y,
@@ -125,6 +125,20 @@ public:
 					 double c,
 					 double y_0,
 					 double d);
+  void set_diffusion_parameters_and_data_small_t(double sigma_x,
+						 double sigma_y,
+						 double rho,
+						 double t,
+						 double a,
+						 double x_0,
+						 double b,
+						 double c,
+						 double y_0,
+						 double d);
+  inline void set_x_t_2(double x)
+  { x_t_2_ = x; };
+  inline void set_y_t_2(double y)
+  { y_t_2_ = y; };
   
   const gsl_vector* get_solution_coefs() const;
   const gsl_vector* get_ic_coefs() const;
@@ -154,7 +168,10 @@ public:
   { return x_0_2_; };
   inline double get_y_0_2() const
   { return y_0_2_; };
-
+  inline double get_x_t_2() const
+  { return x_t_2_; };
+  inline double get_y_t_2() const
+  { return y_t_2_; };
   inline double get_t_2() const
   { return t_2_; };
 
@@ -174,7 +191,6 @@ public:
 							     double small_t,
 							     double h);
   virtual double numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* input,
-								double small_t,
 								double h);
   virtual double numerical_likelihood_first_order_small_t_ax_bx_ay(const gsl_vector* input,
 								double small_t,
@@ -237,7 +253,13 @@ public:
   void figure_chapter_3_proof_1() const;
   void figure_chapter_3_proof_2() const;
   void figure_chapter_3_illustration_1() const;
-  
+
+  static double wrapper(const std::vector<double> &x, 
+  			std::vector<double> &grad,
+  			void * data);
+  static double wrapper_small_t(const std::vector<double> &x, 
+				std::vector<double> &grad,
+				void * data);
 private:
   double a_;
   double b_;
@@ -260,6 +282,9 @@ private:
   double y_0_2_;
   double t_2_;
   bool flipped_xy_flag_;
+
+  double x_t_2_;
+  double y_t_2_;
 
   MultivariateNormal mvtnorm_;
   BivariateBasis* basis_;

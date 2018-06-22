@@ -416,6 +416,30 @@ void BivariateSolver::set_diffusion_parameters_and_data(double sigma_x,
   set_solution_coefs();
 }
 
+void BivariateSolver::set_diffusion_parameters_and_data_small_t(double sigma_x,
+								double sigma_y,
+								double rho,
+								double t,
+								double a,
+								double x_0,
+								double b,
+								double c,
+								double y_0,
+								double d)
+{
+  t_ = t;
+  a_ = a;
+  b_ = b;
+  c_ = c;
+  d_ = d;
+  x_0_ = x_0;
+  y_0_ = y_0;
+  sigma_x_ = sigma_x;
+  sigma_y_ = sigma_y;
+  rho_ = rho;
+  set_scaled_data();
+}
+
 
 const gsl_vector* BivariateSolver::get_solution_coefs() const
 {
@@ -1394,11 +1418,11 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax(const gsl_ve
   return derivative;
 }
 
-double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
-								       double small_t,
-								       double h)
+double BivariateSolver::
+numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
+					       double h)
 {
-    // there are 16 solutions to be computed
+  // there are 16 solutions to be computed
   double current_a = a_;
   double current_b = b_;
   double current_c = c_;
@@ -1434,91 +1458,84 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
   gsl_matrix_set(cov_matrix, 1,1,
   		 sigma_y_*sigma_y_*t_);
 
-  auto t1 = std::chrono::high_resolution_clock::now();
+
   std::vector<BivariateImageWithTime> positions =
     small_t_image_positions_1_3(false);
+  
+    
+  // precalculating positions
+  std::vector<std::vector<BivariateImageWithTime>> perturbed_positions (16, std::vector<BivariateImageWithTime> (0));
+  std::vector<std::vector<double>> perturbed_polynomials (16, std::vector<double> (positions.size()));
+  
+  auto t1 = std::chrono::high_resolution_clock::now();  
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=0; } else { b_power=1; };
+
+      for (unsigned k=0; k<c_indeces.size(); ++k) {
+	if (k==0) { c_power=0; } else { c_power=1; };
+
+	for (unsigned l=0; l<d_indeces.size(); ++l) {
+	  if (l==0) { d_power=0; } else { d_power=1; };
+
+	  set_data_for_small_t(current_a + a_indeces[i]*h_x,
+			       current_x_0,
+			       current_b + b_indeces[j]*h_x,
+			       current_c + c_indeces[k]*h_y,
+			       current_y_0,
+			       current_d + d_indeces[l]*h_y);
+
+	  positions = small_t_image_positions_1_3(false);
+	  unsigned index = i*1 + j*2 + k*4 + l*8;
+
+	  perturbed_positions[index] = positions;
+
+	  double x = gsl_vector_get(raw_input, 0);
+	  double y = gsl_vector_get(raw_input, 1);
+	  for (unsigned ii=0; ii<positions.size(); ++ii) {
+	    double x_0 =
+	      gsl_vector_get(positions[ii].get_position(),0)*(b_-a_) +
+	      a_indeces[i]*h_x;
+	    double y_0 =
+	      gsl_vector_get(positions[ii].get_position(),1)*(d_-c_) +
+	      c_indeces[k]*h_y;
+	    
+	    double polynomial =
+	      std::pow((x-x_0)/sigma_x_,2) +
+	      std::pow((y-y_0)/sigma_y_,2) -
+	      2*rho_/(sigma_x_*sigma_y_)*(x-x_0)*(y-y_0);
+	    
+	    perturbed_polynomials[index][ii] = polynomial;
+	  }
+	}
+      }
+    }
+  }
   auto t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for positions = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-	    << std::endl;
-
-  // printf("text(x=-7.5,y=10,\"t=%g, type 4\");\n", positions[0].get_t());
-  // for (auto position : positions) {
-  //   printf("points(x=%g, y=%g, col=\"red\");\n",
-  // 	   gsl_vector_get(position.get_position(),0),
-  // 	   gsl_vector_get(position.get_position(),1));
-  // }
+	    << std::endl;  
 
   unsigned counter = 0;
-
-  std::vector<double> dx0daxs (positions.size(), 0);
-  std::vector<double> dy0daxs (positions.size(), 0);
   t1 = std::chrono::high_resolution_clock::now();
   std::vector<double> dPdaxs (positions.size(), 0);
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=0; } else { a_power=1; };
+    unsigned index = i*1 + 1*2 + 0*4 + 1*8;
+    positions = perturbed_positions[index];
 
-    set_data_for_small_t(current_a + a_indeces[i]*h_x,
-			 current_x_0,
-			 current_b,
-			 current_c,
-			 current_y_0,
-			 current_d);
-    positions = small_t_image_positions_1_3(false);
-
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
     for (unsigned ii=0; ii<positions.size(); ++ii) {
-
-      double x_0_star =
-  	gsl_vector_get(positions[ii].get_position(),0)*(b_-a_) +
-  	a_indeces[i]*h_x;
-      double y_0_star =
-  	gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
-
-      dx0daxs[ii] = dx0daxs[ii] +
-	x_0_star*std::pow(-1, a_power)/h_x;
-
-      dy0daxs[ii] = dy0daxs[ii] +
-	y_0_star*std::pow(-1, a_power)/h_x;
-
-      double polynomial = std::pow((x-x_0_star)/sigma_x_,2) +
-  	std::pow((y-y_0_star)/sigma_y_,2) -
-  	2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*(y-y_0_star);
-
-      dPdaxs[ii] = dPdaxs[ii] + polynomial*
-  	std::pow(-1, a_power);
+      dPdaxs[ii] = dPdaxs[ii] +
+      	perturbed_polynomials[index][ii]*
+      	std::pow(-1, a_power);
     }
   }
   for (unsigned ii=0; ii<positions.size(); ++ii) {
     dPdaxs[ii] = dPdaxs[ii]/h_x;
-    printf("dx0daxs[%i] = %g\n", ii, dx0daxs[ii]);
+    printf("dPdax[%i] = %g\n", ii, dPdaxs[ii]);
   }
-
-  set_data_for_small_t(current_a,
-		       current_x_0,
-		       current_b,
-		       current_c,
-		       current_y_0,
-		       current_d);
-  positions = small_t_image_positions_1_3(false);
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-
-    double x_0_star =
-      gsl_vector_get(positions[ii].get_position(),0);
-    double y_0_star =
-      gsl_vector_get(positions[ii].get_position(),1);
-
-    double new_dPdax = -2.0*(x-x_0_star)/(sigma_x_*sigma_x_)*dx0daxs[ii] +
-      -2.0*(y-y_0_star)/(sigma_y_*sigma_y_)*dy0daxs[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(y-y_0_star)*dx0daxs[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*dy0daxs[ii];
-    printf("new_dPdax[%i] = %g\n", ii, new_dPdax);
-    dPdaxs[ii] = new_dPdax;
-  }
-
 
   t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for dPdaxs = "
@@ -1527,34 +1544,16 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
 
   t1 = std::chrono::high_resolution_clock::now();
   std::vector<double> dPdbxs (positions.size(), 0);
-  std::vector<double> dx0dbxs (positions.size(), 0);
-  std::vector<double> dy0dbxs (positions.size(), 0);
   for (unsigned j=0; j<b_indeces.size(); ++j) {
     if (j==0) { b_power=0; } else { b_power=1; };
-
-    set_data_for_small_t(current_a,
-  	     current_x_0,
-  	     current_b + b_indeces[j]*h_x,
-  	     current_c,
-  	     current_y_0,
-  	     current_d);
-    positions = small_t_image_positions_1_3(false);
+    unsigned index = 0*1 + j*2 + 0*4 + 1*8;
+    positions = perturbed_positions[index];
 
     double x = gsl_vector_get(raw_input, 0);
     double y = gsl_vector_get(raw_input, 1);
     for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
-      double y_0 = gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
-
-      dx0dbxs[ii] = dx0dbxs[ii] +
-	x_0*std::pow(-1, b_power)/h_x;
-      dy0dbxs[ii] = dy0dbxs[ii] +
-	y_0*std::pow(-1, b_power)/h_x;
-
       dPdbxs[ii] = dPdbxs[ii] +
-  	(std::pow((x-x_0)/sigma_x_,2.0) +
-  	 std::pow((y-y_0)/sigma_y_,2.0) +
-  	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+	perturbed_polynomials[index][ii]*
   	std::pow(-1, b_power);
     }
   }
@@ -1567,159 +1566,244 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
 
-    set_data_for_small_t(current_a,
-		       current_x_0,
-		       current_b,
-		       current_c,
-		       current_y_0,
-		       current_d);
-  positions = small_t_image_positions_1_3(false);
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-
-    double x_0_star =
-      gsl_vector_get(positions[ii].get_position(),0);
-    double y_0_star =
-      gsl_vector_get(positions[ii].get_position(),1);
-
-    double new_dPdbx = -2.0*(x-x_0_star)/(sigma_x_*sigma_x_)*dx0dbxs[ii] +
-      -2.0*(y-y_0_star)/(sigma_y_*sigma_y_)*dy0dbxs[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(y-y_0_star)*dx0dbxs[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*dy0dbxs[ii];
-    printf("new_dPdbx[%i] = %g\n", ii, new_dPdbx);
-    dPdbxs[ii] = new_dPdbx;
-  }
-
+   
   t1 = std::chrono::high_resolution_clock::now();
   std::vector<double> dPdays (positions.size(), 0.0);
-  std::vector<double> dx0days (positions.size(), 0);
-  std::vector<double> dy0days (positions.size(), 0);
   for (unsigned k=0; k<c_indeces.size(); ++k) {
     if (k==0) { c_power=0; } else { c_power=1; };
-
-    set_data_for_small_t(current_a,
-  	     current_x_0,
-  	     current_b,
-  	     current_c + h_y*c_indeces[k],
-  	     current_y_0,
-  	     current_d);
-    positions = small_t_image_positions_1_3(false);
+    unsigned index = 0*1 + 1*2 + k*4 + 1*8;
+    positions = perturbed_positions[index];
 
     double x = gsl_vector_get(raw_input, 0);
     double y = gsl_vector_get(raw_input, 1);
     for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
-      double y_0 =
-  	gsl_vector_get(positions[ii].get_position(),1)*(d_-c_) +
-  	h_y*c_indeces[k];
-
-      dx0days[ii] = dx0days[ii] +
-	x_0*std::pow(-1, c_power)/h_y;
-
-      dy0days[ii] = dy0days[ii] +
-	y_0*std::pow(-1, c_power)/h_y;
-
       dPdays[ii] = dPdays[ii] +
-  	(std::pow((x-x_0)/sigma_x_,2.0) +
-  	 std::pow((y-y_0)/sigma_y_,2.0) +
-  	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+	perturbed_polynomials[index][ii]*
   	std::pow(-1, c_power);
     }
   }
   for (unsigned ii=0; ii<positions.size(); ++ii) {
     dPdays[ii] = dPdays[ii]/h_y;
-    // printf("dPdays[%i] = %g\n", ii, dPdays[ii]);
+    printf("dPdays[%i] = %g\n", ii, dPdays[ii]);
   }
   t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for dPdays = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
-  set_data_for_small_t(current_a,
-		       current_x_0,
-		       current_b,
-		       current_c,
-		       current_y_0,
-		       current_d);
-  positions = small_t_image_positions_1_3(false);
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-
-    double x_0_star =
-      gsl_vector_get(positions[ii].get_position(),0);
-    double y_0_star =
-      gsl_vector_get(positions[ii].get_position(),1);
-
-    double new_dPday = -2.0*(x-x_0_star)/(sigma_x_*sigma_x_)*dx0days[ii] +
-      -2.0*(y-y_0_star)/(sigma_y_*sigma_y_)*dy0days[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(y-y_0_star)*dx0days[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*dy0days[ii];
-    printf("new_dPday[%i] = %g\n", ii, new_dPday);
-    dPdays[ii] = new_dPday;
-  }
-
-
+  
   std::vector<double> dPdbys (positions.size(), 0);
-  std::vector<double> dx0dbys (positions.size(), 0);
-  std::vector<double> dy0dbys (positions.size(), 0);
   for (unsigned l=0; l<d_indeces.size(); ++l) {
     if (l==0) { d_power=0; } else { d_power=1; };
-
-    set_data_for_small_t(current_a,
-  	     current_x_0,
-  	     current_b,
-  	     current_c,
-  	     current_y_0,
-  	     current_d + d_indeces[l]*h_y);
-    positions = small_t_image_positions_1_3(false);
-
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
+    unsigned index = 0*1 + 1*2 + 0*4 + l*8;
+    positions = perturbed_positions[index];
 
     for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
-      double y_0 = gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
-
-      dx0dbys[ii] = dx0dbys[ii] +
-	x_0*std::pow(-1, d_power)/h_y;
-      dy0dbys[ii] = dy0dbys[ii] +
-	y_0*std::pow(-1, d_power)/h_y;
-
-      dPdbys[ii] = dPdbys[ii] +  + (std::pow((x-x_0)/sigma_x_,2.0) +
-  		     std::pow((y-y_0)/sigma_y_,2.0) +
-  		     -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+      dPdbys[ii] = dPdbys[ii] +
+	perturbed_polynomials[index][ii]*
 	std::pow(-1, d_power);
     }
   }
   for (unsigned ii=0; ii<positions.size(); ++ii) {
     dPdbys[ii] = dPdbys[ii]/h_y;
-    // printf("dPdbys[%i] = %g\n", ii, dPdbys[ii]);
-  }
-  set_data_for_small_t(current_a,
-		       current_x_0,
-		       current_b,
-		       current_c,
-		       current_y_0,
-		       current_d);
-  positions = small_t_image_positions_1_3(false);
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-
-    double x_0_star =
-      gsl_vector_get(positions[ii].get_position(),0);
-    double y_0_star =
-      gsl_vector_get(positions[ii].get_position(),1);
-
-    double new_dPdby = -2.0*(x-x_0_star)/(sigma_x_*sigma_x_)*dx0dbys[ii] +
-      -2.0*(y-y_0_star)/(sigma_y_*sigma_y_)*dy0dbys[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(y-y_0_star)*dx0dbys[ii] +
-      -2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*dy0dbys[ii];
-    printf("new_dPdby[%i] = %g\n", ii, new_dPdby);
-    dPdbys[ii] = new_dPdby;
+    printf("dPdbys[%i] = %g\n", ii, dPdbys[ii]);
   }
 
+  std::vector<double> ddPdaxdbxs (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=0; } else { b_power=1; };
+
+      unsigned index = i*1 + j*2 + 0*4 + 1*8;
+      for (unsigned ii=0; ii<positions.size(); ++ii) {
+	ddPdaxdbxs[ii] = ddPdaxdbxs[ii] +
+	  perturbed_polynomials[index][ii]/(h_x*h_x)*
+	  std::pow(-1, a_power)*std::pow(-1, b_power);
+      }
+    }
+  }
+  std::vector<double> ddPdaxdays (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned k=0; k<c_indeces.size(); ++k) {
+      if (k==0) { c_power=0; } else { c_power=1; };
+
+      unsigned index = i*1 + 1*2 + k*4 + 1*8;
+      for (unsigned ii=0; ii<positions.size(); ++ii) {
+	ddPdaxdays[ii] = ddPdaxdays[ii] +
+	  perturbed_polynomials[index][ii]/(h_x*h_y)*
+	  std::pow(-1, a_power)*std::pow(-1, c_power);
+      }
+    }
+  }
+  std::vector<double> ddPdaxdbys (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned l=0; l<c_indeces.size(); ++l) {
+      if (l==0) { d_power=0; } else { d_power=1; };
+
+      unsigned index = i*1 + 1*2 + 0*4 + l*8;
+      for (unsigned ii=0; ii<positions.size(); ++ii) {
+	ddPdaxdbys[ii] = ddPdaxdbys[ii] +
+	  perturbed_polynomials[index][ii]/(h_x*h_y)*
+	  std::pow(-1, a_power)*std::pow(-1, d_power);
+      }
+    }
+  }
+  std::vector<double> ddPdbxdays (positions.size(), 0);
+  for (unsigned j=0; j<a_indeces.size(); ++j) {
+    if (j==0) { b_power=0; } else { b_power=1; };
+
+    for (unsigned k=0; k<c_indeces.size(); ++k) {
+      if (k==0) { c_power=0; } else { c_power=1; };
+
+      unsigned index = 0*1 + j*2 + k*4 + 1*8;
+      for (unsigned ii=0; ii<positions.size(); ++ii) {
+	ddPdbxdays[ii] = ddPdbxdays[ii] +
+	  perturbed_polynomials[index][ii]/(h_x*h_y)*
+	  std::pow(-1, b_power)*std::pow(-1, c_power);
+      }
+    }
+  }
+  std::vector<double> ddPdbxdbys (positions.size(), 0);
+  for (unsigned j=0; j<b_indeces.size(); ++j) {
+    if (j==0) { b_power=0; } else { b_power=1; };
+
+    for (unsigned l=0; l<d_indeces.size(); ++l) {
+      if (l==0) { d_power=0; } else { d_power=1; };
+
+      unsigned index = 0*1 + j*2 + 0*4 + l*8;
+      for (unsigned ii=0; ii<positions.size(); ++ii) {
+	ddPdbxdbys[ii] = ddPdbxdbys[ii] +
+	  perturbed_polynomials[index][ii]/(h_x*h_y)*
+	  std::pow(-1, b_power)*std::pow(-1, d_power);
+      }
+    }
+  }
+  std::vector<double> ddPdaydbys (positions.size(), 0);
+  for (unsigned k=0; k<c_indeces.size(); ++k) {
+    if (k==0) { c_power=0; } else { c_power=1; };
+
+    for (unsigned l=0; l<c_indeces.size(); ++l) {
+      if (l==0) { d_power=0; } else { d_power=1; };
+
+      unsigned index = 0*1 + 1*2 + k*4 + l*8;
+      for (unsigned ii=0; ii<positions.size(); ++ii) {
+	ddPdaydbys[ii] = ddPdaydbys[ii] +
+	  perturbed_polynomials[index][ii]/(h_y*h_y)*
+	  std::pow(-1, c_power)*std::pow(-1, d_power);
+      }
+    }
+  }
+
+  std::vector<double> dddPdaxdbxday (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=0; } else { b_power=1; };
+
+      for (unsigned k=0; k<c_indeces.size(); ++k) {
+	if (k==0) { c_power=0; } else { c_power=1; };
+
+	unsigned index = i*1 + j*2 + k*4 + 1*8;
+	for (unsigned ii=0; ii<positions.size(); ++ii) {
+	  dddPdaxdbxday[ii] = dddPdaxdbxday[ii] +
+	    perturbed_polynomials[index][ii]/(h_x*h_x*h_y)*
+	    std::pow(-1, a_power)*std::pow(-1, b_power)*std::pow(-1, c_power);
+	}
+      }
+    }
+  }
+  std::vector<double> dddPdaxdbxdby (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=0; } else { b_power=1; };
+
+	for (unsigned l=0; l<d_indeces.size(); ++l) {
+	  if (l==0) { d_power=0; } else { d_power=1; };
+
+	  unsigned index = i*1 + j*2 + 0*4 + l*8;
+	  for (unsigned ii=0; ii<positions.size(); ++ii) {
+	    dddPdaxdbxdby[ii] = dddPdaxdbxdby[ii] +
+	      perturbed_polynomials[index][ii]/(h_x*h_x*h_y)*
+	      std::pow(-1, a_power)*std::pow(-1, b_power)*
+	      std::pow(-1, d_power);
+	  }
+	}
+    }
+  }
+  std::vector<double> dddPdaxdaydby (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+      for (unsigned k=0; k<c_indeces.size(); ++k) {
+	if (k==0) { c_power=0; } else { c_power=1; };
+
+	for (unsigned l=0; l<d_indeces.size(); ++l) {
+	  if (l==0) { d_power=0; } else { d_power=1; };
+
+	  unsigned index = i*1 + 1*2 + k*4 + l*8;
+	  for (unsigned ii=0; ii<positions.size(); ++ii) {
+	    dddPdaxdaydby[ii] = dddPdaxdaydby[ii] +
+	      perturbed_polynomials[index][ii]/(h_x*h_y*h_y)*
+	      std::pow(-1, a_power)*std::pow(-1, c_power)*std::pow(-1, d_power);
+	  }
+	}
+      }
+  }
+  std::vector<double> dddPdbxdaydby (positions.size(), 0);
+  for (unsigned j=0; j<b_indeces.size(); ++j) {
+    if (j==0) { b_power=0; } else { b_power=1; };
+    
+    for (unsigned k=0; k<c_indeces.size(); ++k) {
+      if (k==0) { c_power=0; } else { c_power=1; };
+      
+      for (unsigned l=0; l<d_indeces.size(); ++l) {
+	if (l==0) { d_power=0; } else { d_power=1; };
+	
+	unsigned index = 0*1 + j*2 + k*4 + l*8;
+	for (unsigned ii=0; ii<positions.size(); ++ii) {
+	  dddPdbxdaydby[ii] = dddPdbxdaydby[ii] +
+	    perturbed_polynomials[index][ii]/(h_x*h_y*h_y)*
+	    std::pow(-1, b_power)*
+	    std::pow(-1, c_power)*std::pow(-1, d_power);
+	}
+      }
+    }
+  }
+  
+
+  std::vector<double> ddddP (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    for (unsigned j=0; j<b_indeces.size(); ++j) {
+      if (j==0) { b_power=0; } else { b_power=1; };
+
+      for (unsigned k=0; k<c_indeces.size(); ++k) {
+	if (k==0) { c_power=0; } else { c_power=1; };
+
+	for (unsigned l=0; l<d_indeces.size(); ++l) {
+	  if (l==0) { d_power=0; } else { d_power=1; };
+
+	  unsigned index = i*1 + j*2 + k*4 + l*8;
+	  for (unsigned ii=0; ii<positions.size(); ++ii) {
+	    ddddP[ii] = ddddP[ii] +
+	      perturbed_polynomials[index][ii]/(h_x*h_x*h_y*h_y)*
+	      std::pow(-1, a_power)*std::pow(-1, b_power)*
+	      std::pow(-1, c_power)*std::pow(-1, d_power);
+	  }
+	}
+      }
+    }
+  }
+    
   // COMPUTING CONTRIBUTIONS OF EACH IMAGE
   t1 = std::chrono::high_resolution_clock::now();
   set_data_for_small_t(current_a,
@@ -1750,19 +1834,57 @@ double BivariateSolver::numerical_likelihood_first_order_small_t_ax_bx(const gsl
 
     terms_signs[ii] = 1;
     if (differentiable_image.get_mult_factor()*
-	dPdaxs[ii]*dPdbxs[ii]*
-	dPdays[ii]*dPdbys[ii]< 0)
+	((std::exp(4*log_CC)*
+	 dPdaxs[ii]*dPdbxs[ii]*
+	  dPdays[ii]*dPdbys[ii])) //  +
+	 // // // // // //
+	 // -std::exp(3*log_CC)*
+	 // (ddPdaxdbxs[ii]*dPdbys[ii]*dPdays[ii] +
+	 //  ddPdaxdays[ii]*dPdbxs[ii]*dPdbys[ii] +
+	 //  ddPdaxdbys[ii]*dPdbxs[ii]*dPdays[ii] +
+	 //  ddPdbxdays[ii]*dPdaxs[ii]*dPdbys[ii] +
+	 //  ddPdbxdbys[ii]*dPdaxs[ii]*dPdays[ii] +
+	 //  ddPdaydbys[ii]*dPdaxs[ii]*dPdbxs[ii]) +
+	 // // // // // //
+	 // std::exp(2*log_CC)*
+	 // (dddPdaxdbxday[ii]*dPdbys[ii] +
+	 //  ddPdaxdbxs[ii]*ddPdaydbys[ii] +
+	 //  dddPdaxdbxdby[ii]*dPdays[ii] +
+	 //  dddPdaxdaydby[ii]*dPdbxs[ii] +
+	 //  ddPdaxdays[ii]*ddPdbxdbys[ii] +
+	 //  dddPdbxdaydby[ii]*dPdaxs[ii] +
+	 //  ddPdbxdays[ii]*dPdaxs[ii]*dPdbys[ii])
+	 // // // // //
+	//-std::exp(log_CC)*ddddP[ii])
+	< 0)
       {
 	terms_signs[ii] = -1;
       }
 
-    log_terms[ii] = log_G + 4*log_CC +
-      log(std::abs(dPdaxs[ii])) +
-      log(std::abs(dPdbxs[ii])) +
-      log(std::abs(dPdays[ii])) +
-      log(std::abs(dPdbys[ii]));
-
-    std::cout << "log_term[" << ii << "] = " << log_terms[ii]
+    log_terms[ii] = log_G +
+      log(std::exp(4*log_CC)*
+	  dPdaxs[ii]*dPdbxs[ii]*
+	  dPdays[ii]*dPdbys[ii]);//  +
+	  // // // // //
+	  // -std::exp(3*log_CC)*
+	  // (ddPdaxdbxs[ii]*dPdbys[ii]*dPdays[ii] +
+	  //  ddPdaxdays[ii]*dPdbxs[ii]*dPdbys[ii] +
+	  //  ddPdaxdbys[ii]*dPdbxs[ii]*dPdays[ii] +
+	  //  ddPdbxdays[ii]*dPdaxs[ii]*dPdbys[ii] +
+	  //  ddPdbxdbys[ii]*dPdaxs[ii]*dPdays[ii] +
+	  //  ddPdaydbys[ii]*dPdaxs[ii]*dPdbxs[ii]) +
+	  // // // // // //
+	  //  std::exp(2*log_CC)*
+	  //  (dddPdaxdbxday[ii]*dPdbys[ii] +
+	  //   ddPdaxdbxs[ii]*ddPdaydbys[ii] +
+	  //   dddPdaxdbxdby[ii]*dPdays[ii] +
+	  //   dddPdaxdaydby[ii]*dPdbxs[ii] +
+	  //   ddPdaxdays[ii]*ddPdbxdbys[ii] +
+	  //   dddPdbxdaydby[ii]*dPdaxs[ii] +
+	  //   ddPdbxdays[ii]*dPdaxs[ii]*dPdbys[ii]) +
+	  // // // // // // //
+	  // -std::exp(log_CC)*ddddP[ii]);
+    std::cout << "term[" << ii << "] = " << exp(log_terms[ii]-log_G)*terms_signs[ii]
 	      << " ";
     for (const unsigned& reflection : differentiable_image.get_reflection_sequence()) {
       std::cout << reflection << " ";
@@ -12524,4 +12646,100 @@ void BivariateSolver::figure_chapter_3_illustration_1() const
     printf("\n");
   }
   printf("dev.off();\n ");
+}
+
+double BivariateSolver::wrapper(const std::vector<double> &x, 
+				std::vector<double> &grad,
+				void * data)
+{
+  std::cout << "trying t=" << x[0] << " ";
+
+  double t = x[0];
+
+  BivariateSolver * solver = reinterpret_cast<BivariateSolver*>(data);
+  double raw_input [2] = {solver->get_x_t_2(),
+			  solver->get_y_t_2()};
+  gsl_vector_view raw_input_view = gsl_vector_view_array(raw_input, 2);
+  
+  double sigma_y_current = solver->get_sigma_y();
+  double rho_current = solver->get_rho();
+  double t_2_current = solver->get_t_2();
+
+  double x_0_2_current = solver->get_x_0_2();
+  double y_0_2_current = solver->get_y_0_2();
+
+  solver->set_diffusion_parameters_and_data_small_t(1.0,
+						    sigma_y_current,
+						    rho_current,
+						    t,
+						    0.0,
+						    x_0_2_current,
+						    1.0,
+						    0.0,
+						    y_0_2_current,
+						    1.0);
+  
+  double out = solver->analytic_likelihood(&raw_input_view.vector,1000);
+  
+  solver->set_diffusion_parameters_and_data_small_t(1.0,
+						    sigma_y_current,
+						    rho_current,
+						    t_2_current,
+						    0.0,
+						    x_0_2_current,
+						    1.0,
+						    0.0,
+						    y_0_2_current,
+						    1.0);
+  std::cout << "out=" << out << std::endl;
+  return out;
+}
+
+double BivariateSolver::wrapper_small_t(const std::vector<double> &x, 
+					std::vector<double> &grad,
+					void * data)
+{
+  std::cout << "trying t=" << x[0] << " ";
+  
+  double t = x[0];
+  
+  BivariateSolver * solver = reinterpret_cast<BivariateSolver*>(data);
+  double raw_input [2] = {solver->get_x_t_2(),
+			  solver->get_y_t_2()};
+  gsl_vector_view raw_input_view = gsl_vector_view_array(raw_input, 2);
+  
+  double sigma_y_current = solver->get_sigma_y();
+  double rho_current = solver->get_rho();
+  double t_2_current = solver->get_t_2();
+
+  double x_0_2_current = solver->get_x_0_2();
+  double y_0_2_current = solver->get_y_0_2();
+
+  solver->set_diffusion_parameters_and_data_small_t(1.0,
+						    sigma_y_current,
+						    rho_current,
+						    t,
+						    0.0,
+						    x_0_2_current,
+						    1.0,
+						    0.0,
+						    y_0_2_current,
+						    1.0);
+  
+  double out =
+    solver->numerical_likelihood_first_order_small_t_ax_bx(&raw_input_view.vector,
+							   1e-5);
+  
+  solver->set_diffusion_parameters_and_data_small_t(1.0,
+						    sigma_y_current,
+						    rho_current,
+						    t_2_current,
+						    0.0,
+						    x_0_2_current,
+						    1.0,
+						    0.0,
+						    y_0_2_current,
+						    1.0);
+  std::cout << "out=" << out << std::endl;
+  return out;
 }
