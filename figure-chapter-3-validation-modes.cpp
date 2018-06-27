@@ -81,6 +81,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> modes_analytic (N);
   std::vector<double> true_value_at_modes (N);
   std::vector<double> FE_value_at_modes (N);
+  std::vector<double> small_t_value_at_modes (N);
 
   std::vector<likelihood_point> points_for_kriging (N);
   std::ifstream input_file(input_file_name);
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
   std::vector<likelihood_point> points_for_integration (1);
 
   auto t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local, differences_in_approximate_modes, true_value_at_modes, FE_value_at_modes, modes, modes_analytic) firstprivate(dx_likelihood_for_FEM, dx_likelihood_for_small_t, dx)
+#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local, differences_in_approximate_modes, true_value_at_modes, FE_value_at_modes, small_t_value_at_modes, modes, modes_analytic) firstprivate(dx_likelihood_for_FEM, dx_likelihood_for_small_t, dx)
     {
 #pragma omp for
       for (i=0; i<N; ++i) {
@@ -266,12 +267,14 @@ int main(int argc, char *argv[]) {
 		    printf("%g, ", mode);
 		  }
 		  printf("\n");
-		  std::vector<double>::iterator result =
+		  std::vector<double>::iterator result_min =
 		    std::min_element(current_modes.begin(), current_modes.end());
-		  printf("min mode = %g\n", *result);
+		  std::vector<double>::iterator result_max =
+		    std::min_element(current_modes.begin(), current_modes.end());
+		  printf("min mode = %g\n", *result_min);
 
 		  if (ii==0) {
-		    modes[i] = *result;
+		    modes[i] = *result_max;
 		    differences_in_approximate_modes[i] =
 		      modes_analytic[i] - modes[i];
 
@@ -291,6 +294,9 @@ int main(int argc, char *argv[]) {
 		    double FE_at_mode = solver.numerical_likelihood(&raw_input.vector,
 								    dx_likelihood_for_FEM);
 		    FE_value_at_modes[i] = FE_at_mode;
+		    small_t_value_at_modes[i] =
+		      solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
+									  dx_likelihood_for_small_t);
 		  }
 		}
 	      
@@ -383,62 +389,77 @@ int main(int argc, char *argv[]) {
     }
     auto t2 = std::chrono::high_resolution_clock::now();
 
-    printf("modes.analytic = c(");
-    for (unsigned i=0; i<N-1; ++i) {
-      printf("%g,\n", modes_analytic[i]);
-    }
-    printf("%g);\n", modes_analytic[N-1]);
+    std::ofstream output_file;
+    output_file.open("./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes.R");
 
-    printf("modes = c(");
+    output_file << "modes.analytic = c(";
     for (unsigned i=0; i<N-1; ++i) {
-      printf("%g,\n", modes[i]);
+      output_file << modes_analytic[i] << ",\n";
     }
-    printf("%g);\n", modes[N-1]);
+    output_file << modes_analytic[N-1] << ");\n";
 
-    std::cout << "differences = c(";
+    output_file << "modes = c(";
+    for (unsigned i=0; i<N-1; ++i) {
+      output_file << modes[i] << ",\n";
+    }
+    output_file << modes[N-1] << ");\n";
+
+    output_file << "differences = c(";
     for (unsigned i=0; i<differences_in_approximate_modes.size()-1; ++i) {
-      std::cout << differences_in_approximate_modes[i] << ",\n";
+      output_file << differences_in_approximate_modes[i] << ",\n";
     }
-    std::cout << differences_in_approximate_modes[differences_in_approximate_modes.size()-1] << ");" 
-	      << std::endl;
+    output_file << differences_in_approximate_modes[differences_in_approximate_modes.size()-1] << ");" 
+	      << "\n";
 
-    std::cout << "sigma_ys = c(";
+    output_file << "sigma_ys = c(";
     for (unsigned i=0; i<points_for_kriging.size()-1; ++i) {
-      std::cout << points_for_kriging[i].sigma_y_tilde << ",\n";
+      output_file << points_for_kriging[i].sigma_y_tilde << ",\n";
     }
-    std::cout << points_for_kriging[points_for_kriging.size()-1].sigma_y_tilde << ");" 
-	      << std::endl;
+    output_file << points_for_kriging[points_for_kriging.size()-1].sigma_y_tilde << ");" 
+	      << "\n";
 
-    std::cout << "true_value_at_modes = c(";
+    output_file << "true_value_at_modes = c(";
     for (unsigned i=0; i<true_value_at_modes.size()-1; ++i) {
-      std::cout << true_value_at_modes[i] << ",\n";
+      output_file << true_value_at_modes[i] << ",\n";
     }
-    std::cout << true_value_at_modes[true_value_at_modes.size()-1] << ");" 
-	      << std::endl;
+    output_file << true_value_at_modes[true_value_at_modes.size()-1] << ");" 
+	      << "\n";
 
-    std::cout << "FE_value_at_modes = c(";
+    output_file << "FE_value_at_modes = c(";
     for (unsigned i=0; i<FE_value_at_modes.size()-1; ++i) {
-      std::cout << FE_value_at_modes[i] << ",\n";
+      output_file << FE_value_at_modes[i] << ",\n";
     }
-    std::cout << FE_value_at_modes[FE_value_at_modes.size()-1] << ");" 
-	      << std::endl;
+    output_file << FE_value_at_modes[FE_value_at_modes.size()-1] << ");" 
+	      << "\n";
 
-    printf("pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-scatterplot.pdf\");\n");
-    printf("plot(sigma_ys, differences, xlab=expression(tilde(sigma)));\n");
-    printf("dev.off();\n");
+    output_file << "small_t_value_at_modes = c(";
+    for (unsigned i=0; i<small_t_value_at_modes.size()-1; ++i) {
+      output_file << small_t_value_at_modes[i] << ",\n";
+    }
+    output_file << small_t_value_at_modes[small_t_value_at_modes.size()-1] << ");" 
+		<< "\n";
 
-    printf("pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-histogram.pdf\");\n");
-    printf("hist(differences, xlab=\"differences\", prob=1, main=\"\", ylab=\"\");\n");
-    printf("dev.off();\n");
+    output_file << "pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-scatterplot.pdf\");\n";
+    output_file << "plot(sigma_ys, differences, xlab=expression(tilde(sigma)));\n";
+    output_file << "dev.off();\n";
 
-    printf("pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-scatterplot-2.pdf\");\n");
-    printf("plot(modes.analytic, differences, xlab=\"true modes\", ylab=\"differences\");\n");
-    printf("dev.off();\n");
+    output_file << "pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-histogram.pdf\");\n";
+    output_file << "hist(differences, xlab=\"differences\", prob=1, main=\"\", ylab=\"\");\n";
+    output_file << "dev.off();\n";
 
-    printf("pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-histogram-2.pdf\");\n");
-    printf("hist(true_value_at_modes, xlab=\"true log likelihood at approximate mode\", prob=1, main=\"\", ylab=\"\");\n");
-    printf("dev.off();\n");
-    
+    output_file << "pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-scatterplot-2.pdf\");\n";
+    output_file << "plot(modes.analytic, differences, xlab=\"true modes\", ylab=\"differences\");\n";
+    output_file << "dev.off();\n";
+
+    output_file << "pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-histogram-2.pdf\");\n";
+    output_file << "hist(true_value_at_modes, xlab=\"true log likelihood at approximate mode\", prob=1, main=\"\", ylab=\"\");\n";
+    output_file << "dev.off();\n";
+
+    output_file << "pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-histogram-3.pdf\");\n";
+    output_file << "hist(abs(FE_value_at_modes-exp(true_value_at_modes))/exp(true_value_at_modes), xlab=\"relative error at approximate modes\", prob=1, main=\"\", ylab=\"\");\n";
+    output_file << "dev.off();\n";
+
+    output_file.close();
     gsl_rng_free(r_ptr_local);
     return 0;
 }
