@@ -10873,14 +10873,15 @@ small_t_image_positions_1_3(bool PRINT) const
   	   (reflection_sequence_per_final_image_current[3] == 0)) |
   	  (reflection_sequence_per_final_image_current.size() == 0))
   	{
-  	  printf("image.%i = c(%g,%g); sign.%i=%g; points(%g,%g,pch=20,col=\"green\"); ## LOOK HERE ",
+  	  printf("image.%i = c(%g,%g); sign.%i=%g; points(%g,%g,pch=20,col=\"green\"); time=%g; ## LOOK HERE ",
   		 unique_image_counter,
   		 gsl_vector_get(unique_image.get_position(),0),
   		 gsl_vector_get(unique_image.get_position(),1),
   		 unique_image_counter,
   		 unique_image.get_mult_factor(),
   		 gsl_vector_get(unique_image.get_position(),0),
-  		 gsl_vector_get(unique_image.get_position(),1));
+  		 gsl_vector_get(unique_image.get_position(),1),
+		 unique_image.get_t());
   	}  else if (reflection_sequence_per_final_image_current.size() > 4) {
   	printf("image.%i = c(%g,%g); sign.%i=%g; points(%g,%g,pch=20,col=\"blue\"); ## ",
   	       unique_image_counter,
