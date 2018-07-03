@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   double dx_likelihood_for_small_t = std::stod(argv[4]);
   std::string input_file_name = argv[5];
   double dx_likelihood_for_FEM = std::stod(argv[7]);
-  double dx = 1.0/600.0;
+  double dx = 1.0/1000.0;
 
   static int counter = 0;
   static BivariateGaussianKernelBasis* private_bases;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
 #pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
-  omp_set_num_threads(3);
+  omp_set_num_threads(30);
 
   BivariateGaussianKernelBasis basis_positive =
     BivariateGaussianKernelBasis(dx,
@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> true_value_at_modes (N);
   std::vector<double> FE_value_at_modes (N);
   std::vector<double> small_t_value_at_modes (N);
+  std::vector<double> dx_likelihoods_for_FEM (N);
 
   std::vector<likelihood_point> points_for_kriging (N);
   std::ifstream input_file(input_file_name);
@@ -89,12 +90,13 @@ int main(int argc, char *argv[]) {
     likelihood_point current_lp = likelihood_point();
     input_file >> current_lp;
     std::cout << current_lp;
+    // current_lp.sigma_y_tilde = 0.5;
     points_for_kriging[i] = current_lp;
   }
   std::vector<likelihood_point> points_for_integration (1);
 
   auto t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local, differences_in_approximate_modes, true_value_at_modes, FE_value_at_modes, small_t_value_at_modes, modes, modes_analytic) firstprivate(dx_likelihood_for_FEM, dx_likelihood_for_small_t, dx)
+#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local, differences_in_approximate_modes, true_value_at_modes, FE_value_at_modes, small_t_value_at_modes, modes, modes_analytic, dx_likelihoods_for_FEM) firstprivate(dx_likelihood_for_FEM, dx_likelihood_for_small_t, dx)
     {
 #pragma omp for
       for (i=0; i<N; ++i) {
@@ -274,7 +276,7 @@ int main(int argc, char *argv[]) {
 		  printf("min mode = %g\n", *result_min);
 
 		  if (ii==0) {
-		    modes[i] = *result_max;
+		    modes[i] = (*result_min);
 		    differences_in_approximate_modes[i] =
 		      modes_analytic[i] - modes[i];
 
@@ -291,9 +293,22 @@ int main(int argc, char *argv[]) {
 
 		    double true_at_mode = solver.analytic_likelihood(&raw_input.vector, 1000);
 		    true_value_at_modes[i] = true_at_mode;
+		    // O(solution)/100 = epsilon/ (dx^4)
+		    // ==> dx^4 = epsilon/ (O(solution)/100) = 100*epsilon/O(solution)
+		    // ==> 4*log(dx) = log(100) + log(epsilon) - log(O(solution))
+		    // ==> log(dx) = ( log(100) + log(epsilon) - log(O(solution)) ) / 4
+		    // ==> dx = exp( (log(100) + log(epsilon) - log(O(solution))) / 4 )
+		    // epsilon is assumed 1e-12
+		    double epsilon = 1e-12;
+		    std::vector<double> dx_proposals = std::vector<double> {exp( (log(100) + log(epsilon) - true_at_mode) / 4 ),
+									    dx_likelihood_for_FEM};
+		    std::vector<double>::iterator dx_proposal_result = std::min_element(dx_proposals.begin(),
+											dx_proposals.end());
+		    dx_likelihoods_for_FEM[i] = *dx_proposal_result;
 		    double FE_at_mode = solver.numerical_likelihood(&raw_input.vector,
 								    dx_likelihood_for_FEM);
 		    FE_value_at_modes[i] = FE_at_mode;
+
 		    small_t_value_at_modes[i] =
 		      solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
 									  dx_likelihood_for_small_t);
@@ -437,6 +452,13 @@ int main(int argc, char *argv[]) {
       output_file << small_t_value_at_modes[i] << ",\n";
     }
     output_file << small_t_value_at_modes[small_t_value_at_modes.size()-1] << ");" 
+		<< "\n";
+
+    output_file << "dx_likelihoods_for_FEM = c(";
+    for (unsigned i=0; i<dx_likelihoods_for_FEM.size()-1; ++i) {
+      output_file << dx_likelihoods_for_FEM[i] << ",\n";
+    }
+    output_file << dx_likelihoods_for_FEM[dx_likelihoods_for_FEM.size()-1] << ");" 
 		<< "\n";
 
     output_file << "pdf(\"./src/kernel-expansion/documentation/chapter-3/chapter-3-figure-validation-modes-scatterplot.pdf\");\n";
