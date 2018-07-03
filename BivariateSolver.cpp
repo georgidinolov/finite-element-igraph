@@ -963,7 +963,8 @@ double BivariateSolver::numerical_likelihood(const gsl_vector* input,
     // printf("second order deriv \n");
   } else {
     // printf("first order deriv \n");
-    likelihood = numerical_likelihood_first_order(input, h);
+    // likelihood = numerical_likelihood_first_order(input, h);
+    likelihood = std::numeric_limits<double>::quiet_NaN();
   }
 
 
