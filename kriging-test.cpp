@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
   std::string file_prefix = argv[6];
   std::string input_file_name = argv[7];
   double dx = 1.0/1000.0;
+  double dx_likelihood_for_small_t = 1e-5;
 
   static int counter = 0;
   static BivariateGaussianKernelBasis* private_bases;
@@ -42,7 +43,7 @@ int main(int argc, char *argv[]) {
 
 #pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
-  omp_set_num_threads(3);
+  omp_set_num_threads(20);
 
   BivariateGaussianKernelBasis basis_positive =
     BivariateGaussianKernelBasis(dx,
@@ -77,19 +78,25 @@ int main(int argc, char *argv[]) {
 
 
   std::vector<likelihood_point> points_for_kriging (N);
+  std::vector<likelihood_point> points_for_kriging_analytic (N);
   std::ifstream input_file(input_file_name);
 
   if (input_file.is_open()) {
     for (i=0; i<N; ++i) {
       input_file >> points_for_kriging[i];
+      points_for_kriging[i].t_tilde = 1.0;
+      points_for_kriging[i].rho = 0.95;
       points_for_kriging[i].log_likelihood = 1.0;
+      points_for_kriging[i].t_tilde = points_for_kriging[i].t_tilde;
+
+      points_for_kriging_analytic[i] = points_for_kriging[i];
     }
   }
 
   std::vector<likelihood_point> points_for_integration (1);
 
   auto t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_kriging, N, seed_init, r_ptr_local) firstprivate(dx_likelihood, dx)
+#pragma omp parallel default(none) private(i) shared(points_for_kriging, points_for_kriging_analytic, N, seed_init, r_ptr_local, dx_likelihood_for_small_t) firstprivate(dx_likelihood, dx)
     {
 #pragma omp for
       for (i=0; i<N; ++i) {
@@ -98,7 +105,8 @@ int main(int argc, char *argv[]) {
 	gsl_vector_view raw_input = gsl_vector_view_array(raw_input_array,2);
 	
 	double rho = points_for_kriging[i].rho;
-	double likelihood = 0.0;
+	double log_likelihood = 0.0;
+	double log_likelihood_analytic = 0.0;
 	if (!std::signbit(rho)) {
 	  BivariateSolver solver = BivariateSolver(private_bases,
 						   1.0,
@@ -112,12 +120,12 @@ int main(int argc, char *argv[]) {
 						   1.0,
 						   points_for_kriging[i].t_tilde,
 						   dx);
-
 	  raw_input_array[0] = points_for_kriging[i].x_t_tilde;
 	  raw_input_array[1] = points_for_kriging[i].y_t_tilde;
 	  
 	  std::vector<BivariateImageWithTime> small_positions =
-		  solver.small_t_image_positions_1_3(false);
+		  solver.small_t_image_positions_type_41(false);
+	  double small_t = small_positions[0].get_t();
 	  std::vector<double> current_modes (small_positions.size());
 	  for (unsigned ii=0; ii<small_positions.size(); ++ii) {
 	    const BivariateImageWithTime& image = small_positions[ii];
@@ -143,22 +151,43 @@ int main(int argc, char *argv[]) {
 	  printf("\n");
 	  std::vector<double>::iterator result_min =
 	    std::min_element(current_modes.begin(), current_modes.end());
+	  std::vector<double>::iterator result_max =
+	    std::max_element(current_modes.begin(), current_modes.end());
+
 
 	  if (points_for_kriging[i].t_tilde >= *result_min) {
-	    likelihood = solver.numerical_likelihood(&raw_input.vector,
-						     dx_likelihood);
+	    log_likelihood = log(solver.numerical_likelihood_first_order(&raw_input.vector,
+									 dx_likelihood));
+	  } else if (!std::signbit(small_t)) {
+	    printf("below limit, using small t positions\n");
+	    solver.set_diffusion_parameters_and_data(1.0,
+						     points_for_kriging[i].sigma_y_tilde,
+						     rho,
+						     small_t, // time 
+						     0.0,
+						     points_for_kriging[i].x_0_tilde,
+						     1.0,
+						     0.0,
+						     points_for_kriging[i].y_0_tilde,
+						     1.0);
+	    points_for_kriging[i].t_tilde = small_t;
+	    // log_likelihood = solver.likelihood_small_t_type_41_truncated(&raw_input.vector,
+	    // 								 small_t,
+	    // 								 dx_likelihood_for_small_t);
+	    log_likelihood = 123;
 	  } else {
-	    likelihood = std::numeric_limits<double>::quiet_NaN();
+	    printf("sigma too big for small t\n");
+	    log_likelihood = 123;  // std::numeric_limits<double>::quiet_NaN();
 	  }
-	  // likelihood = solver.likelihood_small_t_type_41_truncated(&raw_input.vector,
-	  // 							   small_t,
-	  // 							   dx_likelihood_for_small_t);
+
+	  log_likelihood_analytic = solver.analytic_likelihood(&raw_input.vector,
+							   1000);
 
 	} else {
 	  BivariateSolver solver = BivariateSolver(private_bases,
 						   1.0,
 						   points_for_kriging[i].sigma_y_tilde,
-						   rho,
+						   -rho,
 						   -1.0,
 						   -points_for_kriging[i].x_0_tilde,
 						   0.0,
@@ -172,7 +201,8 @@ int main(int argc, char *argv[]) {
 	  raw_input_array[1] = points_for_kriging[i].y_t_tilde;
 	  
 	  std::vector<BivariateImageWithTime> small_positions =
-	    solver.small_t_image_positions_1_3(false);
+	    solver.small_t_image_positions_type_41(false);
+	  double small_t = small_positions[0].get_t();
 	  std::vector<double> current_modes (small_positions.size());
 	  for (unsigned ii=0; ii<small_positions.size(); ++ii) {
 	    const BivariateImageWithTime& image = small_positions[ii];
@@ -198,25 +228,46 @@ int main(int argc, char *argv[]) {
 	  printf("\n");
 	  std::vector<double>::iterator result_min =
 	    std::min_element(current_modes.begin(), current_modes.end());
+	  std::vector<double>::iterator result_max =
+	    std::min_element(current_modes.begin(), current_modes.end());
+
 
 	  if (points_for_kriging[i].t_tilde >= *result_min) {
-	    likelihood = solver.numerical_likelihood(&raw_input.vector,
-						     dx_likelihood);
+	    log_likelihood = log(solver.numerical_likelihood_first_order(&raw_input.vector,
+									 dx_likelihood));
+	  } else if (!std::signbit(small_t)) {
+	    printf("below limit\n");
+	    solver.set_diffusion_parameters_and_data(1.0,
+						     points_for_kriging[i].sigma_y_tilde,
+						     -rho,
+						     small_t, // time 
+						     -1.0,
+						     -points_for_kriging[i].x_0_tilde,
+						     0.0,
+						     0.0,
+						     points_for_kriging[i].y_0_tilde,
+						     1.0);
+	    points_for_kriging[i].t_tilde = small_t;
+	    // log_likelihood = solver.likelihood_small_t_type_41_truncated(&raw_input.vector,
+	    // 								 small_t,
+	    // 								 dx_likelihood_for_small_t);
+	    log_likelihood = 123
 	  } else {
-	    likelihood = std::numeric_limits<double>::quiet_NaN();
+	    printf("sigma too big for small t\n");
+	    log_likelihood = 123; // std::numeric_limits<double>::quiet_NaN();
 	  }
-	  // likelihood = solver.likelihood_small_t_type_41_truncated(&raw_input.vector,
-	  // 							   small_t,
-	  // 							   dx_likelihood_for_small_t);
 
+	  log_likelihood_analytic = solver.analytic_likelihood(&raw_input.vector,
+							       1000);
 	}
 
 
-	points_for_kriging[i].log_likelihood = likelihood;
-	printf("Thread %d with address %p produces likelihood %g\n",
+	points_for_kriging[i].log_likelihood = log_likelihood;
+	points_for_kriging_analytic[i].log_likelihood = log_likelihood_analytic;
+	printf("Thread %d with address %p produces log_likelihood %g\n",
 	       omp_get_thread_num(),
 	       private_bases,
-	       likelihood);
+	       log_likelihood);
       }
     }
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -228,14 +279,26 @@ int main(int argc, char *argv[]) {
       "-sigma_y_basis-" + argv[4] +
       "-dx_likelihood-" + argv[5] +
       ".csv";
+    std::string output_file_name_analytic = file_prefix +
+      "-analytic-" +
+      "-number-points-" + argv[1] +
+      "-rho_basis-" + argv[2] +
+      "-sigma_x_basis-" + argv[3] +
+      "-sigma_y_basis-" + argv[4] +
+      "-dx_likelihood-" + argv[5] +
+      ".csv";
 
     std::ofstream output_file;
+    std::ofstream output_file_analytic;
     output_file.open(output_file_name);
+    output_file_analytic.open(output_file_name_analytic);
 
     for (i=0; i<N; ++i) {
       output_file << points_for_kriging[i];
+      output_file_analytic << points_for_kriging_analytic[i];
     }
     output_file.close();
+    output_file_analytic.close();
 
     // parameters_nominal params = parameters_nominal();
     // GaussianInterpolator GP_prior = GaussianInterpolator(points_for_integration,
