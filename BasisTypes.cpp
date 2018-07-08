@@ -678,129 +678,138 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 						       double power,
 						       double std_dev_factor)
 {
-  // creating the x-nodes
+  // GIVEN compututational domain Omega = [0,1]\times[0,1] and a
+  // kernel centered on (1/2,1/2) with parameters
+  // (sigma_x,sigma_y,rho), we transform such that kernel has parameters (\sqrt{1-\rho},\sqrt{1+\rho},0) via
+  // SCALE: (x,y) -> (x/\sigma_x, y/\sigma_y) := (xi(1), eta(1))
+  // ROTATE: (xi(1), eta(1)) ->  \sqrt{2}/2 (xi(1)-eta(1), xi(2)+eta(2)) = \sqrt{2}/2 (x/\sigma_x-y/\sigma_y, x/\sigma_x+y/\sigma_y) := (xi(2), eta(2))
 
+  // We lay out grid on (xi(2), eta(2)) centered on 
+  //
+  // \sqrt{2}/2 \cdot 1/2 \cdot (1/\sigma_x-1/\sigma_y, 1/\sigma_x+1/\sigma_y)
+  //
+  // [(1/2,1/2) transformed], where each nodes is separated by a std
+  // dev factor \times \sqrt{1-\rho} in the xi(2) direction and dev
+  // factor \times \sqrt{1+\rho} in the eta(2) direction. Further, the nodes are bounded by
+  // 0 \leq \eta(2) \leq \sqrt{2}/2(1/\sigma_x + 1/\sigma_y)
+  // -\sqrt{2}/2 \codt 1/\sigma_y \leq xi(2) \leq \sqrt{2}/2 \codt 1/\sigma_x
+  //
+  // The above inequalities ensure an upper bound on the presence of
+  // nodes within \Omega when we transform back.
+  //
+  // Given the nodes, we transform back to (x,y) frame by rotating
+  // back and re-scaling. We finally filter on the nodes so that all
+  // are within \Omega.
+  //
+  // For computational reasons (mainly to allow for nodes at the
+  // corners), we extend Omega to Omega = [-epsilon,1+epsilon] \times
+  // [-epsilon,1+epsilon]
+
+  double epsilon = 0.10; 
+  // corners will include the midpoint... 
+                           //low.right, low.left,   up.left,     up.right
+  double corners [2*5] = {-epsilon, 1.0+epsilon, 1.0+epsilon, -epsilon, 0.5,
+			  -epsilon, -epsilon,    1.0+epsilon, 1.0+epsilon, 0.5};
+  gsl_matrix_view corners_view = gsl_matrix_view_array(corners,2,5);
+
+  double corners_xi [2*5];
+  gsl_matrix_view corners_xi_view = gsl_matrix_view_array(corners_xi,2,5);
+
+  double theta = M_PI/4.0;
+  gsl_matrix *Rotation_matrix = gsl_matrix_alloc(2,2);
+  gsl_matrix_set(Rotation_matrix, 0, 0, 1.0/sigma_x * std::cos(theta));
+  gsl_matrix_set(Rotation_matrix, 1, 0, 1.0/sigma_x * std::sin(theta));
+  gsl_matrix_set(Rotation_matrix, 0, 1, 1.0/sigma_y * -1.0*std::sin(theta));
+  gsl_matrix_set(Rotation_matrix, 1, 1, 1.0/sigma_y * std::cos(theta));
+
+  gsl_blas_dgemm(CblasNoTrans, 
+		 CblasNoTrans,
+		 1.0, Rotation_matrix, &corners_view.matrix, 0.0,
+		 &corners_xi_view.matrix);
+
+  gsl_vector_view corner_xi_coordinates = gsl_matrix_row(&corners_xi_view.matrix, 0);
+  double xi_min = gsl_vector_min(&corner_xi_coordinates.vector);
+  double xi_max = gsl_vector_max(&corner_xi_coordinates.vector);
+
+  gsl_vector_view corner_eta_coordinates = gsl_matrix_row(&corners_xi_view.matrix, 1);
+  double eta_min = gsl_vector_min(&corner_eta_coordinates.vector);
+  double eta_max = gsl_vector_max(&corner_eta_coordinates.vector);
+
+  gsl_vector_view midpoint_xieta_coordinates = gsl_matrix_column(&corners_xi_view.matrix, 4);
+
+  //  creating the x-nodes
+  //
   // if rho is negative
-  double by = 0;
-  double current = 0.5/sigma_x;
+  double by = std_dev_factor*std::sqrt(1.0 - rho);
   if (std::signbit(rho)) {
     by = std_dev_factor;
   } else {
     by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
   }
-  // by = std_dev_factor*std::sqrt(1.0 - rho);
-
-  std::vector<double> x_nodes (0);
-  while ((current - (0.5/sigma_x -
-		     std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))))) >= 1e-32) {
-    x_nodes.push_back(current);
-    current = current - by;
-  }
-  std::reverse(x_nodes.begin(), x_nodes.end());
-
-  current = 0.5/sigma_x;
-  while ( (current-(0.5/sigma_x +
-		    std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2)) ))) <= 1e-32 ) {
-    x_nodes.push_back(current);
-    current = current + by;
-  }
-
-  // x_nodes is already sorted but sorting again
-  std::sort(x_nodes.begin(), x_nodes.end());
-  auto last = std::unique(x_nodes.begin(), x_nodes.end());
-  x_nodes.erase(last, x_nodes.end());
-
+  unsigned N = std::ceil( (xi_max - xi_min)/by );
+  std::vector<double> xi_nodes (N);
+  double xi_current = xi_min - by;
+  std::generate(xi_nodes.begin(),
+		xi_nodes.end(),
+		[&] ()->double {xi_current = xi_current + by; return xi_current; });
+  
   // creating the y-nodes
   // if (rho >= 0.0) {
   //   by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
   // } else {
   //   by = std_dev_factor * sigma * std::sqrt(1+rho) / std::sqrt(1-rho);
   // }
+  by = std_dev_factor*std::sqrt(1.0 + rho);
   if (std::signbit(rho)) {
     by = std_dev_factor*std::sqrt(1.0+rho)/std::sqrt(1.0-rho);
   } else {
     by = std_dev_factor;
   }
-  // by = std_dev_factor*std::sqrt(1.0 + rho);
-  current = 0.5/sigma_y;
+  unsigned M = std::ceil( (eta_max - eta_min)/by );
+  std::vector<double> eta_nodes (M);
+  double eta_current = eta_min - by;
+  std::generate(eta_nodes.begin(),
+		eta_nodes.end(),
+		[&] ()->double {eta_current = eta_current + by; return eta_current; });
 
-  std::vector<double> y_nodes;
-  while ((current - (0.5/sigma_y -
-		     std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))  ) )) >= 1e-32) {
-    y_nodes.push_back(current);
-    current = current - by;
-  }
-  std::reverse(y_nodes.begin(), y_nodes.end());
+  gsl_matrix *xy_nodes = gsl_matrix_alloc(2, xi_nodes.size()*eta_nodes.size());
+  gsl_matrix *xieta_nodes = gsl_matrix_alloc(2, xi_nodes.size()*eta_nodes.size());
 
-  current = 0.5/sigma_y;
-  while ( (current-(0.5/sigma_y +
-		    std::sqrt( (1.0/std::pow(sigma_x,2)+1.0/std::pow(sigma_y,2))))) <= 1e-32 ) {
-    y_nodes.push_back(current);
-    current = current + by;
-  }
-
-  // y_nodes is already sorted but sorting it anyway
-  std::sort(y_nodes.begin(), y_nodes.end());
-  last = std::unique(y_nodes.begin(), y_nodes.end());
-  y_nodes.erase(last, y_nodes.end());
-
-  gsl_matrix *xy_nodes = gsl_matrix_alloc(2, x_nodes.size()*y_nodes.size());
-  gsl_matrix *xieta_nodes = gsl_matrix_alloc(2, x_nodes.size()*y_nodes.size());
-
-  for (unsigned i=0; i<x_nodes.size(); ++i) {
-    for (unsigned j=0; j<y_nodes.size(); ++j) {
-      gsl_matrix_set(xy_nodes, 0, i*y_nodes.size()+j, x_nodes[i]);
-      gsl_matrix_set(xy_nodes, 1, i*y_nodes.size()+j, y_nodes[j]);
+  for (unsigned i=0; i<xi_nodes.size(); ++i) {
+    for (unsigned j=0; j<eta_nodes.size(); ++j) {
+      gsl_matrix_set(xieta_nodes, 0, i*eta_nodes.size()+j, xi_nodes[i]);
+      gsl_matrix_set(xieta_nodes, 1, i*eta_nodes.size()+j, eta_nodes[j]);
     }
   }
 
-  double theta = M_PI/4.0;
-  // if (rho >= 0.0) {
-  //   theta = 1.0*M_PI/4.0;
-  // } else {
-  //   theta = -1.0*M_PI/4.0;
-  // }
-
-  gsl_matrix *Rotation_matrix = gsl_matrix_alloc(2,2);
-  // gsl_matrix_set(Rotation_matrix, 0, 0,
-  // 		 sigma_x/
-  // 		 (std::sqrt(2.0)*std::sqrt(1-rho)));
-  // gsl_matrix_set(Rotation_matrix, 0, 1,
-  // 		 sigma_x/
-  // 		 (std::sqrt(2.0)*std::sqrt(1+rho)));
-  // gsl_matrix_set(Rotation_matrix, 1, 0,
-  // 		 -1.0*sigma_y/
-  // 		 (std::sqrt(2.0)*std::sqrt(1-rho)));
-  // gsl_matrix_set(Rotation_matrix, 1, 1,
-  // 		 sigma_y/
-  // 		 (std::sqrt(2.0)*std::sqrt(1+rho)));
   gsl_matrix_set(Rotation_matrix, 0, 0, sigma_x * std::cos(-theta));
   gsl_matrix_set(Rotation_matrix, 1, 0, sigma_y * std::sin(-theta));
   gsl_matrix_set(Rotation_matrix, 0, 1, sigma_x * -1.0*std::sin(-theta));
   gsl_matrix_set(Rotation_matrix, 1, 1, sigma_y * std::cos(-theta));
 
-  gsl_vector_view x_nodes_view = gsl_matrix_row(xy_nodes, 0);
-  gsl_vector_view y_nodes_view = gsl_matrix_row(xy_nodes, 1);
-
-  gsl_vector_add_constant(&x_nodes_view.vector, -0.5/sigma_x);
-  gsl_vector_add_constant(&y_nodes_view.vector, -0.5/sigma_y);
-
-  gsl_blas_dgemm(CblasNoTrans, CblasNoTrans,
-		 1.0, Rotation_matrix, xy_nodes, 0.0,
-		 xieta_nodes);
 
   gsl_vector_view xi_nodes_view = gsl_matrix_row(xieta_nodes, 0);
   gsl_vector_view eta_nodes_view = gsl_matrix_row(xieta_nodes, 1);
 
-  gsl_vector_add_constant(&xi_nodes_view.vector, 0.5);
-  gsl_vector_add_constant(&eta_nodes_view.vector, 0.5);
+  // gsl_vector_add_constant(&xi_nodes_view.vector, -0.5/sigma_x);
+  // gsl_vector_add_constant(&eta_nodes_view.vector, -0.5/sigma_y);
 
-  std::vector<long unsigned> indeces_within_boundary;
-  for (unsigned j=0; j<x_nodes.size()*y_nodes.size(); ++j) {
-    if ( (gsl_matrix_get(xieta_nodes, 0, j) >= 1e-32 - 0.5) &&
-	 (gsl_matrix_get(xieta_nodes, 0, j) <= 1.0 + 0.5 - 1e-32) &&
-	 (gsl_matrix_get(xieta_nodes, 1, j) >= 1e-32 - 0.5) &&
-	 (gsl_matrix_get(xieta_nodes, 1, j) <= 1.0 + 0.5 - 1e-32) )
+  gsl_blas_dgemm(CblasNoTrans, CblasNoTrans,
+		 1.0, Rotation_matrix, xieta_nodes, 0.0,
+		 xy_nodes);
+
+  gsl_vector_view x_nodes_view = gsl_matrix_row(xy_nodes, 0);
+  gsl_vector_view y_nodes_view = gsl_matrix_row(xy_nodes, 1);
+
+  // gsl_vector_add_constant(&xi_nodes_view.vector, 0.5);
+  // gsl_vector_add_constant(&eta_nodes_view.vector, 0.5);
+
+  std::vector<long unsigned> indeces_within_boundary (0);
+  for (unsigned j=0; j<xi_nodes.size()*eta_nodes.size(); ++j) {
+    if ( (gsl_matrix_get(xy_nodes, 0, j) >= -epsilon) && // left
+	 (gsl_matrix_get(xy_nodes, 0, j) <= (1.0 + epsilon) ) && // right
+	 (gsl_matrix_get(xy_nodes, 1, j) >= -epsilon) && // bottom
+	 (gsl_matrix_get(xy_nodes, 1, j) <= (1.0 + epsilon)) ) // top
       {
 	indeces_within_boundary.push_back(j);
       }
@@ -821,13 +830,19 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   for (unsigned i=0; i<indeces_within_boundary.size(); ++i) {
     unsigned const& index = indeces_within_boundary[i];
     gsl_vector_set(mean_vector, 0,
-		   gsl_matrix_get(xieta_nodes, 0, index));
+		   gsl_matrix_get(xy_nodes, 0, index));
     gsl_vector_set(mean_vector, 1,
-		   gsl_matrix_get(xieta_nodes, 1, index));
+		   gsl_matrix_get(xy_nodes, 1, index));
     basis_functions_[i] = BivariateGaussianKernelElement(dx_,
     							 power,
     							 mean_vector,
     							 covariance_matrix);
+    
+    printf("basis.%d = c(%g,%g); points(basis.%d[1], basis.%d[2], col=3, pch=20);\n",
+    	   i,
+    	   gsl_matrix_get(xy_nodes, 0, index),
+    	   gsl_matrix_get(xy_nodes, 1, index),
+    	   i,i);
   }
 
   // SETTING ORTHONORMAL ELEMENTS

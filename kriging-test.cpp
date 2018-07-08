@@ -43,15 +43,17 @@ int main(int argc, char *argv[]) {
 
 #pragma omp threadprivate(private_bases, counter, r_ptr_threadprivate)
   omp_set_dynamic(0);
-  omp_set_num_threads(20);
-
+  omp_set_num_threads(30);
+  
+  printf("## starting basis_positive\n");
   BivariateGaussianKernelBasis basis_positive =
     BivariateGaussianKernelBasis(dx,
-				 rho_basis,
-				 sigma_x_basis,
-				 sigma_y_basis,
-				 1.0,
-				 1.0);
+  				 rho_basis,
+  				 sigma_x_basis,
+  				 sigma_y_basis,
+  				 1.0,
+  				 0.5);
+  printf("## ending basis_positive\n");
 
   long unsigned seed_init = 10;
   gsl_rng * r_ptr_local;
@@ -84,7 +86,7 @@ int main(int argc, char *argv[]) {
   if (input_file.is_open()) {
     for (i=0; i<N; ++i) {
       input_file >> points_for_kriging[i];
-      points_for_kriging[i].t_tilde = 1.0;
+      points_for_kriging[i].t_tilde = 2.0;
       points_for_kriging[i].rho = 0.95;
       points_for_kriging[i].log_likelihood = 1.0;
       points_for_kriging[i].t_tilde = points_for_kriging[i].t_tilde;
@@ -174,7 +176,7 @@ int main(int argc, char *argv[]) {
 	    // log_likelihood = solver.likelihood_small_t_type_41_truncated(&raw_input.vector,
 	    // 								 small_t,
 	    // 								 dx_likelihood_for_small_t);
-	    log_likelihood = 123;
+	    log_likelihood = 456;
 	  } else {
 	    printf("sigma too big for small t\n");
 	    log_likelihood = 123;  // std::numeric_limits<double>::quiet_NaN();
@@ -251,7 +253,7 @@ int main(int argc, char *argv[]) {
 	    // log_likelihood = solver.likelihood_small_t_type_41_truncated(&raw_input.vector,
 	    // 								 small_t,
 	    // 								 dx_likelihood_for_small_t);
-	    log_likelihood = 123
+	    log_likelihood = 456;
 	  } else {
 	    printf("sigma too big for small t\n");
 	    log_likelihood = 123; // std::numeric_limits<double>::quiet_NaN();
@@ -260,7 +262,6 @@ int main(int argc, char *argv[]) {
 	  log_likelihood_analytic = solver.analytic_likelihood(&raw_input.vector,
 							       1000);
 	}
-
 
 	points_for_kriging[i].log_likelihood = log_likelihood;
 	points_for_kriging_analytic[i].log_likelihood = log_likelihood_analytic;
@@ -300,39 +301,6 @@ int main(int argc, char *argv[]) {
     output_file.close();
     output_file_analytic.close();
 
-    // parameters_nominal params = parameters_nominal();
-    // GaussianInterpolator GP_prior = GaussianInterpolator(points_for_integration,
-    // 							 points_for_kriging,
-    // 							 params);
-    // // for (unsigned i=0; i<points_for_kriging.size(); ++i) {
-    // //   for (unsigned j=0; j<points_for_kriging.size(); ++j) {
-    // // 	std::cout << gsl_matrix_get(GP_prior.Cinv, i,j) << " ";
-    // //   }
-    // //   std::cout << std::endl;
-    // // }
-
-    // double integral = 0;
-    // for (unsigned i=0; i<points_for_integration.size(); ++i) {
-    //   double add = GP_prior(points_for_integration[i]);
-    //   integral = integral +
-    // 	add;
-    //   if (add < 0) {
-    // 	std::cout << points_for_integration[i] << std::endl;
-    //   }
-    // }
-    // std::cout << "Integral = " << integral << std::endl;
-
-    // // MultivariateNormal mvtnorm = MultivariateNormal();
-    // // std::cout << mvtnorm.dmvnorm(N,y,mu,C) << std::endl;
-
-    // nlopt::opt opt(nlopt::LN_NELDERMEAD, 32);
-    // //    std::vector<double> lb =
-
-    // // std::vector<double> x = params.as_vector();
-    // // std::cout << optimization_wrapper(x, NULL, &points_for_kriging) << std::endl;
-
     gsl_rng_free(r_ptr_local);
-
-
     return 0;
 }
