@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
 	  x[1] = points_for_kriging[i].y_t_tilde;
 
 	  std::vector<BivariateImageWithTime> all_images =
-	    solver.small_t_image_positions_type_41_all(true);
+	    solver.small_t_image_positions_type_41_symmetric(true);
 
 	  printf("## small t = %g\n", all_images[0].get_t());
 	  double small_t = all_images[0].get_t();

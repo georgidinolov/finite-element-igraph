@@ -9696,7 +9696,8 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
       gsl_matrix_column(&images_transformed_view.matrix,i);
   }
 
-  std::vector<std::vector<double>> distance_from_image_to_line (number_images, std::vector<double> (4));
+  std::vector<std::vector<double>> distance_from_image_to_line (number_images,
+								std::vector<double> (4));
   std::vector<double> max_admissible_times (1); // ONLY ONE SET OF IMAGES FOR NOW
   std::vector<BivariateImageWithTime> final_images (number_images);
   std::vector<std::vector<unsigned>> reflection_sequence_per_final_image (number_images, std::vector<unsigned> (0));
