@@ -305,13 +305,13 @@ int main(int argc, char *argv[]) {
 		    std::vector<double>::iterator dx_proposal_result = std::min_element(dx_proposals.begin(),
 											dx_proposals.end());
 		    dx_likelihoods_for_FEM[i] = *dx_proposal_result;
-		    double FE_at_mode = solver.numerical_likelihood(&raw_input.vector,
-								    dx_likelihood_for_FEM);
+		    double FE_at_mode = solver.numerical_likelihood_second_order(&raw_input.vector,
+										 dx_likelihood_for_FEM);
 		    FE_value_at_modes[i] = FE_at_mode;
 
 		    small_t_value_at_modes[i] =
 		      solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
-									  dx_likelihood_for_small_t);
+									    dx_likelihood_for_small_t);
 		  }
 		}
 	      
