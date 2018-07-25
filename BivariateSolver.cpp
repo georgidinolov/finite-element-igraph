@@ -3680,33 +3680,19 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
   double current_x_0 = x_0_;
   double current_y_0 = y_0_;
 
-  std::vector<int> a_indeces {0,-1};
-  std::vector<int> b_indeces {1, 0};
-  std::vector<int> c_indeces {0,-1};
-  std::vector<int> d_indeces {1, 0};
-
-  int a_power=1;
-  int b_power=1;
-  int c_power=1;
-  int d_power=1;
-
-  double derivative = 0;
-  double derivative_with_sol = 0;
-  double h_x = h*(b_ - a_);
-  double h_y = h*(d_ - c_);
-
-  double log_CC = -1.0*(log(2.0)+log(t_)+log(1-rho_*rho_));
-  double CC = -1.0/(2.0*t_*(1-rho_*rho_));
+  double log_CC = -1.0*(log(2.0)+log(small_t)+
+			2.0*log(sigma_y_) + 
+			log(1-rho_*rho_));
 
   gsl_matrix* cov_matrix = gsl_matrix_alloc(2,2);
   gsl_matrix_set(cov_matrix, 0,0,
-  		 sigma_x_*sigma_x_*t_);
+  		 sigma_x_*sigma_x_*small_t);
   gsl_matrix_set(cov_matrix, 0,1,
-  		 rho_*sigma_x_*sigma_y_*t_);
+  		 rho_*sigma_x_*sigma_y_*small_t);
   gsl_matrix_set(cov_matrix, 1,0,
-  		 rho_*sigma_x_*sigma_y_*t_);
+  		 rho_*sigma_x_*sigma_y_*small_t);
   gsl_matrix_set(cov_matrix, 1,1,
-  		 sigma_y_*sigma_y_*t_);
+  		 sigma_y_*sigma_y_*small_t);
 
   auto t1 = std::chrono::high_resolution_clock::now();
   std::vector<BivariateImageWithTime> positions =
@@ -3716,159 +3702,35 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
 
-  // printf("text(x=-7.5,y=10,\"t=%g, type 4\");\n", positions[0].get_t());
-  // for (auto position : positions) {
-  //   printf("points(x=%g, y=%g, col=\"red\");\n",
-  // 	   gsl_vector_get(position.get_position(),0),
-  // 	   gsl_vector_get(position.get_position(),1));
-  // }
+  set_data_for_small_t(current_a,
+		       current_x_0,
+		       current_b,
+		       current_c,
+		       current_y_0,
+		       current_d);
 
-  unsigned counter = 0;
-
-  double dx0dax = 0;
-  double dy0dax = 0;
   t1 = std::chrono::high_resolution_clock::now();
-  std::vector<double> dPdaxs (positions.size(), 0);
-  for (unsigned i=0; i<a_indeces.size(); ++i) {
-    if (i==0) { a_power=0; } else { a_power=1; };
-
-    set_data_for_small_t(current_a + a_indeces[i]*h_x,
-			 current_x_0,
-			 current_b,
-			 current_c,
-			 current_y_0,
-			 current_d);
-    positions = small_t_image_positions_type_41_symmetric(false);
-
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-    for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0_star =
-  	gsl_vector_get(positions[ii].get_position(),0)*(b_-a_) +
-  	a_indeces[i]*h_x;
-      double y_0_star =
-  	gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
-
-      double polynomial = std::pow((x-x_0_star)/sigma_x_,2) +
-  	std::pow((y-y_0_star)/sigma_y_,2) -
-  	2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*(y-y_0_star);
-
-      dPdaxs[ii] = dPdaxs[ii] + polynomial*
-  	std::pow(-1, a_power);
-    }
-  }
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    dPdaxs[ii] = dPdaxs[ii]/h_x;
-    // printf("dPdaxs[%i] = %g\n", ii, dPdaxs[ii]);
-  }
+  std::vector<double> dPdaxs = dPdax(raw_input, h);
   t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for dPdaxs = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
 
   t1 = std::chrono::high_resolution_clock::now();
-  std::vector<double> dPdbxs (positions.size(), 0);
-  for (unsigned j=0; j<b_indeces.size(); ++j) {
-    if (j==0) { b_power=0; } else { b_power=1; };
-
-    set_data_for_small_t(current_a,
-  	     current_x_0,
-  	     current_b + b_indeces[j]*h_x,
-  	     current_c,
-  	     current_y_0,
-  	     current_d);
-    positions = small_t_image_positions_type_41_symmetric(false);
-
-
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-    for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
-      double y_0 = gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
-
-      dPdbxs[ii] = dPdbxs[ii] +
-  	(std::pow((x-x_0)/sigma_x_,2.0) +
-  	 std::pow((y-y_0)/sigma_y_,2.0) +
-  	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
-  	std::pow(-1, b_power);
-    }
-  }
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    dPdbxs[ii] = dPdbxs[ii]/h_x;
-    // printf("dPdbxs[%i] = %g\n", ii, dPdbxs[ii]);
-  }
+  std::vector<double> dPdbxs = dPdbx(raw_input, h);
   t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for dPdbxs = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
 
   t1 = std::chrono::high_resolution_clock::now();
-  std::vector<double> dPdays (positions.size(), 0.0);
-  for (unsigned k=0; k<c_indeces.size(); ++k) {
-    if (k==0) { c_power=0; } else { c_power=1; };
-
-    set_data_for_small_t(current_a,
-  	     current_x_0,
-  	     current_b,
-  	     current_c + h_y*c_indeces[k],
-  	     current_y_0,
-  	     current_d);
-    positions = small_t_image_positions_type_41_symmetric(false);
-
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-    for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
-      double y_0 =
-  	gsl_vector_get(positions[ii].get_position(),1)*(d_-c_) +
-  	h_y*c_indeces[k];
-
-      dPdays[ii] = dPdays[ii] +
-  	(std::pow((x-x_0)/sigma_x_,2.0) +
-  	 std::pow((y-y_0)/sigma_y_,2.0) +
-  	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
-  	std::pow(-1, c_power);
-    }
-  }
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    dPdays[ii] = dPdays[ii]/h_y;
-    // printf("dPdays[%i] = %g\n", ii, dPdays[ii]);
-  }
+  std::vector<double> dPdays = dPday(raw_input, h);
   t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for dPdays = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
 
-  std::vector<double> dPdbys (positions.size(), 0);
-  for (unsigned l=0; l<d_indeces.size(); ++l) {
-    if (l==0) { d_power=0; } else { d_power=1; };
-
-    set_data_for_small_t(current_a,
-  	     current_x_0,
-  	     current_b,
-  	     current_c,
-  	     current_y_0,
-  	     current_d + d_indeces[l]*h_y);
-    positions = small_t_image_positions_type_41_symmetric(false);
-
-    double x = gsl_vector_get(raw_input, 0);
-    double y = gsl_vector_get(raw_input, 1);
-
-    for (unsigned ii=0; ii<positions.size(); ++ii) {
-      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
-      double y_0 = gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
-
-      dPdbys[ii] = dPdbys[ii] +  + (std::pow((x-x_0)/sigma_x_,2.0) +
-  		     std::pow((y-y_0)/sigma_y_,2.0) +
-  		     -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
-      std::pow(-1, d_power);
-    }
-  }
-  for (unsigned ii=0; ii<positions.size(); ++ii) {
-    dPdbys[ii] = dPdbys[ii]/h_y;
-    // printf("dPdbys[%i] = %g\n", ii, dPdbys[ii]);
-  }
-
+  std::vector<double> dPdbys = dPdby(raw_input, h);
 
   // COMPUTING CONTRIBUTIONS OF EACH IMAGE
   t1 = std::chrono::high_resolution_clock::now();
@@ -3922,12 +3784,12 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
 	      << ","
 	      << gsl_vector_get(differentiable_image.get_position(),1)
 	      << ") ";
-     for (unsigned ref : differentiable_image.get_reflection_sequence()) {
-  std::cout << ref << " ";
- }
- std::cout << std::endl;
-   }
-
+    for (unsigned ref : differentiable_image.get_reflection_sequence()) {
+       std::cout << ref << " ";
+    }
+    std::cout << std::endl;
+  }
+  
   std::vector<double>::iterator result = std::max_element(log_terms.begin(),
 							  log_terms.end());
   out = 0;
@@ -3938,6 +3800,257 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
   out = std::log(out) + *result;
 
   gsl_matrix_free(cov_matrix);
+  return (out);
+}
+
+std::vector<double> BivariateSolver::dPdax(const gsl_vector* raw_input,
+					   double h)
+{
+  double current_a = a_;
+  double current_b = b_;
+  double current_c = c_;
+  double current_d = d_;
+  double current_x_0 = x_0_;
+  double current_y_0 = y_0_;
+
+  std::vector<int> a_indeces {0,-1};
+  std::vector<int> b_indeces {1, 0};
+  std::vector<int> c_indeces {0,-1};
+  std::vector<int> d_indeces {1, 0};
+
+  int a_power=1;
+
+  double h_x = h*(b_ - a_);
+
+  std::vector<BivariateImageWithTime> positions =
+    small_t_image_positions_type_41_symmetric(false);
+
+  std::vector<double> out (positions.size(), 0);
+  for (unsigned i=0; i<a_indeces.size(); ++i) {
+    if (i==0) { a_power=0; } else { a_power=1; };
+
+    set_data_for_small_t(current_a + a_indeces[i]*h_x,
+			 current_x_0,
+			 current_b,
+			 current_c,
+			 current_y_0,
+			 current_d);
+    positions = small_t_image_positions_type_41_symmetric(false);
+
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+    for (unsigned ii=0; ii<positions.size(); ++ii) {
+      double x_0_star =
+  	gsl_vector_get(positions[ii].get_position(),0)*(b_-a_) +
+  	a_indeces[i]*h_x;
+      double y_0_star =
+  	gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
+
+      double polynomial = std::pow((x-x_0_star)/sigma_x_,2) +
+  	std::pow((y-y_0_star)/sigma_y_,2) -
+  	2*rho_/(sigma_x_*sigma_y_)*(x-x_0_star)*(y-y_0_star);
+
+      out[ii] = out[ii] + polynomial*
+  	std::pow(-1, a_power);
+    }
+  }
+  for (unsigned ii=0; ii<positions.size(); ++ii) {
+    out[ii] = out[ii]/h_x;
+  }
+
+  set_data_for_small_t(current_a,
+		       current_x_0,
+		       current_b,
+		       current_c,
+		       current_y_0,
+		       current_d);
+
+  return (out);
+}
+
+std::vector<double> BivariateSolver::dPdbx(const gsl_vector* raw_input,
+					   double h)
+{
+  double current_a = a_;
+  double current_b = b_;
+  double current_c = c_;
+  double current_d = d_;
+  double current_x_0 = x_0_;
+  double current_y_0 = y_0_;
+
+  std::vector<int> a_indeces {0,-1};
+  std::vector<int> b_indeces {1, 0};
+  std::vector<int> c_indeces {0,-1};
+  std::vector<int> d_indeces {1, 0};
+
+  int b_power=1;
+
+  double h_x = h*(b_ - a_);
+
+  std::vector<BivariateImageWithTime> positions =
+    small_t_image_positions_type_41_symmetric(false);
+
+  std::vector<double> out (positions.size(), 0);
+  for (unsigned j=0; j<b_indeces.size(); ++j) {
+    if (j==0) { b_power=0; } else { b_power=1; };
+
+    set_data_for_small_t(current_a,
+			 current_x_0,
+			 current_b + b_indeces[j]*h_x,
+			 current_c,
+			 current_y_0,
+			 current_d);
+    positions = small_t_image_positions_type_41_symmetric(false);
+
+
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+    for (unsigned ii=0; ii<positions.size(); ++ii) {
+      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
+      double y_0 = gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
+
+      out[ii] = out[ii] +
+  	(std::pow((x-x_0)/sigma_x_,2.0) +
+  	 std::pow((y-y_0)/sigma_y_,2.0) +
+  	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+  	std::pow(-1, b_power);
+    }
+  }
+  for (unsigned ii=0; ii<positions.size(); ++ii) {
+    out[ii] = out[ii]/h_x;
+  }
+
+  set_data_for_small_t(current_a,
+		       current_x_0,
+		       current_b,
+		       current_c,
+		       current_y_0,
+		       current_d);
+
+  return (out);
+}
+
+std::vector<double> BivariateSolver::dPday(const gsl_vector* raw_input,
+					   double h)
+{
+  double current_a = a_;
+  double current_b = b_;
+  double current_c = c_;
+  double current_d = d_;
+  double current_x_0 = x_0_;
+  double current_y_0 = y_0_;
+
+  std::vector<int> a_indeces {0,-1};
+  std::vector<int> b_indeces {1, 0};
+  std::vector<int> c_indeces {0,-1};
+  std::vector<int> d_indeces {1, 0};
+
+  int c_power=1;
+
+  double h_y = h*(d_ - c_);
+
+  std::vector<BivariateImageWithTime> positions =
+    small_t_image_positions_type_41_symmetric(false); 
+
+  std::vector<double> out (positions.size(), 0.0);
+  for (unsigned k=0; k<c_indeces.size(); ++k) {
+    if (k==0) { c_power=0; } else { c_power=1; };
+
+    set_data_for_small_t(current_a,
+  	     current_x_0,
+  	     current_b,
+  	     current_c + h_y*c_indeces[k],
+  	     current_y_0,
+  	     current_d);
+    positions = small_t_image_positions_type_41_symmetric(false);
+
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+    for (unsigned ii=0; ii<positions.size(); ++ii) {
+      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
+      double y_0 =
+  	gsl_vector_get(positions[ii].get_position(),1)*(d_-c_) +
+  	h_y*c_indeces[k];
+
+      out[ii] = out[ii] +
+  	(std::pow((x-x_0)/sigma_x_,2.0) +
+  	 std::pow((y-y_0)/sigma_y_,2.0) +
+  	 -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+  	std::pow(-1, c_power);
+    }
+  }
+  for (unsigned ii=0; ii<positions.size(); ++ii) {
+    out[ii] = out[ii]/h_y;
+  }
+
+  set_data_for_small_t(current_a,
+		       current_x_0,
+		       current_b,
+		       current_c,
+		       current_y_0,
+		       current_d);
+
+  return (out);
+}
+
+std::vector<double> BivariateSolver::dPdby(const gsl_vector* raw_input,
+					   double h)
+{
+  double current_a = a_;
+  double current_b = b_;
+  double current_c = c_;
+  double current_d = d_;
+  double current_x_0 = x_0_;
+  double current_y_0 = y_0_;
+
+  std::vector<int> a_indeces {0,-1};
+  std::vector<int> b_indeces {1, 0};
+  std::vector<int> c_indeces {0,-1};
+  std::vector<int> d_indeces {1, 0};
+
+  int d_power=1;
+
+  double h_y = h*(d_ - c_);
+
+  std::vector<BivariateImageWithTime> positions =
+    small_t_image_positions_type_41_symmetric(false); 
+
+  std::vector<double> out (positions.size(), 0.0);
+  for (unsigned l=0; l<d_indeces.size(); ++l) {
+    if (l==0) { d_power=0; } else { d_power=1; };
+
+    set_data_for_small_t(current_a,
+			 current_x_0,
+			 current_b,
+			 current_c,
+			 current_y_0,
+			 current_d + d_indeces[l]*h_y);
+    positions = small_t_image_positions_type_41_symmetric(false);
+
+    double x = gsl_vector_get(raw_input, 0);
+    double y = gsl_vector_get(raw_input, 1);
+
+    for (unsigned ii=0; ii<positions.size(); ++ii) {
+      double x_0 = gsl_vector_get(positions[ii].get_position(),0)*(b_-a_);
+      double y_0 = gsl_vector_get(positions[ii].get_position(),1)*(d_-c_);
+
+      out[ii] = out[ii] +  + (std::pow((x-x_0)/sigma_x_,2.0) +
+				    std::pow((y-y_0)/sigma_y_,2.0) +
+				    -2.0*rho_*(x-x_0)*(y-y_0)/(sigma_y_*sigma_x_))*
+	std::pow(-1, d_power);
+    }
+  }
+  for (unsigned ii=0; ii<positions.size(); ++ii) {
+    out[ii] = out[ii]/h_y;
+  }
+
+  set_data_for_small_t(current_a,
+		       current_x_0,
+		       current_b,
+		       current_c,
+		       current_y_0,
+		       current_d);
+
   return (out);
 }
 
@@ -4192,7 +4305,7 @@ void BivariateSolver::set_solution_coefs()
     time_diff = t_2_-small_t_solution_->get_t();
   }
 
-  // evec %*% diag(eval)
+  // evec %*% diag(exp(eval)*(t-t_small))
   for (unsigned i=0; i<K; ++i) {
     gsl_vector_view col_i = gsl_matrix_column(evec, i);
     gsl_vector_scale(&col_i.vector, std::exp(gsl_vector_get(eval_, i)*
@@ -9600,7 +9713,7 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
   gsl_matrix_view corner_points_transformed_view =
     gsl_matrix_view_array(corner_points_transformed_array, 2, 5);
 
-  unsigned number_images = 128;
+  unsigned number_images = 64;
   double images_array [number_images*2];
   for (unsigned i=0; i<number_images; ++i) {
     images_array[i] = get_x_0_2();
@@ -9819,14 +9932,11 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
 			  distance_from_image_to_line[counter][1] = d2;
 			  distance_from_image_to_line[counter][2] = d3;
 			  distance_from_image_to_line[counter][3] = d4;
-
+			  
 			  all_images[counter] = BivariateImageWithTime(current_image,
 								       1.0,
 								       signs_vector[counter],
 								       reflection_sequence_per_final_image[counter]);
-
-
-
 			  counter = counter + 1;
 			}
 		      }
@@ -9835,14 +9945,14 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
 		}
 	      }
 
-	      // GENERATING UNIQUE IMAGES FROM THE SET AND NON-SYMMETRIC IMAGES
+	      // GENERATING UNIQUE, SYMMETRIC IMAGES FROM THE SET
 	      unsigned unique_image_counter = 0;
 	      unique_images = std::vector<BivariateImageWithTime> (0);
 	      for (const BivariateImageWithTime& current_image : all_images) {
 		if (unique_images.empty()) {
 		  unique_images.push_back(current_image);
-		  //} else {
 		} else if (current_image.get_reflection_sequence().size() <= 4) {
+		  const std::vector<unsigned>& reflection_sequence_per_current_image = current_image.get_reflection_sequence();
 		  unsigned n=0;
 		  std::vector<bool> distances_to_current_image (unique_images.size());
 
@@ -9871,7 +9981,28 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
 		  std::vector<bool>::iterator it = std::find(distances_to_current_image.begin(),
 							     distances_to_current_image.end(), true);
 
-		  if (it == std::end(distances_to_current_image)) {
+		  if ((it == std::end(distances_to_current_image)) &&
+		      ((reflection_sequence_per_current_image.size() < 4) |
+		      ((reflection_sequence_per_current_image.size() == 4) &&
+		       (reflection_sequence_per_current_image[0] == 1) &&
+		       (reflection_sequence_per_current_image[1] == 3) &&
+		       (reflection_sequence_per_current_image[2] == 0) &&
+		       (reflection_sequence_per_current_image[3] == 2)) |
+		      ((reflection_sequence_per_current_image.size() == 4) &&
+		       (reflection_sequence_per_current_image[0] == 1) &&
+		       (reflection_sequence_per_current_image[1] == 3) &&
+		       (reflection_sequence_per_current_image[2] == 2) &&
+		       (reflection_sequence_per_current_image[3] == 0)) |
+		      ((reflection_sequence_per_current_image.size() == 4) &&
+		       (reflection_sequence_per_current_image[0] == 3) &&
+		       (reflection_sequence_per_current_image[1] == 1) &&
+		       (reflection_sequence_per_current_image[2] == 0) &&
+		       (reflection_sequence_per_current_image[3] == 2)) |
+		      ((reflection_sequence_per_current_image.size() == 4) &&
+		       (reflection_sequence_per_current_image[0] == 3) &&
+		       (reflection_sequence_per_current_image[1] == 1) &&
+		       (reflection_sequence_per_current_image[2] == 2) &&
+		       (reflection_sequence_per_current_image[3] == 0)))) {
 		    unique_images.push_back(current_image);
 		  }
 		}
@@ -10033,7 +10164,7 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
 	      double mmax = 1.0;
 	      double max_admissible_t = 1.0; //(1.0/0.9) * std::pow(distance_from_image_to_line[0][1]/6.0, 2);
 
-	      while (mmax > 1e-12) {
+	      while (mmax > 1e-10) {
 		max_admissible_t = 0.9*max_admissible_t;
 		mmax = 0.0;
 		for (unsigned k=0; k<4; ++k) { // iterating over boundaries

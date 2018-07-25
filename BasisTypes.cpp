@@ -736,6 +736,8 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   double eta_max = gsl_vector_max(&corner_eta_coordinates.vector);
 
   gsl_vector_view midpoint_xieta_coordinates = gsl_matrix_column(&corners_xi_view.matrix, 4);
+  double xi_midpoint = gsl_vector_get(&midpoint_xieta_coordinates.vector,0);
+  double eta_midpoint = gsl_vector_get(&midpoint_xieta_coordinates.vector,1);
 
   //  creating the x-nodes
   //
@@ -746,13 +748,22 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   } else {
     by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
   }
-  unsigned N = std::ceil( (xi_max - xi_min)/by );
+  unsigned N = std::ceil( (xi_midpoint - xi_min)/by );
   std::vector<double> xi_nodes (N);
-  double xi_current = xi_min - by;
+  double xi_current = xi_midpoint + by;
   std::generate(xi_nodes.begin(),
 		xi_nodes.end(),
-		[&] ()->double {xi_current = xi_current + by; return xi_current; });
-  
+		[&] ()->double {xi_current = xi_current - by; return xi_current; });
+  N = std::ceil( (xi_max - xi_midpoint)/by );
+  xi_current = xi_midpoint + by;
+  for (unsigned i=0; i<N; ++i) {
+    xi_nodes.push_back(xi_current);
+    xi_current = xi_current + by;
+  }
+  std::sort(xi_nodes.begin(), xi_nodes.end());
+  auto last = std::unique(xi_nodes.begin(), xi_nodes.end());
+  xi_nodes.erase(last, xi_nodes.end());
+
   // creating the y-nodes
   // if (rho >= 0.0) {
   //   by = std_dev_factor * sigma * std::sqrt(1-rho) / std::sqrt(1+rho);
@@ -765,12 +776,21 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   } else {
     by = std_dev_factor;
   }
-  unsigned M = std::ceil( (eta_max - eta_min)/by );
+  unsigned M = std::ceil( (eta_midpoint - eta_min)/by );
   std::vector<double> eta_nodes (M);
-  double eta_current = eta_min - by;
+  double eta_current = eta_midpoint + by;
   std::generate(eta_nodes.begin(),
 		eta_nodes.end(),
-		[&] ()->double {eta_current = eta_current + by; return eta_current; });
+		[&] ()->double {eta_current = eta_current - by; return eta_current; });
+  M = std::ceil( (eta_max - eta_midpoint)/by );
+  eta_current = eta_midpoint + by;
+  for (unsigned i=0; i<M; ++i) {
+    eta_nodes.push_back(eta_current);
+    eta_current = eta_current + by;
+  }
+  std::sort(eta_nodes.begin(), eta_nodes.end());
+  last = std::unique(eta_nodes.begin(), eta_nodes.end());
+  eta_nodes.erase(last, eta_nodes.end());
 
   gsl_matrix *xy_nodes = gsl_matrix_alloc(2, xi_nodes.size()*eta_nodes.size());
   gsl_matrix *xieta_nodes = gsl_matrix_alloc(2, xi_nodes.size()*eta_nodes.size());
@@ -846,7 +866,9 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   }
 
   // SETTING ORTHONORMAL ELEMENTS
+  printf("begin Graham-Schmidt\n");
   set_orthonormal_functions_stable(basis_functions_);
+  printf("end Graham-Schmidt\n");
 
   gsl_matrix_free(xy_nodes);
   gsl_matrix_free(xieta_nodes);
@@ -998,8 +1020,6 @@ void BivariateGaussianKernelBasis::set_mass_matrix()
 			entry);
     }
   }
-  save_matrix(mass_matrix_,
-	      "mass_matrix.csv");
 }
 
 void BivariateGaussianKernelBasis::set_system_matrices_stable()
@@ -1089,15 +1109,6 @@ void BivariateGaussianKernelBasis::set_system_matrices_stable()
       // 		     entry);
     }
   }
-
-  save_matrix(system_matrix_dx_dx_,
-	      "system_matrix_dx_dx.csv");
-  save_matrix(system_matrix_dx_dy_,
-	      "system_matrix_dx_dy.csv");
-  save_matrix(system_matrix_dy_dx_,
-	      "system_matrix_dy_dx.csv");
-  save_matrix(system_matrix_dy_dy_,
-	      "system_matixr_dy_dy.csv");
 }
 
 std::ostream& operator<<(std::ostream& os, const BivariateGaussianKernelBasis& current_basis)

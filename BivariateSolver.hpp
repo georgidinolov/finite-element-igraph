@@ -230,6 +230,16 @@ public:
   std::vector<BivariateImageWithTime> small_t_image_positions_type_41(bool PRINT) const;
   std::vector<BivariateImageWithTime> small_t_image_positions_type_41_all(bool PRINT) const;
   std::vector<BivariateImageWithTime> small_t_image_positions_type_41_symmetric(bool PRINT) const;
+
+  std::vector<double> dPdax(const gsl_vector* raw_input,
+			    double h);
+  std::vector<double> dPdbx(const gsl_vector* raw_input,
+			    double h);
+  std::vector<double> dPday(const gsl_vector* raw_input,
+			    double h);
+  std::vector<double> dPdby(const gsl_vector* raw_input,
+			    double h);
+
   std::vector<BivariateImageWithTime> small_t_image_positions_1_3(bool PRINT) const;
   
   std::vector<BivariateImageWithTime> small_t_image_positions_ax() const;

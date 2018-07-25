@@ -311,7 +311,7 @@ int main(int argc, char *argv[]) {
 
 		    small_t_value_at_modes[i] =
 		      solver.numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
-									  dx_likelihood_for_small_t);
+									    dx_likelihood_for_small_t);
 		  }
 		}
 	      
