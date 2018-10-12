@@ -511,13 +511,6 @@ operator()(const gsl_vector* input) const
       out = out + current_f;
     }
 
-    // for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
-    //   current_f = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-    // 			    x_int,
-    // 			    y_int);
-    //   current_f = current_f * gsl_vector_get(solution_coefs_, i);
-    //   out = out + current_f;
-    // }
   }
 
   double Lx_2 = b_ - a_;
@@ -3806,6 +3799,10 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
 std::vector<double> BivariateSolver::dPdax(const gsl_vector* raw_input,
 					   double h)
 {
+  // TODO(gdinolov): add sigma_x sigma_y before rescaling so that when
+  // differentiating we only do so wrt to x_0, y_0 and not the
+  // diffusion parameters
+
   double current_a = a_;
   double current_b = b_;
   double current_c = c_;
