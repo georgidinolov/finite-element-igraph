@@ -7,6 +7,7 @@
 #include <gsl/gsl_randist.h>
 #include <iostream>
 #include <iomanip>
+#include <limits>
 #include <math.h>
 #include <string>
 
@@ -253,16 +254,47 @@ first_derivative_finite_diff(const gsl_vector* input,
   gsl_vector_memcpy(input_plus, input);
   gsl_vector_memcpy(input_minus, input);
 
-  // if (gsl_vector_get(input, coord_index)<std::numeric_limits::
+  double out = 0.0;
   
-  gsl_vector_set(input_plus, coord_index,
-  		    gsl_vector_get(input, coord_index)+dx_);
-  gsl_vector_set(input_minus, coord_index,
-  		    gsl_vector_get(input, coord_index)-dx_);
 
-  double out = ((*this)(input_plus) - (*this)(input_minus))/
-    (2*dx_);
+  // at 0
+  if (gsl_vector_get(input, coord_index) <= std::numeric_limits<double>::epsilon()) {
 
+    gsl_vector_set(input_plus, coord_index,
+		   gsl_vector_get(input, coord_index)+dx_);    
+    
+    gsl_vector_set(input_minus, coord_index,
+		   gsl_vector_get(input, coord_index));
+
+    out = ((*this)(input_plus) - (*this)(input_minus))/
+      (dx_);
+
+    // at 1
+  } else if ((1.0-gsl_vector_get(input, coord_index)) <= std::numeric_limits<double>::epsilon()) {
+    
+    gsl_vector_set(input_plus, coord_index,
+		   gsl_vector_get(input, coord_index));    
+    
+    gsl_vector_set(input_minus, coord_index,
+		   gsl_vector_get(input, coord_index)-dx_);
+
+    out = ((*this)(input_plus) - (*this)(input_minus))/
+      (dx_);
+
+    // inside
+  } else {
+
+    gsl_vector_set(input_plus, coord_index,
+		   gsl_vector_get(input, coord_index)+dx_);    
+    
+    gsl_vector_set(input_minus, coord_index,
+		   gsl_vector_get(input, coord_index)-dx_);
+
+    out = ((*this)(input_plus) - (*this)(input_minus))/
+      (2*dx_);
+
+  }
+  
   gsl_vector_free(input_minus);
   gsl_vector_free(input_plus);
   
@@ -570,12 +602,6 @@ void BivariateGaussianKernelElement::set_function_grid_dy()
   gsl_vector_free(input);
 }
 
-// TODO: check that the manually computed derivatives are the same as
-// the call to the first_derivative function. If that's the case, call
-// the function instead. THEY ARE NOT
-// TODO: Further, alter the first_derivative function so that it is
-// 2nd order within the domain. It'll have to be 1st order on the
-// edges.
 // TODO: In project_derivatives, use the project function (Simpson's
 // rule right now) to project the deriv. matrices.
 void BivariateGaussianKernelElement::set_function_grids()
@@ -623,51 +649,36 @@ void BivariateGaussianKernelElement::set_function_grids()
 
       mollifier_y = pow(y, alpha)*pow((1.0-y), alpha);
 
-      // gsl_vector_sub(input, get_mean_vector());
-      // gsl_blas_dsymv(CblasUpper,1.0,get_winv(),input,0.0,ym);
-      // gsl_blas_ddot(input, ym, &ay);
-      // ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*get_ax());
-      //      function_val = ay * mollifier_x * mollifier_y;
-
       function_val = (*this)(input);
-	// gsl_ran_bivariate_gaussian_pdf(x-gsl_vector_get(get_mean_vector(),
-	// 						0),
-	// 			       y-gsl_vector_get(get_mean_vector(),
-	// 						1),
-	// 			       std::sqrt(sigma2x),
-	// 			       std::sqrt(sigma2y),
-	// 			       rho) * 
-	// mollifier_x * mollifier_y;
-	
-
-      // function_dx = alpha*
-      // 	(pow((1-x), alpha-1)*pow(x,alpha) + pow((1-x),alpha)*pow(x,alpha-1))*
-      // 	pow((1-y), alpha)*pow(y,alpha)*
-      // 	ay +
-      // 	pow((1-x), alpha)*pow(x,alpha)*
-      // 	pow((1-y), alpha)*pow(y,alpha)*
-      // 	ay*
-      // 	-1.0*gsl_vector_get(ym,0);
-      double function_val_p_dx = (*this)(input_p_dx);
-      function_dx = (function_val_p_dx - function_val)/dx;
-
-      // function_dy = alpha*
-      // 	(pow((1-y), alpha-1)*pow(y,alpha) + pow((1-y),alpha)*pow(y,alpha-1))*
-      // 	pow((1-x), alpha)*pow(x,alpha)*
-      // 	ay +
-      // 	pow((1-x), alpha)*pow(x,alpha)*
-      // 	pow((1-y), alpha)*pow(y,alpha)*
-      // 	ay*
-      // 	-1.0*gsl_vector_get(ym,1);
-      double function_val_p_dy = (*this)(input_p_dy);
-      function_dy = (function_val_p_dy - function_val)/dx;
-
+      
       gsl_matrix_set(function_grid_, i, j, function_val);
+    }
+  }
+
+  for (int i=0; i<1/dx+1; ++i) {
+    for (int j=0; j<1/dx+1; ++j) {
+
+      if (i==0) {
+	function_dx = (gsl_matrix_get(function_grid_, i+1,j) - gsl_matrix_get(function_grid_, i,j))/dx;
+      } else if (i==1/dx) {
+	function_dx = (gsl_matrix_get(function_grid_, i,j) - gsl_matrix_get(function_grid_, i-1,j))/dx;
+      } else {
+	function_dx = (gsl_matrix_get(function_grid_, i+1,j) - gsl_matrix_get(function_grid_, i-1,j))/(2*dx);
+      }
+
+      if (j==0) {
+	function_dy = (gsl_matrix_get(function_grid_, i,j+1) - gsl_matrix_get(function_grid_, i,j))/dx;
+      } else if (j==1/dx) {
+	function_dy = (gsl_matrix_get(function_grid_, i,j) - gsl_matrix_get(function_grid_, i,j-1))/dx;
+      } else {
+	function_dy = (gsl_matrix_get(function_grid_, i,j+1) - gsl_matrix_get(function_grid_, i,j-1))/(2*dx);
+      }
+
       gsl_matrix_set(deriv_function_grid_dx_, i, j, function_dx);
       gsl_matrix_set(deriv_function_grid_dy_, i, j, function_dy);
     }
   }
-
+  
   gsl_vector_free(input);
   gsl_vector_free(input_p_dx);
   gsl_vector_free(input_p_dy);
