@@ -252,6 +252,8 @@ first_derivative_finite_diff(const gsl_vector* input,
 
   gsl_vector_memcpy(input_plus, input);
   gsl_vector_memcpy(input_minus, input);
+
+  // if (gsl_vector_get(input, coord_index)<std::numeric_limits::
   
   gsl_vector_set(input_plus, coord_index,
   		    gsl_vector_get(input, coord_index)+dx_);
@@ -568,6 +570,14 @@ void BivariateGaussianKernelElement::set_function_grid_dy()
   gsl_vector_free(input);
 }
 
+// TODO: check that the manually computed derivatives are the same as
+// the call to the first_derivative function. If that's the case, call
+// the function instead. THEY ARE NOT
+// TODO: Further, alter the first_derivative function so that it is
+// 2nd order within the domain. It'll have to be 1st order on the
+// edges.
+// TODO: In project_derivatives, use the project function (Simpson's
+// rule right now) to project the deriv. matrices.
 void BivariateGaussianKernelElement::set_function_grids()
 {
  
