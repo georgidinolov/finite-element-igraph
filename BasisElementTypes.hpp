@@ -156,7 +156,7 @@ private:
 };
 
 class BivariateGaussianKernelElement
-  : public virtual GaussianKernelElement,
+  : public GaussianKernelElement,
     public virtual BivariateElement
 {
 public:
