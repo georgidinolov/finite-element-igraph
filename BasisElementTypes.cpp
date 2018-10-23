@@ -8,7 +8,9 @@
 #include <gsl/gsl_randist.h>
 #include <iostream>
 #include <iomanip>
+#include <limits>
 #include <math.h>
+#include <stdexcept>
 #include <string>
 
 // =================== BASIS ELEMENT CLASS ===================
@@ -317,15 +319,48 @@ first_derivative_finite_diff(const gsl_vector* input,
 
   gsl_vector_memcpy(input_plus, input);
   gsl_vector_memcpy(input_minus, input);
+
+  double out = 0.0;
   
-  gsl_vector_set(input_plus, coord_index,
-  		    gsl_vector_get(input, coord_index)+dx_);
-  gsl_vector_set(input_minus, coord_index,
-  		    gsl_vector_get(input, coord_index)-dx_);
 
-  double out = ((*this)(input_plus) - (*this)(input_minus))/
-    (2*dx_);
+  // at 0
+  if (gsl_vector_get(input, coord_index) <= std::numeric_limits<double>::epsilon()) {
 
+    gsl_vector_set(input_plus, coord_index,
+		   gsl_vector_get(input, coord_index)+dx_);    
+    
+    gsl_vector_set(input_minus, coord_index,
+		   gsl_vector_get(input, coord_index));
+
+    out = ((*this)(input_plus) - (*this)(input_minus))/
+      (dx_);
+
+    // at 1
+  } else if ((1.0-gsl_vector_get(input, coord_index)) <= std::numeric_limits<double>::epsilon()) {
+    
+    gsl_vector_set(input_plus, coord_index,
+		   gsl_vector_get(input, coord_index));    
+    
+    gsl_vector_set(input_minus, coord_index,
+		   gsl_vector_get(input, coord_index)-dx_);
+
+    out = ((*this)(input_plus) - (*this)(input_minus))/
+      (dx_);
+
+    // inside
+  } else {
+
+    gsl_vector_set(input_plus, coord_index,
+		   gsl_vector_get(input, coord_index)+dx_);    
+    
+    gsl_vector_set(input_minus, coord_index,
+		   gsl_vector_get(input, coord_index)-dx_);
+
+    out = ((*this)(input_plus) - (*this)(input_minus))/
+      (2*dx_);
+
+  }
+  
   gsl_vector_free(input_minus);
   gsl_vector_free(input_plus);
   
@@ -637,6 +672,7 @@ void BivariateGaussianKernelElement::set_function_grids()
   // printf("In BivariateGaussianKernelElement::set_function_grids()\n");
   // printf("function_grid_ is of size [%d x %d]\n", function_grid_->size1, function_grid_->size2);
   double dx = get_dx();
+  double kernel_val = 0;
   double function_val = 0;
   double function_dx = 0;
   double function_dy = 0;
@@ -645,6 +681,9 @@ void BivariateGaussianKernelElement::set_function_grids()
   gsl_vector * input = gsl_vector_alloc(2);
   gsl_vector * input_p_dx = gsl_vector_alloc(2);
   gsl_vector * input_p_dy = gsl_vector_alloc(2);
+  gsl_vector * input_m_dx = gsl_vector_alloc(2);
+  gsl_vector * input_m_dy = gsl_vector_alloc(2);
+
   double x = 0;
   double y = 0;
   double mollifier_x = 1.0;
@@ -659,7 +698,10 @@ void BivariateGaussianKernelElement::set_function_grids()
   double sigma2x = gsl_matrix_get(get_covariance_matrix(),0,0);
   double sigma2y = gsl_matrix_get(get_covariance_matrix(),1,1);
 
-  for (int i=0; i<std::round(1/dx)+1; ++i) {
+  double mu_x = gsl_vector_get(get_mean_vector(), 0);
+  double mu_y = gsl_vector_get(get_mean_vector(), 1);
+
+  for (int i=0; i<1/dx+1; ++i) {
     x = i*dx;
 
     mollifier_x = pow(x, alpha)*pow((1.0-x), alpha);
@@ -676,46 +718,27 @@ void BivariateGaussianKernelElement::set_function_grids()
       gsl_vector_set(input_p_dy, 0, x);
       gsl_vector_set(input_p_dy, 1, y+dx);
 
+      gsl_vector_set(input_m_dx, 0, x-dx);
+      gsl_vector_set(input_m_dx, 1, y);
+
+      gsl_vector_set(input_m_dy, 0, x);
+      gsl_vector_set(input_m_dy, 1, y-dx);
+
       mollifier_y = pow(y, alpha)*pow((1.0-y), alpha);
 
-      // gsl_vector_sub(input, get_mean_vector());
-      // gsl_blas_dsymv(CblasUpper,1.0,get_winv(),input,0.0,ym);
-      // gsl_blas_ddot(input, ym, &ay);
-      // ay = exp(-0.5*ay)/sqrt( pow((2*M_PI),2)*get_ax());
-      //      function_val = ay * mollifier_x * mollifier_y;
-
+      kernel_val = 1.0/(2.0*M_PI*sqrt(sigma2x*sigma2y)*sqrt(1-rho*rho)) * 
+	exp( -0.5/(1-rho*rho) * ((x-mu_x)*(x-mu_x)/sigma2x + (y-mu_y)*(y-mu_y)/sigma2y - 2.0*rho*(x-mu_x)*(y-mu_y)/sqrt(sigma2x*sigma2y)) );
+      
       function_val = (*this)(input);
-	// gsl_ran_bivariate_gaussian_pdf(x-gsl_vector_get(get_mean_vector(),
-	// 						0),
-	// 			       y-gsl_vector_get(get_mean_vector(),
-	// 						1),
-	// 			       std::sqrt(sigma2x),
-	// 			       std::sqrt(sigma2y),
-	// 			       rho) * 
-	// mollifier_x * mollifier_y;
-	
-
-      // function_dx = alpha*
-      // 	(pow((1-x), alpha-1)*pow(x,alpha) + pow((1-x),alpha)*pow(x,alpha-1))*
-      // 	pow((1-y), alpha)*pow(y,alpha)*
-      // 	ay +
-      // 	pow((1-x), alpha)*pow(x,alpha)*
-      // 	pow((1-y), alpha)*pow(y,alpha)*
-      // 	ay*
-      // 	-1.0*gsl_vector_get(ym,0);
-      double function_val_p_dx = (*this)(input_p_dx);
-      function_dx = (function_val_p_dx - function_val)/dx;
-
-      // function_dy = alpha*
-      // 	(pow((1-y), alpha-1)*pow(y,alpha) + pow((1-y),alpha)*pow(y,alpha-1))*
-      // 	pow((1-x), alpha)*pow(x,alpha)*
-      // 	ay +
-      // 	pow((1-x), alpha)*pow(x,alpha)*
-      // 	pow((1-y), alpha)*pow(y,alpha)*
-      // 	ay*
-      // 	-1.0*gsl_vector_get(ym,1);
-      double function_val_p_dy = (*this)(input_p_dy);
-      function_dy = (function_val_p_dy - function_val)/dx;
+      
+      function_dx = std::pow(y,alpha)*std::pow(1-y, alpha)*kernel_val*
+      	( alpha*std::pow(x, alpha-1)*std::pow(1-x, alpha) - alpha*std::pow(x,alpha)*std::pow(1-x, alpha-1) + 
+	  std::pow(x,alpha)*std::pow(1-x, alpha) *
+      	  (-0.5/(1-rho*rho)*(2*(x-mu_x)/sigma2x - 2*rho*(y-mu_y)/std::sqrt(sigma2x*sigma2y))) );
+      function_dy = std::pow(x,alpha)*std::pow(1-x, alpha)*kernel_val*
+      	( alpha*std::pow(y, alpha-1)*std::pow(1-y, alpha) - alpha*std::pow(y,alpha)*std::pow(1-y, alpha-1) +
+	  std::pow(y,alpha)*std::pow(1-y, alpha) *
+      	  (-0.5/(1-rho*rho)*(2*(y-mu_y)/sigma2y - 2*rho*(x-mu_x)/std::sqrt(sigma2x*sigma2y))) );
 
       gsl_matrix_set(function_grid_, i, j, function_val);
       gsl_matrix_set(deriv_function_grid_dx_, i, j, function_dx);
@@ -723,8 +746,34 @@ void BivariateGaussianKernelElement::set_function_grids()
     }
   }
 
+  // for (int i=0; i<1/dx+1; ++i) {
+  //   for (int j=0; j<1/dx+1; ++j) {
+
+  //     if (i==0) {
+  // 	function_dx = (gsl_matrix_get(function_grid_, i+1,j) - gsl_matrix_get(function_grid_, i,j))/dx;
+  //     } else if (i==1/dx) {
+  // 	function_dx = (gsl_matrix_get(function_grid_, i,j) - gsl_matrix_get(function_grid_, i-1,j))/dx;
+  //     } else {
+  // 	function_dx = (gsl_matrix_get(function_grid_, i+1,j) - gsl_matrix_get(function_grid_, i-1,j))/(2*dx);
+  //     }
+
+  //     if (j==0) {
+  // 	function_dy = (gsl_matrix_get(function_grid_, i,j+1) - gsl_matrix_get(function_grid_, i,j))/dx;
+  //     } else if (j==1/dx) {
+  // 	function_dy = (gsl_matrix_get(function_grid_, i,j) - gsl_matrix_get(function_grid_, i,j-1))/dx;
+  //     } else {
+  // 	function_dy = (gsl_matrix_get(function_grid_, i,j+1) - gsl_matrix_get(function_grid_, i,j-1))/(2*dx);
+  //     }
+
+  //     gsl_matrix_set(deriv_function_grid_dx_, i, j, function_dx);
+  //     gsl_matrix_set(deriv_function_grid_dy_, i, j, function_dy);
+  //   }
+  // }
+  
   gsl_vector_free(input);
   gsl_vector_free(input_p_dx);
   gsl_vector_free(input_p_dy);
+  gsl_vector_free(input_m_dx);
+  gsl_vector_free(input_m_dy);
   gsl_vector_free(ym);
 }

@@ -134,6 +134,14 @@ set_function_grid(const gsl_matrix* new_function_grid)
 }
 
 void BivariateLinearCombinationElement::
+set_function_grid(const gsl_matrix* new_function_grid,
+		  double dx) 
+{
+  gsl_matrix_memcpy(function_grid_, new_function_grid);
+  dx_ = dx;
+}
+
+void BivariateLinearCombinationElement::
 set_deriv_function_grid_dx(const gsl_matrix* new_deriv_function_grid_dx) 
 {
   gsl_matrix_memcpy(deriv_function_grid_dx_, new_deriv_function_grid_dx);

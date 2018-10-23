@@ -4,10 +4,10 @@
 // create those matrices.
 
 extern "C" {
-#include "igraph.h"
+#include "src/igraph-0.7.1/include/igraph.h"
 }
 
-#include "MultivariateNormal.hpp"
+#include "src/multivariate-normal/MultivariateNormal.hpp"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -101,6 +101,8 @@ public:
   // function_grid_ is in agreement with the elements_ and
   // coefficients_.
   virtual void set_function_grid(const gsl_matrix* new_function_grid);
+  virtual void set_function_grid(const gsl_matrix* new_function_grid,
+				 double dx);
   // WARNING: Call below function ONLY if you are sure the
   // deriv_function_grid_dx_ is in agreement with the elements_ and
   // coefficients_.
@@ -211,7 +213,7 @@ private:
 
 // ===================== BIVARIATE GAUSSIAN KERNEL ELEMENT ===================== 
 class BivariateGaussianKernelElement
-  : public virtual GaussianKernelElement,
+  : public GaussianKernelElement,
     public virtual BivariateElement
 {
 public:
@@ -271,7 +273,28 @@ public:
   virtual double first_derivative(const gsl_vector* input,
 				  long int coord_index) const;
 
+  double distance_from_point_to_axis_raw(const gsl_vector* point_1,
+					 const gsl_vector* point_2,
+					 const gsl_vector* normal_point,
+					 const gsl_vector* input) const;
+
+  double distance_from_point_to_axis(const gsl_vector* axis_vector,
+				     const gsl_vector* normal_point,
+				     const gsl_vector* input) const;
+
+  void reflect_point_raw(const gsl_vector* point_1,
+			 const gsl_vector* point_2,
+			 gsl_vector* input) const;
+  
+  void reflect_point(const gsl_vector* axis_vector,
+		     gsl_vector* input) const;
+  
   double get_t() const;
+  inline const gsl_matrix* get_rotation_matrix() const
+  {
+    return Rotation_matrix_;
+  }
+  
   inline virtual double get_dx() const
   { return 0.0; }
 
