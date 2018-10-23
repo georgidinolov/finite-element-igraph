@@ -603,8 +603,6 @@ void BivariateGaussianKernelElement::set_function_grid_dy()
   gsl_vector_free(input);
 }
 
-// TODO: In project_derivatives, use the project function (Simpson's
-// rule right now) to project the deriv. matrices.
 void BivariateGaussianKernelElement::set_function_grids()
 {
  
@@ -634,6 +632,9 @@ void BivariateGaussianKernelElement::set_function_grids()
 
   double sigma2x = gsl_matrix_get(get_covariance_matrix(),0,0);
   double sigma2y = gsl_matrix_get(get_covariance_matrix(),1,1);
+
+  double mu_x = gsl_vector_get(get_mean_vector(), 0);
+  double mu_y = gsl_vector_get(get_mean_vector(), 1);
 
   for (int i=0; i<1/dx+1; ++i) {
     x = i*dx;
@@ -666,11 +667,11 @@ void BivariateGaussianKernelElement::set_function_grids()
       function_val = (*this)(input);
       
       function_dx = std::pow(y,alpha)*std::pow(1-y, alpha)*kernel_val*
-      	( alpha*std::pow(x, alpha-1)*std::pow(1-x, alpha) - alpha*std::pow(x,alpha)*std::pow(1-x, alpha-1)
+      	( alpha*std::pow(x, alpha-1)*std::pow(1-x, alpha) - alpha*std::pow(x,alpha)*std::pow(1-x, alpha-1) + 
 	  std::pow(x,alpha)*std::pow(1-x, alpha) *
       	  (-0.5/(1-rho*rho)*(2*(x-mu_x)/sigma2x - 2*rho*(y-mu_y)/std::sqrt(sigma2x*sigma2y))) );
       function_dy = std::pow(x,alpha)*std::pow(1-x, alpha)*kernel_val*
-      	( alpha*std::pow(y, alpha-1)*std::pow(1-y, alpha) - alpha*std::pow(y,alpha)*std::pow(1-y, alpha-1)
+      	( alpha*std::pow(y, alpha-1)*std::pow(1-y, alpha) - alpha*std::pow(y,alpha)*std::pow(1-y, alpha-1) +
 	  std::pow(y,alpha)*std::pow(1-y, alpha) *
       	  (-0.5/(1-rho*rho)*(2*(y-mu_y)/sigma2y - 2*rho*(x-mu_x)/std::sqrt(sigma2x*sigma2y))) );
 

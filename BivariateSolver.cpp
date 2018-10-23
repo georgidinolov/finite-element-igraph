@@ -515,7 +515,8 @@ operator()(const gsl_vector* input) const
 
   double Lx_2 = b_ - a_;
   double Ly_2 = d_ - c_;
-  out = out / (Lx_2 * Ly_2);
+  out = out / (Lx_2 * Ly_2); // * std::max(sigma_x_2_*sigma_x_2_, 
+			    // 	       sigma_y_2_*sigma_y_2_);
 
   gsl_vector_free(scaled_input);
   return out;
