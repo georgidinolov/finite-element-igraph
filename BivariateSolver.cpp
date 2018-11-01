@@ -5,9 +5,11 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_eigen.h>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <string>
+#include <stdexcept>
 
 BivariateImageWithTime::BivariateImageWithTime()
   : position_(gsl_vector_alloc(2)),
@@ -465,14 +467,45 @@ operator()(const gsl_vector* input) const
   if ( std::signbit(t_2_-small_t_solution_->get_t()) ) {
     out =  (*small_t_solution_)(scaled_input, t_2_);
   } else {
+
+    int x_int_for_linear = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
+    int y_int_for_linear = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
+
+    if (x_int_for_linear == 1/dx_) {
+      x_int_for_linear = 1/dx_ - 1;
+    }
+    if (y_int_for_linear == 1/dx_) {
+      y_int_for_linear = 1/dx_ - 1;
+    }
+
     int x_int = std::trunc(gsl_vector_get(scaled_input, 0)/dx_);
     int y_int = std::trunc(gsl_vector_get(scaled_input, 1)/dx_);
+    int N = 1/dx_ + 1;
 
-    if (x_int == 1/dx_) {
-      x_int = 1/dx_ - 1;
+    if (x_int % 2 != 0) {
+      x_int -= 1;
     }
-    if (y_int == 1/dx_) {
-      y_int = 1/dx_ - 1;
+    if (x_int == N-1) {
+      x_int = x_int-2;
+    }
+
+    if (y_int % 2 != 0) {
+      y_int -= 1;
+    }
+    if (y_int == N-1) {
+      y_int = y_int-2;
+    }
+
+
+    if ((x_int + 1 > N) || (x_int + 2 > N)) {
+      throw std::out_of_range("x index out of range");
+    }
+
+    if ((y_int + 1 > N) || (y_int + 2 > N)) {
+      std::cout << "N = " << N << std::endl;
+      std::cout << "y = " << gsl_vector_get(scaled_input, 1) << std::endl;
+      std::cout << "y_int = " << y_int << std::endl;
+      throw std::out_of_range("y index out of range");
     }
 
     double x = gsl_vector_get(scaled_input, 0);
@@ -480,31 +513,199 @@ operator()(const gsl_vector* input) const
 
     double x_1 = x_int*dx_;
     double x_2 = (x_int+1)*dx_;
+    double x_3 = (x_int+2)*dx_;
+
     double y_1 = y_int*dx_;
     double y_2 = (y_int+1)*dx_;
+    double y_3 = (y_int+2)*dx_;
+
+
+    double x_1_for_linear = x_int_for_linear*dx_;
+    double x_2_for_linear = (x_int_for_linear+1)*dx_;
+    double y_1_for_linear = y_int_for_linear*dx_;
+    double y_2_for_linear = (y_int_for_linear+1)*dx_;
+
 
     double f_11 = 0;
     double f_12 = 0;
+    double f_13 = 0;
+
     double f_21 = 0;
     double f_22 = 0;
-    double current_f = 0;
+    double f_23 = 0;
+
+    double f_31 = 0;
+    double f_32 = 0;
+    double f_33 = 0;
+
 
     for (unsigned i=0; i<basis_->get_orthonormal_elements().size(); ++i) {
+      double current_f = 0;
+
       f_11 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-    			    x_int,
-    			    y_int);
+      			    x_int,
+      			    y_int);
       f_12 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-    			    x_int,
-    			    y_int+1);
+      			    x_int,
+      			    y_int+1);
+      f_13 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      			    x_int,
+      			    y_int+2);
+
       f_21 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-    			    x_int+1,
-    			    y_int);
+      			    x_int+1,
+      			    y_int);
       f_22 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
-    			    x_int+1,
-    			    y_int+1);
-      current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
-    	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
-    	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
+      			    x_int+1,
+      			    y_int+1);
+      f_23 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      			    x_int+1,
+      			    y_int+2);
+
+      f_31 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      			    x_int+2,
+      			    y_int);
+      f_32 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      			    x_int+2,
+      			    y_int+1);
+      f_33 = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+      			    x_int+2,
+      			    y_int+2);
+
+      std::vector<double> function_vals = {f_11, f_12, f_13,
+      					   f_21, f_22, f_23,
+      					   f_31, f_32, f_33};
+
+      double x_1_term = (x-x_2)*(x-x_3)/((x_1-x_2)*(x_1-x_3));
+      double x_2_term = (x-x_1)*(x-x_3)/((x_2-x_1)*(x_2-x_3));
+      double x_3_term = (x-x_1)*(x-x_2)/((x_3-x_1)*(x_3-x_2));
+
+      double y_1_term = (y-y_2)*(y-y_3)/((y_1-y_2)*(y_1-y_3));
+      double y_2_term = (y-y_1)*(y-y_3)/((y_2-y_1)*(y_2-y_3));
+      double y_3_term = (y-y_1)*(y-y_2)/((y_3-y_1)*(y_3-y_2));
+
+
+      current_f = 
+	f_11 * x_1_term * y_1_term +
+	f_12 * x_1_term * y_2_term +
+	f_13 * x_1_term * y_3_term +
+	// // 
+	f_21 * x_2_term * y_1_term +
+	f_22 * x_2_term * y_2_term +
+	f_23 * x_2_term * y_3_term +
+	// // 
+	f_31 * x_3_term * y_1_term +
+	f_32 * x_3_term * y_2_term +
+	f_33 * x_3_term * y_3_term;
+
+      // for (unsigned ii=0; ii<3; ++ii) {
+      //  	for (unsigned jj=0; jj<3; ++jj) {
+      // 	  std::vector<double> xs = {x_1, x_2, x_3};
+      // 	  double x_curr = xs[ii];
+      // 	  xs.erase(xs.begin() + ii);
+
+      // 	  std::vector<double> ys = {y_1, y_2, y_3};
+      // 	  double y_curr = ys[jj];
+      // 	  ys.erase(ys.begin() + jj);
+
+      // 	  std::vector<double> numerator = std::vector<double> (4);
+      // 	  std::vector<double> denominator = std::vector<double> (4);
+      // 	  // populate numerator vec
+      // 	  std::generate(numerator.begin(), numerator.end(),
+      // 			[&, n=0] () mutable {
+      // 			  int x_ind = std::trunc(n/2);
+      // 			  int y_ind = n-2*x_ind;
+      // 			  n++;
+      // 			  return (x - xs[x_ind])*(y - ys[y_ind]);
+      // 			} );
+
+      // 	  // populate denominator vec
+      // 	  std::generate(denominator.begin(), denominator.end(),
+      // 			[&, n=0] () mutable {
+      // 			  int x_ind = std::trunc(n/2);
+      // 			  int y_ind = n-2*x_ind;
+      // 			  n++;
+      // 			  return (x_curr - xs[x_ind])*(y_curr - ys[y_ind]);
+      // 			} );
+
+      // 	  double num_prod = 1.0;
+      // 	  double denom_prod = 1.0;
+      // 	  for (const double& nn : numerator) { num_prod = num_prod*nn; }
+      // 	  for (const double& dd : denominator) { denom_prod = denom_prod*dd; }
+
+      // 	  if (std::isinf(num_prod/denom_prod)) {
+      // 	    for (const double& dd : numerator) {
+      // 	      std::cout << dd << " ";
+      // 	    }
+      // 	    std::cout << std::endl;
+      // 	    for (const double& dd : denominator) {
+      // 	      std::cout << dd << " ";
+      // 	    }
+      // 	    std::cout << std::endl;
+
+      // 	    throw std::domain_error("denom is zero");
+      // 	  }
+
+      // 	  current_f += num_prod/denom_prod * function_vals[ii*3 + jj];
+      //  	}
+      // }
+
+      double current_f_for_linear = 0.0;
+      double f_11_for_linear = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+					      x_int_for_linear,
+					      y_int_for_linear);
+      double f_12_for_linear = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+					      x_int_for_linear,
+					      y_int_for_linear+1);
+      double f_21_for_linear = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+					      x_int_for_linear+1,
+					      y_int_for_linear);
+      double f_22_for_linear = gsl_matrix_get(basis_->get_orthonormal_element(i).get_function_grid(),
+					      x_int_for_linear+1,
+					      y_int_for_linear+1);
+      current_f_for_linear = 1.0/((x_2_for_linear-x_1_for_linear)*(y_2_for_linear-y_1_for_linear)) *
+    	((x_2_for_linear - x) * (f_11_for_linear*(y_2_for_linear-y) + f_12_for_linear*(y-y_1_for_linear)) +
+    	 (x - x_1_for_linear) * (f_21_for_linear*(y_2_for_linear-y) + f_22_for_linear*(y-y_1_for_linear)));
+
+      // if (std::abs(current_f_for_linear - current_f) > std::numeric_limits<double>::epsilon()) {
+      // 	std::vector<double> xs = {x_1, x_2, x_3};
+      // 	std::vector<double> ys = {y_1, y_2, y_3};
+      // 	unsigned n = 0;
+
+      // 	std::cout << "\n";
+      // 	std::cout << "x = " << std::setprecision(16) << x << ";\n";
+      // 	std::cout << "y = " << std::setprecision(16) << y << ";\n";
+      // 	std::cout << "dx = " << std::setprecision(16) << dx_ << ";\n";
+      // 	for (const double& ff : function_vals) {
+      // 	  unsigned ii = std::trunc(n/3);
+      // 	  unsigned jj = n-3*ii;
+      // 	  n ++;
+      // 	  std::cout << "f_" << ii << jj << " = " << std::setprecision(16) <<  ff << ";\n";
+      // 	}
+      // 	n = 0;
+
+      // 	for (n=0; n<3; ++n) {
+      // 	  std::cout << "x_" << n << " = " << xs[n] << ";\n";
+      // 	  std::cout << "y_" << n << " = " << ys[n] << ";\n";
+      // 	}
+      // 	n=0;
+
+      // 	std::cout << "f_11_for_linear = " << std::setprecision(16) << f_11_for_linear << ";\n";
+      // 	std::cout << "f_12_for_linear = " << std::setprecision(16) << f_12_for_linear << ";\n";
+      // 	std::cout << "f_21_for_linear = " << std::setprecision(16) << f_21_for_linear << ";\n";
+      // 	std::cout << "f_22_for_linear = " << std::setprecision(16) << f_22_for_linear << ";\n";
+
+      // 	std::cout << "current_f_for_linear = " << std::setprecision(16) << current_f_for_linear << ";\n";
+      // 	std::cout << "current_f = " << std::setprecision(16) << current_f << ";" << std::endl;
+
+
+
+      // 	throw std::domain_error("difference between linear and quad interpolation too big");
+      // }
+
+      // current_f = 1.0/((x_2-x_1)*(y_2-y_1)) *
+      // 	((x_2 - x) * (f_11*(y_2-y) + f_12*(y-y_1)) +
+      // 	 (x - x_1) * (f_21*(y_2-y) + f_22*(y-y_1)));
 
       current_f = current_f * gsl_vector_get(solution_coefs_, i);
 
@@ -515,7 +716,7 @@ operator()(const gsl_vector* input) const
 
   double Lx_2 = b_ - a_;
   double Ly_2 = d_ - c_;
-  out = out / (Lx_2 * Ly_2); // * std::max(sigma_x_2_*sigma_x_2_, 
+  out = out / (Lx_2 * Ly_2); // * std::max(sigma_x_2_*sigma_x_2_,
 			    // 	       sigma_y_2_*sigma_y_2_);
 
   gsl_vector_free(scaled_input);
@@ -1455,13 +1656,13 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
 
   std::vector<BivariateImageWithTime> positions =
     small_t_image_positions_1_3(false);
-  
-    
+
+
   // precalculating positions
   std::vector<std::vector<BivariateImageWithTime>> perturbed_positions (16, std::vector<BivariateImageWithTime> (0));
   std::vector<std::vector<double>> perturbed_polynomials (16, std::vector<double> (positions.size()));
-  
-  auto t1 = std::chrono::high_resolution_clock::now();  
+
+  auto t1 = std::chrono::high_resolution_clock::now();
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=0; } else { a_power=1; };
 
@@ -1495,12 +1696,12 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
 	    double y_0 =
 	      gsl_vector_get(positions[ii].get_position(),1)*(d_-c_) +
 	      c_indeces[k]*h_y;
-	    
+
 	    double polynomial =
 	      std::pow((x-x_0)/sigma_x_,2) +
 	      std::pow((y-y_0)/sigma_y_,2) -
 	      2*rho_/(sigma_x_*sigma_y_)*(x-x_0)*(y-y_0);
-	    
+
 	    perturbed_polynomials[index][ii] = polynomial;
 	  }
 	}
@@ -1510,7 +1711,7 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
   auto t2 = std::chrono::high_resolution_clock::now();
   std::cout << "time for positions = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-	    << std::endl;  
+	    << std::endl;
 
   unsigned counter = 0;
   t1 = std::chrono::high_resolution_clock::now();
@@ -1560,7 +1761,7 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
 
-   
+
   t1 = std::chrono::high_resolution_clock::now();
   std::vector<double> dPdays (positions.size(), 0.0);
   for (unsigned k=0; k<c_indeces.size(); ++k) {
@@ -1584,7 +1785,7 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
   std::cout << "time for dPdays = "
 	    << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
 	    << std::endl;
-  
+
   std::vector<double> dPdbys (positions.size(), 0);
   for (unsigned l=0; l<d_indeces.size(); ++l) {
     if (l==0) { d_power=0; } else { d_power=1; };
@@ -1754,13 +1955,13 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
   std::vector<double> dddPdbxdaydby (positions.size(), 0);
   for (unsigned j=0; j<b_indeces.size(); ++j) {
     if (j==0) { b_power=0; } else { b_power=1; };
-    
+
     for (unsigned k=0; k<c_indeces.size(); ++k) {
       if (k==0) { c_power=0; } else { c_power=1; };
-      
+
       for (unsigned l=0; l<d_indeces.size(); ++l) {
 	if (l==0) { d_power=0; } else { d_power=1; };
-	
+
 	unsigned index = 0*1 + j*2 + k*4 + l*8;
 	for (unsigned ii=0; ii<positions.size(); ++ii) {
 	  dddPdbxdaydby[ii] = dddPdbxdaydby[ii] +
@@ -1771,7 +1972,7 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
       }
     }
   }
-  
+
 
   std::vector<double> ddddP (positions.size(), 0);
   for (unsigned i=0; i<a_indeces.size(); ++i) {
@@ -1797,7 +1998,7 @@ numerical_likelihood_first_order_small_t_ax_bx(const gsl_vector* raw_input,
       }
     }
   }
-    
+
   // COMPUTING CONTRIBUTIONS OF EACH IMAGE
   t1 = std::chrono::high_resolution_clock::now();
   set_data_for_small_t(current_a,
@@ -3675,7 +3876,7 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
   double current_y_0 = y_0_;
 
   double log_CC = -1.0*(log(2.0)+log(small_t)+
-			2.0*log(sigma_y_) + 
+			2.0*log(sigma_y_) +
 			log(1-rho_*rho_));
 
   gsl_matrix* cov_matrix = gsl_matrix_alloc(2,2);
@@ -3783,7 +3984,7 @@ likelihood_small_t_41_truncated_symmetric(const gsl_vector* raw_input,
     }
     std::cout << std::endl;
   }
-  
+
   std::vector<double>::iterator result = std::max_element(log_terms.begin(),
 							  log_terms.end());
   out = 0;
@@ -3948,7 +4149,7 @@ std::vector<double> BivariateSolver::dPday(const gsl_vector* raw_input,
   double h_y = h*(d_ - c_);
 
   std::vector<BivariateImageWithTime> positions =
-    small_t_image_positions_type_41_symmetric(false); 
+    small_t_image_positions_type_41_symmetric(false);
 
   std::vector<double> out (positions.size(), 0.0);
   for (unsigned k=0; k<c_indeces.size(); ++k) {
@@ -4011,7 +4212,7 @@ std::vector<double> BivariateSolver::dPdby(const gsl_vector* raw_input,
   double h_y = h*(d_ - c_);
 
   std::vector<BivariateImageWithTime> positions =
-    small_t_image_positions_type_41_symmetric(false); 
+    small_t_image_positions_type_41_symmetric(false);
 
   std::vector<double> out (positions.size(), 0.0);
   for (unsigned l=0; l<d_indeces.size(); ++l) {
@@ -9931,7 +10132,7 @@ small_t_image_positions_type_41_symmetric(bool PRINT) const
 			  distance_from_image_to_line[counter][1] = d2;
 			  distance_from_image_to_line[counter][2] = d3;
 			  distance_from_image_to_line[counter][3] = d4;
-			  
+
 			  all_images[counter] = BivariateImageWithTime(current_image,
 								       1.0,
 								       signs_vector[counter],
@@ -10386,7 +10587,7 @@ small_t_image_positions_1_3(bool PRINT) const
     {std::vector<unsigned> {},
 	std::vector<unsigned> {1},
 	  std::vector<unsigned> {3}};
-  
+
 
   unsigned type_1 = 1;
   unsigned type_2 = 3;
@@ -10421,13 +10622,13 @@ small_t_image_positions_1_3(bool PRINT) const
       // current_reflection_set_2_1.push_back(type_2);
       // current_reflection_set_1_2.push_back(type_1);
       // current_reflection_set_2_2.push_back(type_2);
-      
+
       if (type_1 == 1) {
 	type_1 = 3;
       } else if (type_1 == 3) {
 	type_1 = 1;
       }
-      
+
       if (type_2 == 1) {
 	type_2 = 3;
       } else if (type_2 == 3){
@@ -10439,7 +10640,7 @@ small_t_image_positions_1_3(bool PRINT) const
     // current_reflection_set_2_1.push_back(0);
     // current_reflection_set_1_2.push_back(2);
     // current_reflection_set_2_2.push_back(2);
-    
+
     current_reflection_set_11.insert( current_reflection_set_11.end(),
 				      end_1.begin(),
 				      end_1.end() );
@@ -10468,7 +10669,7 @@ small_t_image_positions_1_3(bool PRINT) const
     type_1 = 1;
     type_2 = 3;
   }
-  
+
 
   if (PRINT) {
     for (std::vector<unsigned> reflection_set : reflections) {
@@ -12779,7 +12980,7 @@ void BivariateSolver::figure_chapter_3_illustration_1() const
   printf("dev.off();\n ");
 }
 
-double BivariateSolver::wrapper(const std::vector<double> &x, 
+double BivariateSolver::wrapper(const std::vector<double> &x,
 				std::vector<double> &grad,
 				void * data)
 {
@@ -12791,7 +12992,7 @@ double BivariateSolver::wrapper(const std::vector<double> &x,
   double raw_input [2] = {solver->get_x_t_2(),
 			  solver->get_y_t_2()};
   gsl_vector_view raw_input_view = gsl_vector_view_array(raw_input, 2);
-  
+
   double sigma_y_current = solver->get_sigma_y();
   double rho_current = solver->get_rho();
   double t_2_current = solver->get_t_2();
@@ -12809,9 +13010,9 @@ double BivariateSolver::wrapper(const std::vector<double> &x,
 						    0.0,
 						    y_0_2_current,
 						    1.0);
-  
+
   double out = solver->analytic_likelihood(&raw_input_view.vector,1000);
-  
+
   solver->set_diffusion_parameters_and_data_small_t(1.0,
 						    sigma_y_current,
 						    rho_current,
@@ -12826,19 +13027,19 @@ double BivariateSolver::wrapper(const std::vector<double> &x,
   return out;
 }
 
-double BivariateSolver::wrapper_small_t(const std::vector<double> &x, 
+double BivariateSolver::wrapper_small_t(const std::vector<double> &x,
 					std::vector<double> &grad,
 					void * data)
 {
   std::cout << "trying t=" << x[0] << " ";
-  
+
   double t = x[0];
-  
+
   BivariateSolver * solver = reinterpret_cast<BivariateSolver*>(data);
   double raw_input [2] = {solver->get_x_t_2(),
 			  solver->get_y_t_2()};
   gsl_vector_view raw_input_view = gsl_vector_view_array(raw_input, 2);
-  
+
   double sigma_y_current = solver->get_sigma_y();
   double rho_current = solver->get_rho();
   double t_2_current = solver->get_t_2();
@@ -12856,11 +13057,11 @@ double BivariateSolver::wrapper_small_t(const std::vector<double> &x,
 						    0.0,
 						    y_0_2_current,
 						    1.0);
-  
+
   double out =
     solver->numerical_likelihood_first_order_small_t_ax_bx(&raw_input_view.vector,
 							   1e-5);
-  
+
   solver->set_diffusion_parameters_and_data_small_t(1.0,
 						    sigma_y_current,
 						    rho_current,
