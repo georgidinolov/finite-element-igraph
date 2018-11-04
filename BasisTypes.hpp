@@ -25,6 +25,8 @@ public:
 
   virtual double project(const BivariateElement& elem_1,
 			 const BivariateElement& elem_2) const =0;
+  virtual double project_solver(const BivariateSolverClassical& elem_1,
+				const BivariateElement& elem_2) const =0;
   virtual void save_matrix(const gsl_matrix* mat,
 			   std::string file_name) const =0;
   virtual double get_dx() const=0;
@@ -65,6 +67,9 @@ public:
   
   virtual double project(const BivariateElement& elem_1,
 			 const BivariateElement& elem_2) const;
+  virtual double project_solver(const BivariateSolverClassical& elem_1,
+				const BivariateElement& elem_2) const;
+
   virtual double project_simple(const BivariateElement& elem_1,
 				const BivariateElement& elem_2) const;
   virtual double project_omp(const BivariateElement& elem_1,
@@ -103,6 +108,11 @@ private:
   void set_orthonormal_functions_stable(const std::vector<BivariateGaussianKernelElement>& basis_functions);
   void set_mass_matrix();
   void set_system_matrices_stable();
+
+  inline void set_integration_rule_multiplier() {
+    set_simpsons_rule();
+  }
+  void set_simpsons_rule();
   
   std::vector<BivariateLinearCombinationElement> orthonormal_functions_;
   gsl_matrix* system_matrix_dx_dx_;
@@ -117,4 +127,6 @@ private:
   gsl_matrix* deriv_inner_product_matrix_dx_dy_;
   gsl_matrix* deriv_inner_product_matrix_dy_dx_;
   gsl_matrix* deriv_inner_product_matrix_dy_dy_;
+
+  gsl_matrix* integration_rule_multiplier_;
 };

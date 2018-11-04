@@ -184,7 +184,8 @@ BivariateSolver::BivariateSolver(BivariateBasis* basis,
 						   sigma_y_2_,
 						   rho_,
 						   x_0_2_,
-						   y_0_2_),
+						   y_0_2_);
+
   small_t_solution_->set_function_grid(dx_);
 
   set_mass_and_stiffness_matrices();
@@ -1219,7 +1220,7 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_
 
 	for (unsigned l=0; l<d_indeces.size(); ++l) {
 	  if (l==0) { d_power=1; } else { d_power=0; };
-
+	  
 	  set_data(current_a + a_indeces[i]*h_x,
 		   current_x_0,
 		   current_b + b_indeces[j]*h_x,
@@ -4383,9 +4384,10 @@ void BivariateSolver::set_IC_coefs()
   gsl_vector* IC_coefs_projection = gsl_vector_alloc(IC_coefs_->size);
   for (unsigned i=0; i<IC_coefs_->size; ++i) {
     gsl_vector_set(IC_coefs_projection, i,
-		   basis_->project(*small_t_solution_,
-				   basis_->get_orthonormal_element(i)));
+		   basis_->project_solver(*small_t_solution_,
+					  basis_->get_orthonormal_element(i)));
   }
+
   int s = 0;
   gsl_permutation * p = gsl_permutation_alloc(K);
   gsl_linalg_LU_decomp(mass_matrix_, p, &s);

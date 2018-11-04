@@ -42,6 +42,7 @@ BivariateSolverClassical::BivariateSolverClassical(double sigma_x,
 {
   if (x_0_ < 0.0 || x_0_ > 1.0 || y_0_ < 0.0 || y_0_ > 1.0) {
     std::cout << "ERROR: IC out of range" << std::endl;
+
   }
   double cc = std::sin(M_PI/4.0);
 
@@ -246,22 +247,21 @@ operator()(const gsl_vector* input) const
 		 xi_eta_input_);
 
   double out =
-    gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
+    (gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
 			gsl_vector_get(initial_condition_xi_eta_,0),
 			sqrt(gsl_matrix_get(Variance_, 0,0))) *
     gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,1)-
 			gsl_vector_get(initial_condition_xi_eta_,1),
-			sqrt(gsl_matrix_get(Variance_, 1,1)));
-
-  out = out -
+			 sqrt(gsl_matrix_get(Variance_, 1,1))) -
+    // / 
     gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
   			gsl_vector_get(initial_condition_xi_eta_reflected_,0),
   			sqrt(gsl_matrix_get(Variance_, 0,0))) *
     gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,1)-
   			gsl_vector_get(initial_condition_xi_eta_reflected_,1),
-  			sqrt(gsl_matrix_get(Variance_, 1,1)));
+			 sqrt(gsl_matrix_get(Variance_, 1,1)))) /
+    (sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
 
-  out = out / (sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
   return out;
 }
 
@@ -272,29 +272,44 @@ operator()(const gsl_vector* input, double tt) const
 		 Rotation_matrix_, input, 0.0,
 		 xi_eta_input_);
 
-  gsl_matrix* Variance = gsl_matrix_alloc(2,2);
-  gsl_matrix_set_all(Variance, 0.0);
+  // gsl_matrix* Variance = gsl_matrix_alloc(2,2);
+  // gsl_matrix_set_all(Variance, 0.0);
 
-  for (int i=0; i<2; ++i) {
-    gsl_matrix_set(Variance, i, i, tt);
-  }
+  // for (int i=0; i<2; ++i) {
+  //   gsl_matrix_set(Variance, i, i, tt);
+  // }
 
-  // double out = (mvtnorm_.dmvnorm(2,
-  // 				 xi_eta_input_,
-  // 				 initial_condition_xi_eta_,
-  // 				 Variance) -
-  // 		mvtnorm_.dmvnorm(2,
-  // 				 xi_eta_input_,
-  // 				 initial_condition_xi_eta_reflected_,
-  // 				 Variance)) /
-  // 		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
-  double out = mvtnorm_.dmvnorm(2,
-				xi_eta_input_,
-				initial_condition_xi_eta_,
-				Variance) /
-    (sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+  double sd = std::sqrt(tt);
+  double out = (gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
+				     gsl_vector_get(initial_condition_xi_eta_,0),
+				     sd)*
+		gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,1)-
+				     gsl_vector_get(initial_condition_xi_eta_,1),
+				     sd) -
+		gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,0)-
+				     gsl_vector_get(initial_condition_xi_eta_reflected_,0),
+				     sd)*
+		gsl_ran_gaussian_pdf(gsl_vector_get(xi_eta_input_,1)-
+				     gsl_vector_get(initial_condition_xi_eta_reflected_,1),
+				     sd)) /
+   		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
 
-  gsl_matrix_free(Variance);
+  // mvtnorm_.dmvnorm(2,
+  //   				 xi_eta_input_,
+  //   				 initial_condition_xi_eta_,
+  //   				 Variance) -
+  //   		mvtnorm_.dmvnorm(2,
+  //   				 xi_eta_input_,
+  //   				 initial_condition_xi_eta_reflected_,
+  //   				 Variance)) /
+  //   		(sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+  // double out = mvtnorm_.dmvnorm(2,
+  // 				xi_eta_input_,
+  // 				initial_condition_xi_eta_,
+  // 				Variance) /
+  //   (sigma_x_*sigma_y_*sqrt(1-rho_)*sqrt(1+rho_));
+
+  // gsl_matrix_free(Variance);
   return out;
 }
 
@@ -319,11 +334,11 @@ distance_from_point_to_axis_raw(const gsl_vector* point_1,
   gsl_vector* axis_vector = gsl_vector_alloc(2);
   gsl_vector* input_cpy = gsl_vector_alloc(2);
   gsl_vector* normal_point_cpy = gsl_vector_alloc(2);
-  
+
   gsl_vector_memcpy(input_cpy, input);
   gsl_vector_memcpy(axis_vector, point_2);
   gsl_vector_memcpy(normal_point_cpy, normal_point);
-  
+
   // re-centering on zero
   gsl_vector_sub(axis_vector, point_1);
   gsl_vector_sub(input_cpy, point_1);
@@ -342,7 +357,7 @@ distance_from_point_to_axis_raw(const gsl_vector* point_1,
 
 void BivariateSolverClassical::reflect_point_raw(const gsl_vector* point_1,
 						 const gsl_vector* point_2,
-						 gsl_vector* input) const 
+						 gsl_vector* input) const
 {
   gsl_vector* axis_vector = gsl_vector_alloc(2);
   gsl_vector* input_cpy = gsl_vector_alloc(2);
@@ -370,7 +385,7 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
   double input_cpy [input->size];
   gsl_vector_view input_cpy_view = gsl_vector_view_array(input_cpy,input->size);
   gsl_vector_memcpy(&input_cpy_view.vector, input);
-  
+
   double axis_vector_array [axis_vector->size];
   gsl_vector_view axis_vector_view =
     gsl_vector_view_array(axis_vector_array, axis_vector->size);
@@ -390,7 +405,7 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
   norm = std::sqrt(norm);
   gsl_vector_scale(&axis_vector_view.vector, 1.0/norm);
 
-  
+
   double inner_product = 0;
   gsl_blas_ddot(&input_cpy_view.vector,
 		&axis_vector_view.vector,
@@ -408,7 +423,7 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
   gsl_blas_ddot(&axis_vector_view.vector, &normal_point_view.vector, &inner_product);
   gsl_vector_scale(&axis_vector_view.vector, inner_product);
   gsl_vector_sub(&normal_point_view.vector, &axis_vector_view.vector);
-  
+
   double out = 0;
   for (unsigned i=0; i<input_cpy_view.vector.size; ++i) {
     out = out + std::pow(input_cpy[i],2);
@@ -421,7 +436,7 @@ distance_from_point_to_axis(const gsl_vector* axis_vector,
   if (std::signbit(sign_inner_prod)) {
     out = -out;
   }
-  
+
   return out;
 }
 
@@ -445,7 +460,7 @@ void BivariateSolverClassical::reflect_point(const gsl_vector* axis_vector,
   gsl_blas_ddot(&axis_vector_view.vector, input, &inner_product);
 
   gsl_vector_scale(&axis_vector_view.vector, inner_product);
-  
+
   // normalized_axis <normalized_axis | input> + Delta = input
   // \Rightarrow Delta = input - normalized_axis <normalized_axis | input>
   double Delta [axis_vector->size];
