@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   double dx_likelihood = std::stod(argv[5]);
   std::string file_prefix = argv[6];
   std::string input_file_name = argv[7];
-  double dx = 1.0/1200.0;
+  double dx = 1.0/450.0;
   double dx_likelihood_for_small_t = 1e-5;
 
   static int counter = 0;
@@ -99,11 +99,15 @@ int main(int argc, char *argv[]) {
 
   if (input_file.is_open()) {
     for (i=0; i<N; ++i) {
-      input_file >> points_for_kriging[i];
+      // input_file >> points_for_kriging[i];
+      BrownianMotion bm_point = BrownianMotion();
+      input_file >> bm_point;
+
+      points_for_kriging[i] = bm_point;
       points_for_kriging[i].log_likelihood = 1.0;
-      points_for_kriging[i].rho = 0.0;
-      points_for_kriging[i].t_tilde = exp(log_ts[i]);
-      points_for_kriging[i].sigma_y_tilde = 0.50;
+      // points_for_kriging[i].rho = 0.0;
+      // points_for_kriging[i].t_tilde = exp(log_ts[i]);
+      // points_for_kriging[i].sigma_y_tilde = 0.50;
 
       points_for_kriging_analytic[i] = points_for_kriging[i];
       points_for_kriging_small_t[i] = points_for_kriging[i];
@@ -145,13 +149,12 @@ int main(int argc, char *argv[]) {
 	  raw_input_array[1] = points_for_kriging[i].y_t_tilde;
 
 	  eigenvalues_first[i] = gsl_vector_get(solver.get_evals(), 1);
-	  eigenvalues_last[i] = gsl_vector_get(solver.get_evals(), 
-					       solver.get_evals()->size - 1);
+	  eigenvalues_last[i] = gsl_vector_get(solver.get_evals(), solver.get_evals()->size - 1);
 	  
 	  // HERE I'M TESTING THE ASYMPTOTIC MATCHING CONDITION FOR A SINGLE EIGENPAIR
 	  std::vector<BivariateImageWithTime> small_positions =
 	    solver.small_t_image_positions_type_41_symmetric(false);
-	  double small_t = small_positions[0].get_t();
+	  double small_t = 0.00365; // small_positions[0].get_t();
 	  double current_t = points_for_kriging[i].t_tilde;
 	  std::vector<double> current_modes (small_positions.size());
 
@@ -406,9 +409,8 @@ int main(int argc, char *argv[]) {
 	  points_for_kriging_duplicate[i*3 + 0].t_tilde = small_t;
 	  points_for_kriging_duplicate[i*3 + 0].log_likelihood = 
 	    solver.
-
-numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
-								  dx_likelihood_for_small_t);
+	    numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
+							   dx_likelihood_for_small_t);
 
 	  solver.set_diffusion_parameters_and_data(1.0,
 						   points_for_kriging[i].sigma_y_tilde,
@@ -423,8 +425,8 @@ numerical_likelihood_first_order_small_t_ax_bx(&raw_input.vector,
 	  points_for_kriging_duplicate[i*3 + 1] = points_for_kriging[i];
 	  points_for_kriging_duplicate[i*3 + 1].t_tilde = *result_min;
 	  points_for_kriging_duplicate[i*3 + 1].log_likelihood = 
-	    log(solver.numerical_likelihood_first_order(&raw_input.vector,
-							dx_likelihood));
+	    log(solver.numerical_likelihood(&raw_input.vector,
+					    dx_likelihood));
 	  
 	  solver.set_diffusion_parameters_and_data(1.0,
 						   points_for_kriging[i].sigma_y_tilde,

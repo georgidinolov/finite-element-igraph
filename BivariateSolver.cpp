@@ -3319,7 +3319,7 @@ likelihood_small_t_type_41_truncated(const gsl_vector* raw_input,
     for (const unsigned& reflection : differentiable_image.get_reflection_sequence()) {
       std::cout << reflection << " ";
     }
-std::cout << " sign = " << terms_signs[ii];
+    std::cout << " sign = " << terms_signs[ii];
     std::cout << std::endl;
 
    }

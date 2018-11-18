@@ -57,6 +57,7 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
     deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1,1)),
     integration_rule_multiplier_(gsl_matrix_alloc(1,1))
 {
+  set_integration_rule_multiplier();
   // first create the list of basis elements
   set_basis_functions(rho,sigma,power,std_dev_factor);
   std::cout << "done with basis functions" << std::endl;
@@ -94,6 +95,7 @@ BivariateGaussianKernelBasis::BivariateGaussianKernelBasis(double dx,
     deriv_inner_product_matrix_dy_dy_(gsl_matrix_alloc(1,1)),
     integration_rule_multiplier_(gsl_matrix_alloc(1,1))
 {
+  set_integration_rule_multiplier();
   // first create the list of basis elements
   set_basis_functions(rho,
 		      sigma_x,
@@ -315,8 +317,6 @@ project_solver(const BivariateSolverClassical& solver_1,
   int N = 1.0/dx_;
   double integral = 0;
 
-  // http://mathfaculty.fullerton.edu/mathews/n2003/SimpsonsRule2DMod.html
-  // SIMPSON'S RULE START 
   const gsl_matrix* mat_1 = solver_1.get_function_grid();
   const gsl_matrix* mat_2 = elem_2.get_function_grid();
   double product_mat [(N+1)*(N+1)];
@@ -324,73 +324,15 @@ project_solver(const BivariateSolverClassical& solver_1,
 
   gsl_matrix_memcpy(&product_mat_view.matrix, mat_1);
   gsl_matrix_mul_elements(&product_mat_view.matrix, mat_2);
-  // gsl_matrix_mul_elements(&product_mat_view.matrix, integration_rule_multiplier_);
+  gsl_matrix_mul_elements(&product_mat_view.matrix, integration_rule_multiplier_);
   
-  integral += gsl_matrix_get(&product_mat_view.matrix, 0,0) +
-    gsl_matrix_get(&product_mat_view.matrix, 0,N) +
-    gsl_matrix_get(&product_mat_view.matrix, N,0) +
-    gsl_matrix_get(&product_mat_view.matrix, N,N);
-
   for (int i=0; i<N+1; ++i) {
-    if (i<N/2) {
-      integral += 
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, 0,2*i-1) +
-  	2.0*gsl_matrix_get(&product_mat_view.matrix, 0,2*i) +
-  	// // 
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, N,2*i-1) +
-  	2.0*gsl_matrix_get(&product_mat_view.matrix, N,2*i) +
-  	//
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1,0) +
-  	2.0*gsl_matrix_get(&product_mat_view.matrix, 2*i,0) +
-  	// // 
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1,N) +
-  	2.0*gsl_matrix_get(&product_mat_view.matrix, 2*i,N);
-
-      for (int j=1; j<=N/2; ++j) {
-  	if (j<N/2) {
-  	  integral +=
-  	    16.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1, 2*j-1) +
-  	    8.0*gsl_matrix_get(&product_mat_view.matrix, 2*i, 2*j-1) +
-  	    //
-  	    8.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1, 2*j) +
-  	    4.0*gsl_matrix_get(&product_mat_view.matrix, 2*i, 2*j);
-  	} else {
-  	  integral +=
-  	    16.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1, 2*j-1) +
-  	    8.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1, 2*j);
-  	}
-      }
-
-    } else {
-      integral += 
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, 0,2*i-1) +
-  	// // 
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, N,2*i-1) +
-  	//
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1,0) +
-  	// // 
-  	4.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1,N);
-
-      for (int j=1; j<=N/2; ++j) {
-  	if (j<N/2) {
-  	  integral +=
-  	    16.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1, 2*j-1) +
-  	    8.0*gsl_matrix_get(&product_mat_view.matrix, 2*i, 2*j-1);
-  	} else {
-  	  integral +=
-  	    16.0*gsl_matrix_get(&product_mat_view.matrix, 2*i-1, 2*j-1);
-  	}
-      }
+    for (int j=0; j<N+1; ++j) {
+      integral += product_mat[i*(N+1) + j];
     }
   }
 
-  if (std::signbit(integral)) {
-    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
-  } else {
-    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
-  }
   return integral;
-  // SIMPSON RULE END
 }
 
 double BivariateGaussianKernelBasis::
@@ -645,8 +587,6 @@ project_deriv(const BivariateElement& elem_1,
 {
   const gsl_matrix* elem_1_deriv_mat = NULL;
   const gsl_matrix* elem_2_deriv_mat = NULL;
-  const gsl_matrix* elem_1_mat = elem_1.get_function_grid();
-  const gsl_matrix* elem_2_mat = elem_2.get_function_grid();
 
   if (coord_indeex_1 == 0) {
     elem_1_deriv_mat = elem_1.get_deriv_function_grid_dx();
@@ -663,8 +603,6 @@ project_deriv(const BivariateElement& elem_1,
   } else {
     std::cout << "WRONG COORD INPUT!" << std::endl;
   }
-
-  double row_sum = 0;
 
   int N = 1.0/dx_;
   double integral = 0;
@@ -839,8 +777,8 @@ void BivariateGaussianKernelBasis::save_matrix(const gsl_matrix* mat,
   std::ofstream output_file;
   output_file.open(file_name);
   output_file << std::fixed << std::setprecision(32);
-  for (int i=0; i<mat->size1; ++i) {
-    for (int j=0; j<mat->size2; ++j) {
+  for (unsigned i=0; i<mat->size1; ++i) {
+    for (unsigned j=0; j<mat->size2; ++j) {
       if (j==mat->size2-1)
 	{
 	  output_file << gsl_matrix_get(mat, i,j)
@@ -936,11 +874,11 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   //
   // if rho is negative
   double by = std_dev_factor*std::sqrt(1.0 - rho);
-  if (std::signbit(rho)) {
-    by = std_dev_factor;
-  } else {
-    by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
-  }
+  // if (std::signbit(rho)) {
+  //   by = std_dev_factor;
+  // } else {
+  //   by = std_dev_factor*std::sqrt(1.0-rho)/std::sqrt(1.0+rho);
+  // }
   unsigned N = std::ceil( (xi_midpoint - xi_min)/by );
   std::vector<double> xi_nodes (N);
   double xi_current = xi_midpoint + by;
@@ -964,11 +902,11 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   //   by = std_dev_factor * sigma * std::sqrt(1+rho) / std::sqrt(1-rho);
   // }
   by = std_dev_factor*std::sqrt(1.0 + rho);
-  if (std::signbit(rho)) {
-    by = std_dev_factor*std::sqrt(1.0+rho)/std::sqrt(1.0-rho);
-  } else {
-    by = std_dev_factor;
-  }
+  // if (std::signbit(rho)) {
+  //   by = std_dev_factor*std::sqrt(1.0+rho)/std::sqrt(1.0-rho);
+  // } else {
+  //   by = std_dev_factor;
+  // }
   unsigned M = std::ceil( (eta_midpoint - eta_min)/by );
   std::vector<double> eta_nodes (M);
   double eta_current = eta_midpoint + by;
@@ -1000,10 +938,8 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
   gsl_matrix_set(Rotation_matrix, 0, 1, sigma_x * -1.0*std::sin(-theta));
   gsl_matrix_set(Rotation_matrix, 1, 1, sigma_y * std::cos(-theta));
 
-
-  gsl_vector_view xi_nodes_view = gsl_matrix_row(xieta_nodes, 0);
-  gsl_vector_view eta_nodes_view = gsl_matrix_row(xieta_nodes, 1);
-
+  // gsl_vector_view xi_nodes_view = gsl_matrix_row(xieta_nodes, 0);
+  // gsl_vector_view eta_nodes_view = gsl_matrix_row(xieta_nodes, 1);
   // gsl_vector_add_constant(&xi_nodes_view.vector, -0.5/sigma_x);
   // gsl_vector_add_constant(&eta_nodes_view.vector, -0.5/sigma_y);
 
@@ -1011,9 +947,8 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 		 1.0, Rotation_matrix, xieta_nodes, 0.0,
 		 xy_nodes);
 
-  gsl_vector_view x_nodes_view = gsl_matrix_row(xy_nodes, 0);
-  gsl_vector_view y_nodes_view = gsl_matrix_row(xy_nodes, 1);
-
+  // gsl_vector_view x_nodes_view = gsl_matrix_row(xy_nodes, 0);
+  // gsl_vector_view y_nodes_view = gsl_matrix_row(xy_nodes, 1);
   // gsl_vector_add_constant(&xi_nodes_view.vector, 0.5);
   // gsl_vector_add_constant(&eta_nodes_view.vector, 0.5);
 
@@ -1027,7 +962,7 @@ void BivariateGaussianKernelBasis::set_basis_functions(double rho,
 	indeces_within_boundary.push_back(j);
       }
   }
-  printf("Number of basis elements = %d\n", indeces_within_boundary.size());
+  printf("Number of basis elements = %lu\n", indeces_within_boundary.size());
 
   gsl_vector* mean_vector = gsl_vector_alloc(2);
   gsl_matrix* covariance_matrix = gsl_matrix_alloc(2,2);
@@ -1397,5 +1332,6 @@ void BivariateGaussianKernelBasis::set_simpsons_rule()
       }
     }
   }
+  gsl_matrix_scale(integration_rule_multiplier_, dx_*dx_ / 9.0);
   // SIMPSON RULE END  
 }

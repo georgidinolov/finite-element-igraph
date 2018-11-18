@@ -292,6 +292,29 @@ cc_binary(
 	visibility = ["//visibility:public"],
 )
 
+
+cc_binary(
+	name = "likelihood-profiles",
+	srcs = ["likelihood-profiles.cpp"],
+	includes = ["BivariateSolver.hpp",
+		    "GaussianInterpolator.hpp"],
+	deps = [":bivariate-solver",
+		"//src/gaussian-interpolator:gaussian-interpolator",
+		"//src/nlopt:nlopt",
+		"//src/images-expansion:2d-advection-diffusion-images"],
+	copts = ["-Isrc/igraph-0.7.1/include",
+	      	 "-Isrc/brownian-motion",
+		 "-Isrc/gaussian-interpolator",
+		 "-Isrc/nlopt/api",
+	      	 "-Isrc/multivariate-normal",
+		 "-Isrc/images-expansion",
+		 "-O3",
+		 "-fopenmp"],
+	linkopts = ["-lm", "-lgsl", "-lgslcblas", "-fopenmp"],			
+	visibility = ["//visibility:public"],
+)
+
+
 cc_library(
 	name = "bivariate-solver",
 	srcs = ["BivariateSolver.cpp"],
@@ -314,7 +337,8 @@ cc_library(
 		":basis-element-types"],
 	copts = ["-Isrc/igraph-0.7.1/include",
 	      	 "-Isrc/multivariate-normal",
-		 "-lm"],
+		 "-lm",
+		 "-O"],
 	visibility = ["//visibility:public"],
 )
 
