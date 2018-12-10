@@ -11,8 +11,8 @@ sigma_x_basis=($2)
 sigma_y_basis=($3)
 dx_numerical_likelihood=0.03125
 target_dir=~/PDE-solvers/src/finite-element-igraph/
-data_rho=0.95
-data_n=8
+data_rho=($6)
+data_n=($5)
 prefix=profile-test-data-rho-${data_rho}-n-${data_n}-dx-250-
 data_file=./src/kernel-expansion/documentation/chapter-2/data/mle-data-sets-rho-${data_rho}-n-${data_n}/BM-data-set-0.csv
 

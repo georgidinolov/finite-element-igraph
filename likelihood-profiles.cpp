@@ -82,13 +82,18 @@ int main(int argc, char *argv[]) {
 
   std::vector<likelihood_point> points_for_kriging (N);
   std::vector<likelihood_point> points_for_kriging_small_t (N);
-  std::vector<double> eigenvalues_first (N);
 
-  unsigned m = 50; // how many time points to evaluate 
+  unsigned m = 100; // how many time points to evaluate 
+  unsigned m_eig = 20; // how many eigenvalues
   std::vector<std::vector<double>> lls (N, std::vector<double> (m));
   std::vector<std::vector<double>> lls_small_t (N, std::vector<double> (m));
   std::vector<std::vector<double>> lls_analytic (N, std::vector<double> (m));
+  std::vector<std::vector<double>> lls_matched (N, std::vector<double> (m));
+  std::vector<std::vector<double>> lls_ansatz (N, std::vector<double> (m));
   std::vector<std::vector<double>> tts (N, std::vector<double> (m));
+  
+  std::vector<std::vector<double>> eigenvalues (N, std::vector<double> (m_eig));
+  std::vector<double> small_ts (N);
 
   std::ifstream input_file(input_file_name);
 
@@ -125,7 +130,7 @@ int main(int argc, char *argv[]) {
   std::vector<likelihood_point> points_for_integration (1);
 
   // auto t1 = std::chrono::high_resolution_clock::now();
-#pragma omp parallel default(none) private(i) shared(points_for_kriging, points_for_kriging_small_t, N, seed_init, r_ptr_local, dx_likelihood_for_small_t, m, lls, lls_small_t, lls_analytic, eigenvalues_first, tts) firstprivate(dx_likelihood, dx)
+#pragma omp parallel default(none) private(i) shared(points_for_kriging, points_for_kriging_small_t, N, seed_init, r_ptr_local, dx_likelihood_for_small_t, m, lls, lls_small_t, lls_analytic, lls_matched, lls_ansatz, eigenvalues, tts, small_ts, m_eig) firstprivate(dx_likelihood, dx)
     {
 #pragma omp for
       for (i=0; i<N; ++i) {
@@ -151,16 +156,19 @@ int main(int argc, char *argv[]) {
 						 1.0,
 						 points_for_kriging[i].t_tilde,
 						 dx);
-	eigenvalues_first[i] = gsl_vector_get(solver.get_evals(), 1);
+
+	for (unsigned ii=0; ii<m_eig; ++ii) {
+	  eigenvalues[i][ii] = gsl_vector_get(solver.get_evals(), ii);
+	}
 
 	std::vector<BivariateImageWithTime> small_positions =
 	  solver.small_t_image_positions_type_41_symmetric(false);
 	
 	double small_t = small_positions[0].get_t();
 	// for some configurations, the small-time solution doesn't
-	// work, in which case small-t is negative. Shrink sigma_y_tilde
+	// work, in which case small-t is negative. Shrink rho
 	// sufficiently s.t. the small-t solution works.  It's
-	// always guaranteed to work for sufficiently small sigma_y_tilde.
+	// always guaranteed to work for sufficiently small rho.
 	while (std::signbit(small_t)) {
 	  rho_for_small_t = rho_for_small_t * 0.95;
 	  printf("Trying sigma_y_for_small_t=%f\n", sigma_y_for_small_t);
@@ -178,14 +186,89 @@ int main(int argc, char *argv[]) {
 	  small_positions = solver.small_t_image_positions_type_41_symmetric(false);
 	  small_t = small_positions[0].get_t();
 	}
-	
+
+	small_ts[i] = small_t;
+
 	raw_input_array[0] = points_for_kriging[i].x_t_tilde;
 	raw_input_array[1] = points_for_kriging[i].y_t_tilde;
 	
+	// MATCHING CONSTANTS START
+	std::vector<double> betas (4);
+	for (unsigned ii=0; ii<4; ++ii) {
+	  const BivariateImageWithTime& differentiable_image = small_positions[ii];
+	  double x0 = gsl_vector_get(differentiable_image.get_position(), 0);
+	  double y0 = gsl_vector_get(differentiable_image.get_position(), 1);
+	  double x = gsl_vector_get(&raw_input.vector, 0);
+	  double y = gsl_vector_get(&raw_input.vector, 1);
+
+	  betas[ii] = 
+	    1.0/(2.0*sigma_y_for_small_t*sigma_y_for_small_t*(1-rho_for_small_t*rho_for_small_t))*
+	    ( std::pow((x-x0)*sigma_y_for_small_t, 2.0) +
+	      std::pow((y-y0), 2.0) -
+	      2*rho_for_small_t*(x-x0)*(y-y0)*sigma_y_for_small_t );
+	  printf("sigma_tilde = %f, rho = %f, x0 = %f, y0 = %f, beta = %f\n", 
+		 sigma_y_for_small_t, 
+		 rho_for_small_t,
+		 x0, y0, betas[ii]);
+	}
+	std::vector<double>::iterator result = std::max_element(betas.begin(),
+								betas.end());
+	double max_beta = *result;
+	double lambda = eigenvalues[i][0];
+	double t_tilde_1 = 0.5;
+	double t_tilde_2 = 2.0;
+	double dt = 0.1;
+	solver.set_diffusion_parameters_and_data_small_t(1.0,
+							 points_for_kriging[i].sigma_y_tilde,
+							 points_for_kriging[i].rho,
+							 t_tilde_1,
+							 0.0,
+							 points_for_kriging[i].x_0_tilde,
+							 1.0,
+							 0.0,
+							 points_for_kriging[i].y_0_tilde,
+							 1.0);
+	double f1 = log(solver.numerical_likelihood(&raw_input.vector,
+						     dx_likelihood));
+	solver.set_diffusion_parameters_and_data_small_t(1.0,
+							 points_for_kriging[i].sigma_y_tilde,
+							 points_for_kriging[i].rho,
+							 t_tilde_2,
+							 0.0,
+							 points_for_kriging[i].x_0_tilde,
+							 1.0,
+							 0.0,
+							 points_for_kriging[i].y_0_tilde,
+							 1.0);
+	double f2 = log(solver.numerical_likelihood(&raw_input.vector,
+						       dx_likelihood));
+	double alpha = -(f1-f2 + lambda*(t_tilde_2 - t_tilde_1))/log(t_tilde_2/t_tilde_1);
+	double big_C = f2 - alpha*log(t_tilde_2) - lambda*t_tilde_2;
+	double t_tilde_star = -alpha/lambda;
+	double gamma = max_beta/t_tilde_star;
+	solver.set_diffusion_parameters_and_data_small_t(1.0,
+							 points_for_kriging[i].sigma_y_tilde,
+							 points_for_kriging[i].rho,
+							 t_tilde_star,
+							 0.0,
+							 points_for_kriging[i].x_0_tilde,
+							 1.0,
+							 0.0,
+							 points_for_kriging[i].y_0_tilde,
+							 1.0);
+	double fstar = log(solver.numerical_likelihood(&raw_input.vector,
+						       dx_likelihood));
+	double kappa = fstar + 
+	  gamma*log(t_tilde_star) + max_beta/t_tilde_star;
+	
+	printf("beta = %f, alpha = %f, eigenvalues = %f, C = %f\n", 
+	       max_beta, alpha, eigenvalues[i][0], big_C);
+	// MATCH CONSTANTS END
+	
 	// filling in vector of times to evaluate
-	double t_lower = 0.01; //small_t;
-	double t_upper = 2.0; // points_for_kriging[i].t_tilde*1.5;
-	double dt = (t_upper - t_lower)/(m-1);
+	double t_lower = 0.005; //small_t;
+	double t_upper = 4.0; // points_for_kriging[i].t_tilde*1.5;
+	dt = (t_upper - t_lower)/(m-1);
 	std::vector<double> ts(m);
 	unsigned nn=0;
 	std::generate(ts.begin(), ts.end(), [&] () mutable { double out = t_lower + dt*nn; nn++; return out; });
@@ -222,6 +305,10 @@ int main(int argc, char *argv[]) {
 						      dx_likelihood_for_small_t);
 	  
 	  lls_analytic[i][j] = solver.analytic_likelihood(&raw_input.vector, 1000);
+
+	  lls_matched[i][j] = kappa - gamma*log(ts[j]) - max_beta/ts[j];
+
+	  lls_ansatz[i][j] = big_C + alpha*log(ts[j]) + lambda*ts[j];
 	  
 	  printf("%f %f\n", lls[i][j], lls_small_t[i][j]);
 	}
@@ -259,13 +346,29 @@ int main(int argc, char *argv[]) {
 
     output_file << "nan = NA;\n";
     output_file << "inf = Inf;\n";
+    output_file << "eigenvalues = vector(mode=\"list\", length=" << N << ");\n";
     output_file << "lls = vector(mode=\"list\", length=" << N << ");\n";
     output_file << "lls_small_t = vector(mode=\"list\", length=" << N << ");\n";
     output_file << "lls_analytic = vector(mode=\"list\", length=" << N << ");\n";
+    output_file << "lls_matched = vector(mode=\"list\", length=" << N << ");\n";
+    output_file << "lls_ansatz = vector(mode=\"list\", length=" << N << ");\n";
+    output_file << "small_ts = rep(NA, length=" << N << ");\n";
     output_file << "ts = vector(mode=\"list\", length=" << N << ");\n";
 
     for (i=0; i<N; ++i) {
       output_file << points_for_kriging[i];
+
+
+      output_file << "eigenvalues[[" << i+1 << "]] = c(";
+      for (unsigned j=0; j<eigenvalues[i].size(); ++j) {
+	if (j<eigenvalues[i].size()-1) {
+	  output_file << eigenvalues[i][j] << ",";
+	} else {
+	  output_file << eigenvalues[i][j];
+	}
+      }
+      output_file << ");\n";
+
       
       output_file << "lls[[" << i+1 << "]] = c(";
       for (unsigned j=0; j<lls[i].size(); ++j) {
@@ -299,6 +402,28 @@ int main(int argc, char *argv[]) {
       }
       output_file << ");\n";
 
+
+      output_file << "lls_matched[[" << i+1 << "]] = c(";
+      for (unsigned j=0; j<lls_matched[i].size(); ++j) {
+	if (j<lls_matched[i].size()-1) {
+	  output_file << lls_matched[i][j] << ",";
+	} else {
+	  output_file << lls_matched[i][j];
+	}
+      }
+      output_file << ");\n";
+
+      output_file << "lls_ansatz[[" << i+1 << "]] = c(";
+      for (unsigned j=0; j<lls_ansatz[i].size(); ++j) {
+	if (j<lls_ansatz[i].size()-1) {
+	  output_file << lls_ansatz[i][j] << ",";
+	} else {
+	  output_file << lls_ansatz[i][j];
+	}
+      }
+      output_file << ");\n";
+
+
       output_file << "ts[[" << i+1 << "]] = c(";
       for (unsigned j=0; j<tts[i].size(); ++j) {
 	if (j<tts[i].size()-1) {
@@ -310,7 +435,7 @@ int main(int argc, char *argv[]) {
       output_file << ");\n";
 
       output_file << "t_tilde_" << i << "=" << points_for_kriging[i].t_tilde << ";\n";
-      output_file << "eigenvalue_" << i << "=" << eigenvalues_first[i] << ";\n";
+      output_file << "small_ts[" << i+1 << "]=" << small_ts[i] << ";\n";
     }
 
     output_file << "## par(mar=c(2,2,2,2), mfrow=c(" << N << ",1));\n";
