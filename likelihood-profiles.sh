@@ -14,6 +14,6 @@ target_dir=~/PDE-solvers/src/finite-element-igraph/
 data_rho=($6)
 data_n=($5)
 prefix=profile-test-data-rho-${data_rho}-n-${data_n}-dx-250-
-data_file=./src/kernel-expansion/documentation/chapter-2/data/mle-data-sets-rho-${data_rho}-n-${data_n}/BM-data-set-0.csv
+data_file=./src/kernel-expansion/documentation/chapter-2/data/mle-data-sets-rho-${data_rho}-n-${data_n}/BM-data-set-3.csv
 
 ./bazel-bin/src/finite-element-igraph/likelihood-profiles ${number_data_points} ${rho_basis} ${sigma_x_basis} ${sigma_y_basis} ${dx_numerical_likelihood} ${target_dir}${prefix} ${data_file}

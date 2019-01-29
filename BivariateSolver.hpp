@@ -199,21 +199,18 @@ public:
 									      double small_t,
 									      double h);
 
-  virtual double likelihood_small_t_type_41_truncated(const gsl_vector* input,
-						      double small_t,
-						      double h);
-  virtual double likelihood_small_t_type_31_truncated(const gsl_vector* input,
-						      double small_t,
-						      double h);
-  
-  
+  // virtual double likelihood_small_t_type_41_truncated(const gsl_vector* input,
+  // 						      double small_t,
+  // 						      double h);
+  // virtual double likelihood_small_t_type_31_truncated(const gsl_vector* input,
+  // 						      double small_t,
+  // 						      double h);
   virtual double likelihood_small_t_41_truncated_symmetric(const gsl_vector* input,
 							   double small_t,
 							   double h);
-
-  virtual double likelihood_small_t_type_4_truncated(const gsl_vector* input,
-						     double small_t,
-						     double h);
+  // virtual double likelihood_small_t_type_4_truncated(const gsl_vector* input,
+  // 						     double small_t,
+  // 						     double h);
   
   std::vector<BivariateImageWithTime> small_t_image_positions() const;
   // 202 131

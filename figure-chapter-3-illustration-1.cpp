@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   double sigma_x_basis = std::stod(argv[3]);
   double sigma_y_basis = std::stod(argv[4]);
   double dx_likelihood = std::stod(argv[5]);
-  double dx = 1.0/600.0;
+  double dx = 1.0/250.0;
 
   static int counter = 0;
   static BivariateGaussianKernelBasis* private_bases;
@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
   }
 
   std::vector<likelihood_point> points_for_kriging (1);
-  points_for_kriging[0].x_0_tilde=1.00e-01;
-  points_for_kriging[0].y_0_tilde=3.00e-01;
+  points_for_kriging[0].x_0_tilde=5.00e-01;
+  points_for_kriging[0].y_0_tilde=5.00e-01;
   points_for_kriging[0].x_t_tilde=3.00e-01;
   points_for_kriging[0].y_t_tilde=5.00e-01;
   points_for_kriging[0].sigma_y_tilde=0.5;
@@ -129,7 +129,8 @@ int main(int argc, char *argv[]) {
 	  x[0] = points_for_kriging[i].x_t_tilde;
 	  x[1] = points_for_kriging[i].y_t_tilde;
 	  
-	  solver.figure_chapter_3_illustration_1();
+	  // solver.figure_chapter_3_illustration_1();
+	  solver.small_t_image_positions_type_41_symmetric(true);
 	}
 	
 	points_for_kriging[i].log_likelihood = log(likelihood);
