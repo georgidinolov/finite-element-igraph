@@ -368,109 +368,109 @@ project_omp(const BivariateElement& elem_1,
   int N = 1.0/dx_;
   double integral = 0;
 
-  // // http://mathfaculty.fullerton.edu/mathews/n2003/SimpsonsRule2DMod.html
-  // // SIMPSON'S RULE START 
-  // const gsl_matrix* mat_1 = elem_1.get_function_grid();
-  // const gsl_matrix* mat_2 = elem_2.get_function_grid();
-
-  // integral += gsl_matrix_get(mat_1, 0,0)*gsl_matrix_get(mat_2, 0,0) +
-  //   gsl_matrix_get(mat_1, 0,N)*gsl_matrix_get(mat_2, 0,N) +
-  //   gsl_matrix_get(mat_1, N,0)*gsl_matrix_get(mat_2, N,0) +
-  //   gsl_matrix_get(mat_1, N,N)*gsl_matrix_get(mat_2, N,N);
-
-  // for (int i=1; i<=N/2; ++i) {
-  //   if (i<N/2) {
-  //     integral += 
-  // 	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
-  // 	2.0*gsl_matrix_get(mat_1, 0,2*i)*gsl_matrix_get(mat_2, 0,2*i) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
-  // 	2.0*gsl_matrix_get(mat_1, N,2*i)*gsl_matrix_get(mat_2, N,2*i) +
-  // 	//
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
-  // 	2.0*gsl_matrix_get(mat_1, 2*i,0)*gsl_matrix_get(mat_2, 2*i,0) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N) +
-  // 	2.0*gsl_matrix_get(mat_1, 2*i,N)*gsl_matrix_get(mat_2, 2*i,N);
-
-  //     for (int j=1; j<=N/2; ++j) {
-  // 	if (j<N/2) {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1) +
-  // 	    //
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j) +
-  // 	    4.0*gsl_matrix_get(mat_1, 2*i, 2*j)*gsl_matrix_get(mat_2, 2*i,2*j);
-  // 	} else {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j);
-  // 	}
-  //     }
-
-  //   } else {
-  //     integral += 
-  // 	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
-  // 	//
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N);
-
-  //     for (int j=1; j<=N/2; ++j) {
-  // 	if (j<N/2) {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1);
-  // 	} else {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1);
-  // 	}
-  //     }
-  //   }
-  // }
-
-  // if (std::signbit(integral)) {
-  //   integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
-  // } else {
-  //   integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
-  // }
-  // return integral;
-  // // SIMPSON RULE END
-
-  
-  // TRAPEZOIDAL RULE START 
+  // http://mathfaculty.fullerton.edu/mathews/n2003/SimpsonsRule2DMod.html
+  // SIMPSON'S RULE START 
   const gsl_matrix* mat_1 = elem_1.get_function_grid();
   const gsl_matrix* mat_2 = elem_2.get_function_grid();
 
-  for (int i=0; i<N; ++i) {
-    if (i==0 || i==N-1) {
+  integral += gsl_matrix_get(mat_1, 0,0)*gsl_matrix_get(mat_2, 0,0) +
+    gsl_matrix_get(mat_1, 0,N)*gsl_matrix_get(mat_2, 0,N) +
+    gsl_matrix_get(mat_1, N,0)*gsl_matrix_get(mat_2, N,0) +
+    gsl_matrix_get(mat_1, N,N)*gsl_matrix_get(mat_2, N,N);
 
-      for (int j=1; j<N-1; ++j) {
-  	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*2;
+  for (int i=1; i<=N/2; ++i) {
+    if (i<N/2) {
+      integral += 
+  	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
+  	2.0*gsl_matrix_get(mat_1, 0,2*i)*gsl_matrix_get(mat_2, 0,2*i) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
+  	2.0*gsl_matrix_get(mat_1, N,2*i)*gsl_matrix_get(mat_2, N,2*i) +
+  	//
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
+  	2.0*gsl_matrix_get(mat_1, 2*i,0)*gsl_matrix_get(mat_2, 2*i,0) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N) +
+  	2.0*gsl_matrix_get(mat_1, 2*i,N)*gsl_matrix_get(mat_2, 2*i,N);
+
+      for (int j=1; j<=N/2; ++j) {
+  	if (j<N/2) {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
+  	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1) +
+  	    //
+  	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j) +
+  	    4.0*gsl_matrix_get(mat_1, 2*i, 2*j)*gsl_matrix_get(mat_2, 2*i,2*j);
+  	} else {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
+  	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j);
+  	}
       }
-      integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*1;
-      integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*1;
 
     } else {
+      integral += 
+  	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
+  	//
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N);
 
-      for (int j=1; j<N-1; ++j) {
-  	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*4;
+      for (int j=1; j<=N/2; ++j) {
+  	if (j<N/2) {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
+  	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1);
+  	} else {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1);
+  	}
       }
-      integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*2;
-      integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*2;
-
     }
   }
 
   if (std::signbit(integral)) {
-    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
   } else {
-    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
   }
   return integral;
-  // TRAPEZOIDAL RULE END
+  // SIMPSON RULE END
+
+  
+  // // TRAPEZOIDAL RULE START 
+  // const gsl_matrix* mat_1 = elem_1.get_function_grid();
+  // const gsl_matrix* mat_2 = elem_2.get_function_grid();
+
+  // for (int i=0; i<N; ++i) {
+  //   if (i==0 || i==N-1) {
+
+  //     for (int j=1; j<N-1; ++j) {
+  // 	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*2;
+  //     }
+  //     integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*1;
+  //     integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*1;
+
+  //   } else {
+
+  //     for (int j=1; j<N-1; ++j) {
+  // 	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*4;
+  //     }
+  //     integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*2;
+  //     integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*2;
+
+  //   }
+  // }
+
+  // if (std::signbit(integral)) {
+  //   integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+  // } else {
+  //   integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+  // }
+  // return integral;
+  // // TRAPEZOIDAL RULE END
 
   // for (int i=0; i<N; ++i) {
   //   double row_sum = 0;
@@ -607,108 +607,108 @@ project_deriv(const BivariateElement& elem_1,
   int N = 1.0/dx_;
   double integral = 0;
 
-  // // http://mathfaculty.fullerton.edu/mathews/n2003/SimpsonsRule2DMod.html
-  // // SIMPSON'S RULE START 
-  // const gsl_matrix* mat_1 = elem_1_deriv_mat;
-  // const gsl_matrix* mat_2 = elem_2_deriv_mat;
-
-  // integral += gsl_matrix_get(mat_1, 0,0)*gsl_matrix_get(mat_2, 0,0) +
-  //   gsl_matrix_get(mat_1, 0,N)*gsl_matrix_get(mat_2, 0,N) +
-  //   gsl_matrix_get(mat_1, N,0)*gsl_matrix_get(mat_2, N,0) +
-  //   gsl_matrix_get(mat_1, N,N)*gsl_matrix_get(mat_2, N,N);
-
-  // for (int i=1; i<=N/2; ++i) {
-  //   if (i<N/2) {
-  //     integral += 
-  // 	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
-  // 	2.0*gsl_matrix_get(mat_1, 0,2*i)*gsl_matrix_get(mat_2, 0,2*i) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
-  // 	2.0*gsl_matrix_get(mat_1, N,2*i)*gsl_matrix_get(mat_2, N,2*i) +
-  // 	//
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
-  // 	2.0*gsl_matrix_get(mat_1, 2*i,0)*gsl_matrix_get(mat_2, 2*i,0) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N) +
-  // 	2.0*gsl_matrix_get(mat_1, 2*i,N)*gsl_matrix_get(mat_2, 2*i,N);
-
-  //     for (int j=1; j<=N/2; ++j) {
-  // 	if (j<N/2) {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1) +
-  // 	    //
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j) +
-  // 	    4.0*gsl_matrix_get(mat_1, 2*i, 2*j)*gsl_matrix_get(mat_2, 2*i,2*j);
-  // 	} else {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j);
-  // 	}
-  //     }
-
-  //   } else {
-  //     integral += 
-  // 	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
-  // 	//
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
-  // 	// // 
-  // 	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N);
-
-  //     for (int j=1; j<=N/2; ++j) {
-  // 	if (j<N/2) {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
-  // 	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1);
-  // 	} else {
-  // 	  integral +=
-  // 	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1);
-  // 	}
-  //     }
-  //   }
-  // }
-
-  // if (std::signbit(integral)) {
-  //   integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
-  // } else {
-  //   integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
-  // }
-  // return integral;
-  // // SIMPSON RULE END
-
-  // TRAPEZOIDAL RULE START 
+  // http://mathfaculty.fullerton.edu/mathews/n2003/SimpsonsRule2DMod.html
+  // SIMPSON'S RULE START 
   const gsl_matrix* mat_1 = elem_1_deriv_mat;
   const gsl_matrix* mat_2 = elem_2_deriv_mat;
 
-  for (int i=0; i<N; ++i) {
-    if (i==0 || i==N-1) {
+  integral += gsl_matrix_get(mat_1, 0,0)*gsl_matrix_get(mat_2, 0,0) +
+    gsl_matrix_get(mat_1, 0,N)*gsl_matrix_get(mat_2, 0,N) +
+    gsl_matrix_get(mat_1, N,0)*gsl_matrix_get(mat_2, N,0) +
+    gsl_matrix_get(mat_1, N,N)*gsl_matrix_get(mat_2, N,N);
 
-      for (int j=1; j<N-1; ++j) {
-  	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*2;
+  for (int i=1; i<=N/2; ++i) {
+    if (i<N/2) {
+      integral += 
+  	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
+  	2.0*gsl_matrix_get(mat_1, 0,2*i)*gsl_matrix_get(mat_2, 0,2*i) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
+  	2.0*gsl_matrix_get(mat_1, N,2*i)*gsl_matrix_get(mat_2, N,2*i) +
+  	//
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
+  	2.0*gsl_matrix_get(mat_1, 2*i,0)*gsl_matrix_get(mat_2, 2*i,0) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N) +
+  	2.0*gsl_matrix_get(mat_1, 2*i,N)*gsl_matrix_get(mat_2, 2*i,N);
+
+      for (int j=1; j<=N/2; ++j) {
+  	if (j<N/2) {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
+  	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1) +
+  	    //
+  	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j) +
+  	    4.0*gsl_matrix_get(mat_1, 2*i, 2*j)*gsl_matrix_get(mat_2, 2*i,2*j);
+  	} else {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
+  	    8.0*gsl_matrix_get(mat_1, 2*i-1, 2*j)*gsl_matrix_get(mat_2, 2*i-1,2*j);
+  	}
       }
-      integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*1;
-      integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*1;
 
     } else {
+      integral += 
+  	4.0*gsl_matrix_get(mat_1, 0,2*i-1)*gsl_matrix_get(mat_2, 0,2*i-1) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, N,2*i-1)*gsl_matrix_get(mat_2, N,2*i-1) +
+  	//
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,0)*gsl_matrix_get(mat_2, 2*i-1,0) +
+  	// // 
+  	4.0*gsl_matrix_get(mat_1, 2*i-1,N)*gsl_matrix_get(mat_2, 2*i-1,N);
 
-      for (int j=1; j<N-1; ++j) {
-  	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*4;
+      for (int j=1; j<=N/2; ++j) {
+  	if (j<N/2) {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1) +
+  	    8.0*gsl_matrix_get(mat_1, 2*i, 2*j-1)*gsl_matrix_get(mat_2, 2*i,2*j-1);
+  	} else {
+  	  integral +=
+  	    16.0*gsl_matrix_get(mat_1, 2*i-1, 2*j-1)*gsl_matrix_get(mat_2, 2*i-1,2*j-1);
+  	}
       }
-      integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*2;
-      integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*2;
-
     }
   }
 
   if (std::signbit(integral)) {
-    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+    integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
   } else {
-    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+    integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(9.0));
   }
   return integral;
-  // TRAPEZOIDAL RULE END
+  // SIMPSON RULE END
+
+  // // TRAPEZOIDAL RULE START 
+  // const gsl_matrix* mat_1 = elem_1_deriv_mat;
+  // const gsl_matrix* mat_2 = elem_2_deriv_mat;
+
+  // for (int i=0; i<N; ++i) {
+  //   if (i==0 || i==N-1) {
+
+  //     for (int j=1; j<N-1; ++j) {
+  // 	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*2;
+  //     }
+  //     integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*1;
+  //     integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*1;
+
+  //   } else {
+
+  //     for (int j=1; j<N-1; ++j) {
+  // 	integral += gsl_matrix_get(mat_1, i,j)*gsl_matrix_get(mat_2, i,j)*4;
+  //     }
+  //     integral += gsl_matrix_get(mat_1, i,0)*gsl_matrix_get(mat_2, i,0)*2;
+  //     integral += gsl_matrix_get(mat_1, i,N-1)*gsl_matrix_get(mat_2, i,N-1)*2;
+
+  //   }
+  // }
+
+  // if (std::signbit(integral)) {
+  //   integral = -1.0*std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+  // } else {
+  //   integral = std::exp(std::log(std::abs(integral)) + 2*std::log(dx_) - std::log(4.0));
+  // }
+  // return integral;
+  // // TRAPEZOIDAL RULE END
 
   // if (coord_indeex_1 == 0 && coord_indeex_2 == 0) {
   //   for (int i=0; i<N-1; ++i) {
