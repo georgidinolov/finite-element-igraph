@@ -3,7 +3,7 @@ require(data.table)
 require("gridExtra")
 args = commandArgs(trailingOnly = TRUE)
 
-list_of_files = list("profile-test-data-rho-0.95-n-16-dx-250--number-points-16-rho_basis-0.60-sigma_x_basis-0.12-sigma_y_basis-0.12-dx_likelihood-0.03125.R")
+list_of_files = list("profile-test-data-rho-0.95-n-16-dx-300--number-points-16-rho_basis-0.60-sigma_x_basis-0.10-sigma_y_basis-0.10-dx_likelihood-0.0078125.R")
 
 ts_list = vector(mode="list", length=length(list_of_files))
 lls_list = vector(mode="list", length=length(list_of_files))
@@ -16,7 +16,7 @@ lls_LS_list = vector(mode="list", length=length(list_of_files))
 plot.results = data.table()
 
 rhos = c(0.60)
-sigmas = c(0.12)
+sigmas = c(0.10)
 
 J = 16
 for (i in seq(1,length(list_of_files))) {

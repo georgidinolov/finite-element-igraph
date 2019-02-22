@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   double dx_likelihood = std::stod(argv[5]);
   std::string file_prefix = argv[6];
   std::string input_file_name = argv[7];
-  double dx = 1.0/250.0;
+  double dx = 1.0/300.0;
   double dx_likelihood_for_small_t = 1e-5;
 
   static int counter = 0;
@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
 	raw_input_array[1] = points_for_kriging[i].y_t_tilde;
 
 	// MATCHING CONSTANTS START
-	unsigned number_big_t_points = 2;
+	unsigned number_big_t_points = 3;
 
 	// std::vector<double>::const_iterator first_lambda = eigenvalues[i].begin();
 	// std::vector<double>::const_iterator last_lambda = eigenvalues[i].begin() + 1;
@@ -327,38 +327,42 @@ int main(int argc, char *argv[]) {
 	std::vector<double> ys (0); // = ys_small;
 	std::vector<double> log_ys (0); // = log_ys_small;
 
-	double t_tilde_2  = 0.80;
+	double t_tilde_2 = 0.30;
 	while (number_big_t_points > 0) {
-	  solver.set_diffusion_parameters_and_data_small_t(1.0,
-							   points_for_kriging[i].sigma_y_tilde,
-							   points_for_kriging[i].rho,
-							   t_tilde_2,
-							   0.0,
-							   points_for_kriging[i].x_0_tilde,
-							   1.0,
-							   0.0,
-							   points_for_kriging[i].y_0_tilde,
-							   1.0);
+	  solver.set_diffusion_parameters_and_data(1.0,
+						   points_for_kriging[i].sigma_y_tilde,
+						   points_for_kriging[i].rho,
+						   t_tilde_2,
+						   0.0,
+						   points_for_kriging[i].x_0_tilde,
+						   1.0,
+						   0.0,
+						   points_for_kriging[i].y_0_tilde,
+						   1.0);
 	  double y2 = solver.numerical_likelihood(&raw_input.vector,
 						  dx_likelihood);
 
+	  if (std::isnan(y2)) {
+	    y2 = 0.0;
+	  }
+
 	  while (std::isnan(std::log(y2))) {
 	    if (t_tilde_2 <= 4) {
-	      t_tilde_2 = t_tilde_2 + 1.0;
+	      t_tilde_2 = t_tilde_2 + 0.50;
 	    } else {
 	      t_tilde_2 = t_tilde_2 + 20.0;
 	    }
 
-	    solver.set_diffusion_parameters_and_data_small_t(1.0,
-							     points_for_kriging[i].sigma_y_tilde,
-							     points_for_kriging[i].rho,
-							     t_tilde_2,
-							     0.0,
-							     points_for_kriging[i].x_0_tilde,
-							     1.0,
-							     0.0,
-							     points_for_kriging[i].y_0_tilde,
-							     1.0);
+	    solver.set_diffusion_parameters_and_data(1.0,
+						     points_for_kriging[i].sigma_y_tilde,
+						     points_for_kriging[i].rho,
+						     t_tilde_2,
+						     0.0,
+						     points_for_kriging[i].x_0_tilde,
+						     1.0,
+						     0.0,
+						     points_for_kriging[i].y_0_tilde,
+						     1.0);
 	    y2 = solver.numerical_likelihood(&raw_input.vector,
 					     dx_likelihood);
 	  }
@@ -367,22 +371,22 @@ int main(int argc, char *argv[]) {
 	  ys.push_back(y2);
 	  log_ys.push_back(log(y2));
 
-	  t_tilde_2 = t_tilde_2 + 2.00;
+	  t_tilde_2 = t_tilde_2 + 0.50;
 	  number_big_t_points--;
 	}
 
 	gsl_vector* weights = find_weights(ys, t_tildes, alphas, lambdas);
 	double t_max = find_max(weights, lambdas, alphas, t_tildes, small_t);
-	solver.set_diffusion_parameters_and_data_small_t(1.0,
-							 points_for_kriging[i].sigma_y_tilde,
-							 points_for_kriging[i].rho,
-							 t_max,
-							 0.0,
-							 points_for_kriging[i].x_0_tilde,
-							 1.0,
-							 0.0,
-							 points_for_kriging[i].y_0_tilde,
-							 1.0);
+	solver.set_diffusion_parameters_and_data(1.0,
+						 points_for_kriging[i].sigma_y_tilde,
+						 points_for_kriging[i].rho,
+						 t_max,
+						 0.0,
+						 points_for_kriging[i].x_0_tilde,
+						 1.0,
+						 0.0,
+						 points_for_kriging[i].y_0_tilde,
+						 1.0);
 	double galerkin_like = solver.numerical_likelihood(&raw_input.vector,
 							       dx_likelihood);
 
@@ -392,8 +396,8 @@ int main(int argc, char *argv[]) {
 	if (!std::isnan(log(galerkin_like)) &
 	    (log(galerkin_like) > approx_log_like) ) {
 
-	  ys.push_back(galerkin_like);
-	  t_tildes.push_back(t_max);
+	  ys[1] = galerkin_like;
+	  t_tildes[1] = t_max;
 
 	  gsl_vector_free(weights);
 	  weights = find_weights(ys, t_tildes, alphas, lambdas);
@@ -491,16 +495,16 @@ int main(int argc, char *argv[]) {
 	tts[i] = ts;
 
 	for (unsigned j=0; j<m; ++j) {
-	  solver.set_diffusion_parameters_and_data_small_t(1.0,
-							   points_for_kriging[i].sigma_y_tilde,
-							   points_for_kriging[i].rho,
-							   ts[j],
-							   0.0,
-							   points_for_kriging[i].x_0_tilde,
-							   1.0,
-							   0.0,
-							   points_for_kriging[i].y_0_tilde,
-							   1.0);
+	  solver.set_diffusion_parameters_and_data(1.0,
+						   points_for_kriging[i].sigma_y_tilde,
+						   points_for_kriging[i].rho,
+						   ts[j],
+						   0.0,
+						   points_for_kriging[i].x_0_tilde,
+						   1.0,
+						   0.0,
+						   points_for_kriging[i].y_0_tilde,
+						   1.0);
 	  lls[i][j] = log(solver.numerical_likelihood(&raw_input.vector,
 						      dx_likelihood));
 

@@ -711,6 +711,22 @@ operator()(const gsl_vector* input) const
       current_f = current_f * gsl_vector_get(solution_coefs_, i);
 
       out = out + current_f;
+      // if (std::isnan(out)) {
+	
+      // 	printf("x_0_2_ = %f, y_0_2_ = %f, x_input = %f, y_input = %f, t_2_ = %f, sigma_x_2_ = %f, sigma_y_2_ = %f, rho_ = %f, small_t = %f, diff = %f, i = %d, out = %f\n coef = %f\n current_f = %f\n", 
+      // 	       x_0_2_,
+      // 	       y_0_2_,
+      // 	       gsl_vector_get(scaled_input, 0),
+      // 	       gsl_vector_get(scaled_input, 1),
+      // 	       t_2_,
+      // 	       sigma_x_2_,
+      // 	       sigma_y_2_,
+      // 	       rho_,
+      // 	       small_t_solution_->get_t(),
+      // 	       t_2_-small_t_solution_->get_t(),
+      // 	       i, out, gsl_vector_get(solution_coefs_, i), current_f);
+      // 	throw "out is nan in solution computation";
+      // }
     }
 
   }
@@ -1209,6 +1225,10 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_
   double h_x = h*(b_ - a_);
   double h_y = h*(d_ - c_);
 
+  double biggest_eval = gsl_vector_get(get_evals(), 0);
+  double current_time = get_t_2();
+  double log_normalizing_factor = -1.0*biggest_eval*current_time;
+
   for (unsigned i=0; i<a_indeces.size(); ++i) {
     if (i==0) { a_power=1; } else { a_power=0; };
 
@@ -1230,6 +1250,12 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_
 
 	  double out = (*this)(raw_input);
 
+	  if (std::signbit(out)) {
+	    out = -1.0*std::exp(std::log(std::abs(out)) + log_normalizing_factor);
+	  } else {
+	    out = std::exp(std::log(std::abs(out)) + log_normalizing_factor);
+	  }
+
 	  derivative = derivative +
 	    std::pow(-1, a_power)*
 	    std::pow(-1, b_power)*
@@ -1238,6 +1264,14 @@ double BivariateSolver::numerical_likelihood_second_order(const gsl_vector* raw_
 	}
       }
     }
+  }
+
+  if (std::signbit(derivative)) {
+    derivative =
+      -1.0*std::exp(std::log(std::abs(derivative)) - log_normalizing_factor);
+  } else {
+    derivative =
+      std::exp(std::log(std::abs(derivative)) - log_normalizing_factor);
   }
 
   set_data(current_a,
