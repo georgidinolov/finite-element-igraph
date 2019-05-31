@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   double dx_likelihood = std::stod(argv[5]);
   std::string file_prefix = argv[6];
   std::string input_file_name = argv[7];
-  double dx = 1.0/300.0;
+  double dx = 1.0/350.0;
   double dx_likelihood_for_small_t = 1e-5;
 
   static int counter = 0;
@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
 	raw_input_array[1] = points_for_kriging[i].y_t_tilde;
 
 	// MATCHING CONSTANTS START
-	unsigned number_big_t_points = 3;
+	unsigned number_big_t_points = 2;
 
 	// std::vector<double>::const_iterator first_lambda = eigenvalues[i].begin();
 	// std::vector<double>::const_iterator last_lambda = eigenvalues[i].begin() + 1;
@@ -323,11 +323,11 @@ int main(int argc, char *argv[]) {
 			n++;
 			return out;});
 
-	std::vector<double> t_tildes (0); // = t_tildes_small;
-	std::vector<double> ys (0); // = ys_small;
-	std::vector<double> log_ys (0); // = log_ys_small;
+	std::vector<double> t_tildes = t_tildes_small;
+	std::vector<double> ys = ys_small;
+	std::vector<double> log_ys = log_ys_small;
 
-	double t_tilde_2 = 0.30;
+	double t_tilde_2 = 0.50;
 	while (number_big_t_points > 0) {
 	  solver.set_diffusion_parameters_and_data(1.0,
 						   points_for_kriging[i].sigma_y_tilde,
